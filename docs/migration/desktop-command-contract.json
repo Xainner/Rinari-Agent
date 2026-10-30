@@ -342,6 +342,29 @@
       "host_effects": []
     },
     {
+      "command": "workspace_preview_list",
+      "module": "desktop",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "workspace.preview.list",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "workspace_file_read",
       "module": "desktop",
       "args": [
@@ -653,6 +676,11 @@
           "name": "limit",
           "type": "Option<u32>",
           "optional": true
+        },
+        {
+          "name": "agent_id",
+          "type": "Option<String>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -683,6 +711,11 @@
         {
           "key": "limit",
           "from": "limit",
+          "optional": true
+        },
+        {
+          "key": "agent_id",
+          "from": "agent_id",
           "optional": true
         }
       ],
@@ -893,6 +926,11 @@
           "name": "limit",
           "type": "Option<u32>",
           "optional": true
+        },
+        {
+          "name": "before_seq",
+          "type": "Option<u64>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -907,6 +945,11 @@
         {
           "key": "limit",
           "from": "limit",
+          "optional": true
+        },
+        {
+          "key": "before_seq",
+          "from": "before_seq",
           "optional": true
         }
       ],
@@ -1171,6 +1214,407 @@
       "host_effects": []
     },
     {
+      "command": "session_goal_get",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.goal.get",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_goal_set",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "objective",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "budget",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        },
+        {
+          "name": "start",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.goal.set",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        },
+        {
+          "key": "objective",
+          "from": "objective",
+          "optional": true
+        },
+        {
+          "key": "budget",
+          "from": "budget",
+          "optional": true
+        },
+        {
+          "key": "start",
+          "from": "start",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_goal_pause",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.goal.pause",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_goal_resume",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "start",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.goal.resume",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        },
+        {
+          "key": "start",
+          "from": "start",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_goal_clear",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.goal.clear",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_goal_budget",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "budget",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.goal.budget",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        },
+        {
+          "key": "budget",
+          "from": "budget",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_resume_get",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.resume.get",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_resume_arm",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "resets_at",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.resume.arm",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        },
+        {
+          "key": "resets_at",
+          "from": "resets_at",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_resume_cancel",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.resume.cancel",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_resume_now",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.resume.now",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "resume_settings_get",
+      "module": "sessions",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "resume.settings.get",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "resume_settings_set",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "auto_resume_on_limits",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "resume.settings.set",
+      "engine_params": [
+        {
+          "key": "auto_resume_on_limits",
+          "from": "auto_resume_on_limits",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "models_roles_get",
+      "module": "sessions",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "models.roles.get",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "models_roles_set",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "fallback",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "auxiliary",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "auxiliary_compaction",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "models.roles.set",
+      "engine_params": [
+        {
+          "key": "fallback",
+          "from": "fallback",
+          "optional": true
+        },
+        {
+          "key": "auxiliary",
+          "from": "auxiliary",
+          "optional": true
+        },
+        {
+          "key": "auxiliary_compaction",
+          "from": "auxiliary_compaction",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_checklist_complete",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.checklist.complete",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "followup_list",
       "module": "sessions",
       "args": [
@@ -1254,6 +1698,16 @@
           "name": "suggestion_id",
           "type": "String",
           "optional": false
+        },
+        {
+          "name": "context",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "isolation",
+          "type": "Option<String>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -1264,6 +1718,16 @@
           "key": "suggestion_id",
           "from": "suggestion_id",
           "optional": false
+        },
+        {
+          "key": "context",
+          "from": "context",
+          "optional": true
+        },
+        {
+          "key": "isolation",
+          "from": "isolation",
+          "optional": true
         }
       ],
       "passthrough": null,
@@ -1568,6 +2032,11 @@
           "name": "command",
           "type": "Option<Value>",
           "optional": true
+        },
+        {
+          "name": "origin",
+          "type": "Option<Value>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -1603,6 +2072,11 @@
         {
           "key": "command",
           "from": "command",
+          "optional": true
+        },
+        {
+          "key": "origin",
+          "from": "origin",
           "optional": true
         }
       ],
@@ -1734,6 +2208,11 @@
           "name": "message",
           "type": "String",
           "optional": false
+        },
+        {
+          "name": "attachments",
+          "type": "Option<serde_json::Value>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -1749,6 +2228,11 @@
           "key": "message",
           "from": "message",
           "optional": false
+        },
+        {
+          "key": "attachments",
+          "from": "attachments",
+          "optional": true
         }
       ],
       "passthrough": null,
@@ -1802,7 +2286,7 @@
     },
     {
       "command": "queue_resume",
-      "module": "peers",
+      "module": "sessions",
       "args": [
         {
           "name": "session_id",
@@ -1818,234 +2302,6 @@
           "key": "session_id",
           "from": "session_id",
           "optional": false
-        }
-      ],
-      "passthrough": null,
-      "host_effects": []
-    },
-    {
-      "command": "peer_group_set",
-      "module": "peers",
-      "args": [
-        {
-          "name": "board_id",
-          "type": "String",
-          "optional": false
-        },
-        {
-          "name": "group_id",
-          "type": "Option<String>",
-          "optional": true
-        },
-        {
-          "name": "expected_revision",
-          "type": "i64",
-          "optional": false
-        },
-        {
-          "name": "enabled",
-          "type": "bool",
-          "optional": false
-        },
-        {
-          "name": "members",
-          "type": "Vec<Value>",
-          "optional": false
-        }
-      ],
-      "returns": "Result<Value, CommandError>",
-      "manual": false,
-      "engine_method": "session.peer_group.set",
-      "engine_params": [
-        {
-          "key": "board_id",
-          "from": "board_id",
-          "optional": false
-        },
-        {
-          "key": "expected_revision",
-          "from": "expected_revision",
-          "optional": false
-        },
-        {
-          "key": "enabled",
-          "from": "enabled",
-          "optional": false
-        },
-        {
-          "key": "members",
-          "from": "members",
-          "optional": false
-        },
-        {
-          "key": "group_id",
-          "from": "group_id",
-          "optional": true
-        }
-      ],
-      "passthrough": null,
-      "host_effects": []
-    },
-    {
-      "command": "peer_group_get",
-      "module": "peers",
-      "args": [
-        {
-          "name": "board_id",
-          "type": "Option<String>",
-          "optional": true
-        },
-        {
-          "name": "session_id",
-          "type": "Option<String>",
-          "optional": true
-        },
-        {
-          "name": "group_id",
-          "type": "Option<String>",
-          "optional": true
-        }
-      ],
-      "returns": "Result<Value, CommandError>",
-      "manual": true,
-      "engine_method": "session.peer_group.get",
-      "engine_params": [
-        {
-          "key": "group_id",
-          "from": null,
-          "optional": true
-        },
-        {
-          "key": "session_id",
-          "from": null,
-          "optional": true
-        },
-        {
-          "key": "board_id",
-          "from": null,
-          "optional": true
-        }
-      ],
-      "passthrough": null,
-      "host_effects": []
-    },
-    {
-      "command": "peer_group_revoke",
-      "module": "peers",
-      "args": [
-        {
-          "name": "group_id",
-          "type": "String",
-          "optional": false
-        }
-      ],
-      "returns": "Result<Value, CommandError>",
-      "manual": false,
-      "engine_method": "session.peer_group.revoke",
-      "engine_params": [
-        {
-          "key": "group_id",
-          "from": "group_id",
-          "optional": false
-        }
-      ],
-      "passthrough": null,
-      "host_effects": []
-    },
-    {
-      "command": "peer_message_list",
-      "module": "peers",
-      "args": [
-        {
-          "name": "session_id",
-          "type": "String",
-          "optional": false
-        }
-      ],
-      "returns": "Result<Value, CommandError>",
-      "manual": false,
-      "engine_method": "session.peer_message.list",
-      "engine_params": [
-        {
-          "key": "session_id",
-          "from": "session_id",
-          "optional": false
-        }
-      ],
-      "passthrough": null,
-      "host_effects": []
-    },
-    {
-      "command": "peer_message_cancel",
-      "module": "peers",
-      "args": [
-        {
-          "name": "message_id",
-          "type": "String",
-          "optional": false
-        }
-      ],
-      "returns": "Result<Value, CommandError>",
-      "manual": false,
-      "engine_method": "session.peer_message.cancel",
-      "engine_params": [
-        {
-          "key": "message_id",
-          "from": "message_id",
-          "optional": false
-        }
-      ],
-      "passthrough": null,
-      "host_effects": []
-    },
-    {
-      "command": "peer_message_forward",
-      "module": "peers",
-      "args": [
-        {
-          "name": "target_session_id",
-          "type": "String",
-          "optional": false
-        },
-        {
-          "name": "message",
-          "type": "String",
-          "optional": false
-        },
-        {
-          "name": "source_session_id",
-          "type": "Option<String>",
-          "optional": true
-        },
-        {
-          "name": "quoted_source",
-          "type": "Option<Value>",
-          "optional": true
-        }
-      ],
-      "returns": "Result<Value, CommandError>",
-      "manual": true,
-      "engine_method": "session.peer_message.forward",
-      "engine_params": [
-        {
-          "key": "target_session_id",
-          "from": "target_session_id",
-          "optional": false
-        },
-        {
-          "key": "message",
-          "from": "message",
-          "optional": false
-        },
-        {
-          "key": "source_session_id",
-          "from": null,
-          "optional": true
-        },
-        {
-          "key": "quoted_source",
-          "from": null,
-          "optional": true
         }
       ],
       "passthrough": null,
@@ -2342,6 +2598,39 @@
         {
           "key": "max_chars",
           "from": "max_chars",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "workspace_dir_list",
+      "module": "workspace",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "path",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "workspace.dir.list",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "path",
+          "from": "path",
           "optional": true
         }
       ],
@@ -2700,6 +2989,282 @@
       "engine_method": "vision.settings.set",
       "engine_params": [],
       "passthrough": "settings",
+      "host_effects": []
+    },
+    {
+      "command": "images_settings_get",
+      "module": "workspace",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "images.settings.get",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "images_settings_set",
+      "module": "workspace",
+      "args": [
+        {
+          "name": "settings",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "images.settings.set",
+      "engine_params": [],
+      "passthrough": "settings",
+      "host_effects": []
+    },
+    {
+      "command": "images_connector_test",
+      "module": "workspace",
+      "args": [
+        {
+          "name": "connector_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "images.connector.test",
+      "engine_params": [
+        {
+          "key": "connector_id",
+          "from": "connector_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "execution_settings_get",
+      "module": "workspace",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "execution.settings.get",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "execution_settings_set",
+      "module": "workspace",
+      "args": [
+        {
+          "name": "settings",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "execution.settings.set",
+      "engine_params": [
+        {
+          "key": "settings",
+          "from": "settings",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "advanced_settings_get",
+      "module": "workspace",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "advanced.settings.get",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "advanced_settings_set",
+      "module": "workspace",
+      "args": [
+        {
+          "name": "values",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "advanced.settings.set",
+      "engine_params": [
+        {
+          "key": "values",
+          "from": "values",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "network_settings_get",
+      "module": "workspace",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "network.settings.get",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "network_settings_set",
+      "module": "workspace",
+      "args": [
+        {
+          "name": "proxy",
+          "type": "serde_json::Value",
+          "optional": true
+        },
+        {
+          "name": "certificates",
+          "type": "serde_json::Value",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "network.settings.set",
+      "engine_params": [
+        {
+          "key": "proxy",
+          "from": "proxy",
+          "optional": true
+        },
+        {
+          "key": "certificates",
+          "from": "certificates",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "network_test",
+      "module": "workspace",
+      "args": [
+        {
+          "name": "provider_ids",
+          "type": "serde_json::Value",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "network.test",
+      "engine_params": [
+        {
+          "key": "provider_ids",
+          "from": "provider_ids",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "storage_usage",
+      "module": "workspace",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "storage.usage",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "storage_clean",
+      "module": "workspace",
+      "args": [
+        {
+          "name": "section",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "storage.clean",
+      "engine_params": [
+        {
+          "key": "section",
+          "from": "section",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "vision_model_reset",
+      "module": "workspace",
+      "args": [
+        {
+          "name": "model_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "vision.model.reset",
+      "engine_params": [
+        {
+          "key": "model_id",
+          "from": "model_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "browser_external_open",
+      "module": "workspace",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "url",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "browser.external.open",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "url",
+          "from": "url",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
       "host_effects": []
     },
     {
@@ -3131,6 +3696,62 @@
       "host_effects": []
     },
     {
+      "command": "soul_export",
+      "module": "souls",
+      "args": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "folder",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "soul.export",
+      "engine_params": [
+        {
+          "key": "id",
+          "from": "id",
+          "optional": false
+        },
+        {
+          "key": "folder",
+          "from": "folder",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "soul_import",
+      "module": "souls",
+      "args": [
+        {
+          "name": "paths",
+          "type": "Vec<String>",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "soul.import",
+      "engine_params": [
+        {
+          "key": "paths",
+          "from": "paths",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "soul_settings_get",
       "module": "souls",
       "args": [],
@@ -3379,6 +4000,464 @@
           "key": "timeout_s",
           "from": "timeout_s",
           "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "mcp_reconnect",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.reconnect",
+      "engine_params": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "mcp_auth_start",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "open_browser",
+          "type": "Option<bool>",
+          "optional": true
+        },
+        {
+          "name": "timeout_s",
+          "type": "Option<u32>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.auth.start",
+      "engine_params": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        },
+        {
+          "key": "open_browser",
+          "from": "open_browser",
+          "optional": true
+        },
+        {
+          "key": "timeout_s",
+          "from": "timeout_s",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "mcp_auth_status",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.auth.status",
+      "engine_params": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "mcp_auth_cancel",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.auth.cancel",
+      "engine_params": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "mcp_auth_signout",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.auth.signout",
+      "engine_params": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "mcp_tools_list",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "scope",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.tools.list",
+      "engine_params": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        },
+        {
+          "key": "scope",
+          "from": "scope",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "mcp_tools_set",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "request",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.tools.set",
+      "engine_params": [],
+      "passthrough": "request",
+      "host_effects": []
+    },
+    {
+      "command": "mcp_tools_set_default",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "request",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.tools.set_default",
+      "engine_params": [],
+      "passthrough": "request",
+      "host_effects": []
+    },
+    {
+      "command": "mcp_catalog_list",
+      "module": "ecosystem",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.catalog.list",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "mcp_catalog_add",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "name",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "client_id",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "client_secret",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "redirect_port",
+          "type": "Option<u32>",
+          "optional": true
+        },
+        {
+          "name": "token",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "secrets",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        },
+        {
+          "name": "connection_string",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "owner",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.catalog.add",
+      "engine_params": [
+        {
+          "key": "id",
+          "from": "id",
+          "optional": false
+        },
+        {
+          "key": "name",
+          "from": "name",
+          "optional": true
+        },
+        {
+          "key": "client_id",
+          "from": "client_id",
+          "optional": true
+        },
+        {
+          "key": "client_secret",
+          "from": "client_secret",
+          "optional": true
+        },
+        {
+          "key": "redirect_port",
+          "from": "redirect_port",
+          "optional": true
+        },
+        {
+          "key": "token",
+          "from": "token",
+          "optional": true
+        },
+        {
+          "key": "secrets",
+          "from": "secrets",
+          "optional": true
+        },
+        {
+          "key": "connection_string",
+          "from": "connection_string",
+          "optional": true
+        },
+        {
+          "key": "owner",
+          "from": "owner",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "mcp_import_scan",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "sources",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        },
+        {
+          "name": "json",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.import.scan",
+      "engine_params": [
+        {
+          "key": "sources",
+          "from": "sources",
+          "optional": true
+        },
+        {
+          "key": "json",
+          "from": "json",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "mcp_import_apply",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "keys",
+          "type": "serde_json::Value",
+          "optional": false
+        },
+        {
+          "name": "names",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        },
+        {
+          "name": "sources",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        },
+        {
+          "name": "json",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.import.apply",
+      "engine_params": [
+        {
+          "key": "keys",
+          "from": "keys",
+          "optional": false
+        },
+        {
+          "key": "names",
+          "from": "names",
+          "optional": true
+        },
+        {
+          "key": "sources",
+          "from": "sources",
+          "optional": true
+        },
+        {
+          "key": "json",
+          "from": "json",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "mcp_project_offers_list",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.project_offers.list",
+      "engine_params": [
+        {
+          "key": "path",
+          "from": "path",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "mcp_project_offers_decide",
+      "module": "ecosystem",
+      "args": [
+        {
+          "name": "path",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "decisions",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "mcp.project_offers.decide",
+      "engine_params": [
+        {
+          "key": "path",
+          "from": "path",
+          "optional": false
+        },
+        {
+          "key": "decisions",
+          "from": "decisions",
+          "optional": false
         }
       ],
       "passthrough": null,
@@ -3851,6 +4930,11 @@
           "name": "force",
           "type": "Option<bool>",
           "optional": true
+        },
+        {
+          "name": "allow_large",
+          "type": "Option<bool>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -3880,6 +4964,11 @@
         {
           "key": "force",
           "from": "force",
+          "optional": true
+        },
+        {
+          "key": "allow_large",
+          "from": "allow_large",
           "optional": true
         }
       ],
@@ -4130,8 +5219,8 @@
       "args": [
         {
           "name": "id",
-          "type": "String",
-          "optional": false
+          "type": "Option<String>",
+          "optional": true
         },
         {
           "name": "name",
@@ -4166,7 +5255,7 @@
         {
           "key": "id",
           "from": "id",
-          "optional": false
+          "optional": true
         },
         {
           "key": "name",
@@ -4587,6 +5676,11 @@
           "name": "archived",
           "type": "Option<bool>",
           "optional": true
+        },
+        {
+          "name": "permission_profile",
+          "type": "Option<String>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -4616,6 +5710,11 @@
         {
           "key": "archived",
           "from": "archived",
+          "optional": false
+        },
+        {
+          "key": "permission_profile",
+          "from": "permission_profile",
           "optional": false
         }
       ],
@@ -5107,6 +6206,11 @@
           "name": "settings",
           "type": "Option<serde_json::Value>",
           "optional": true
+        },
+        {
+          "name": "enabled",
+          "type": "Option<bool>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -5145,6 +6249,11 @@
         },
         {
           "key": "settings",
+          "from": null,
+          "optional": true
+        },
+        {
+          "key": "enabled",
           "from": null,
           "optional": true
         }
@@ -5261,6 +6370,11 @@
           "name": "provider",
           "type": "Option<String>",
           "optional": true
+        },
+        {
+          "name": "include_disabled",
+          "type": "Option<bool>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -5271,6 +6385,11 @@
           "key": "provider",
           "from": "provider",
           "optional": false
+        },
+        {
+          "key": "include_disabled",
+          "from": "include_disabled",
+          "optional": true
         }
       ],
       "passthrough": null,
@@ -5366,6 +6485,62 @@
         {
           "key": "settings",
           "from": "settings",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "model_hidden_list",
+      "module": "models",
+      "args": [
+        {
+          "name": "provider",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "model.hidden.list",
+      "engine_params": [
+        {
+          "key": "provider",
+          "from": "provider",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "model_unhide",
+      "module": "models",
+      "args": [
+        {
+          "name": "provider",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "provider_model_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "model.unhide",
+      "engine_params": [
+        {
+          "key": "provider",
+          "from": "provider",
+          "optional": false
+        },
+        {
+          "key": "provider_model_id",
+          "from": "provider_model_id",
           "optional": false
         }
       ],
@@ -6345,6 +7520,1386 @@
       "host_effects": []
     },
     {
+      "command": "schedule_rehearse",
+      "module": "schedule",
+      "args": [
+        {
+          "name": "task",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "schedule.rehearse",
+      "engine_params": [
+        {
+          "key": "task",
+          "from": "task",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_agent_list",
+      "module": "agency",
+      "args": [
+        {
+          "name": "rinari_profile_id",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "include_archived",
+          "type": "Option<bool>",
+          "optional": true
+        },
+        {
+          "name": "archived",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.agent.list",
+      "engine_params": [
+        {
+          "key": "rinari_profile_id",
+          "from": "rinari_profile_id",
+          "optional": true
+        },
+        {
+          "key": "include_archived",
+          "from": "include_archived",
+          "optional": true
+        },
+        {
+          "key": "archived",
+          "from": "archived",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_agent_get",
+      "module": "agency",
+      "args": [
+        {
+          "name": "agent_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.agent.get",
+      "engine_params": [
+        {
+          "key": "agent_id",
+          "from": "agent_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_agent_create",
+      "module": "agency",
+      "args": [
+        {
+          "name": "agent",
+          "type": "serde_json::Value",
+          "optional": false
+        },
+        {
+          "name": "rinari_profile_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.agent.create",
+      "engine_params": [
+        {
+          "key": "agent",
+          "from": "agent",
+          "optional": false
+        },
+        {
+          "key": "rinari_profile_id",
+          "from": "rinari_profile_id",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_agent_update",
+      "module": "agency",
+      "args": [
+        {
+          "name": "agent_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "patch",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.agent.update",
+      "engine_params": [
+        {
+          "key": "agent_id",
+          "from": "agent_id",
+          "optional": false
+        },
+        {
+          "key": "patch",
+          "from": "patch",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_agent_archive",
+      "module": "agency",
+      "args": [
+        {
+          "name": "agent_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.agent.archive",
+      "engine_params": [
+        {
+          "key": "agent_id",
+          "from": "agent_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_status",
+      "module": "agency",
+      "args": [
+        {
+          "name": "rinari_profile_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.status",
+      "engine_params": [
+        {
+          "key": "rinari_profile_id",
+          "from": "rinari_profile_id",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_agent_draft",
+      "module": "agency",
+      "args": [
+        {
+          "name": "description",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.agent.draft",
+      "engine_params": [
+        {
+          "key": "description",
+          "from": "description",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_stop_all",
+      "module": "agency",
+      "args": [
+        {
+          "name": "rinari_profile_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.stop_all",
+      "engine_params": [
+        {
+          "key": "rinari_profile_id",
+          "from": "rinari_profile_id",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_resume",
+      "module": "agency",
+      "args": [
+        {
+          "name": "rinari_profile_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.resume",
+      "engine_params": [
+        {
+          "key": "rinari_profile_id",
+          "from": "rinari_profile_id",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_agent_memory_list",
+      "module": "agency",
+      "args": [
+        {
+          "name": "agent_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.agent.memory.list",
+      "engine_params": [
+        {
+          "key": "agent_id",
+          "from": "agent_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_agent_memory_add",
+      "module": "agency",
+      "args": [
+        {
+          "name": "agent_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "topic",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "text",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "kind",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.agent.memory.add",
+      "engine_params": [
+        {
+          "key": "agent_id",
+          "from": "agent_id",
+          "optional": false
+        },
+        {
+          "key": "topic",
+          "from": "topic",
+          "optional": false
+        },
+        {
+          "key": "text",
+          "from": "text",
+          "optional": false
+        },
+        {
+          "key": "kind",
+          "from": "kind",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_list",
+      "module": "agency",
+      "args": [
+        {
+          "name": "rinari_profile_id",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "archived",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.list",
+      "engine_params": [
+        {
+          "key": "rinari_profile_id",
+          "from": "rinari_profile_id",
+          "optional": true
+        },
+        {
+          "key": "archived",
+          "from": "archived",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_get",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.get",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_create",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team",
+          "type": "serde_json::Value",
+          "optional": false
+        },
+        {
+          "name": "rinari_profile_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.create",
+      "engine_params": [
+        {
+          "key": "team",
+          "from": "team",
+          "optional": false
+        },
+        {
+          "key": "rinari_profile_id",
+          "from": "rinari_profile_id",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_update",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "patch",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.update",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        },
+        {
+          "key": "patch",
+          "from": "patch",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_archive",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.archive",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_unarchive",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.unarchive",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_delete",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.delete",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_stop",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.stop",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_resume",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.resume",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_agent_delete",
+      "module": "agency",
+      "args": [
+        {
+          "name": "agent_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.agent.delete",
+      "engine_params": [
+        {
+          "key": "agent_id",
+          "from": "agent_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_overview",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.overview",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_routine_list",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.routine.list",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_routine_create",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "agent_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "schedule",
+          "type": "serde_json::Value",
+          "optional": false
+        },
+        {
+          "name": "prompt",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.routine.create",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        },
+        {
+          "key": "agent_id",
+          "from": "agent_id",
+          "optional": false
+        },
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        },
+        {
+          "key": "schedule",
+          "from": "schedule",
+          "optional": false
+        },
+        {
+          "key": "prompt",
+          "from": "prompt",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_flow_list",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.flow.list",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_flow_save",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "flow",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.flow.save",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        },
+        {
+          "key": "flow",
+          "from": "flow",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_flow_delete",
+      "module": "agency",
+      "args": [
+        {
+          "name": "flow_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.flow.delete",
+      "engine_params": [
+        {
+          "key": "flow_id",
+          "from": "flow_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_flow_start",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "flow_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "input",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.flow.start",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        },
+        {
+          "key": "flow_id",
+          "from": "flow_id",
+          "optional": false
+        },
+        {
+          "key": "input",
+          "from": "input",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_flow_run_cancel",
+      "module": "agency",
+      "args": [
+        {
+          "name": "run_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.flow.run.cancel",
+      "engine_params": [
+        {
+          "key": "run_id",
+          "from": "run_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_join",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "agent_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.join",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        },
+        {
+          "key": "agent_id",
+          "from": "agent_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_leave",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "agent_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.leave",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        },
+        {
+          "key": "agent_id",
+          "from": "agent_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_template",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.template",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_duplicate",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "new_agents",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.duplicate",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        },
+        {
+          "key": "name",
+          "from": "name",
+          "optional": false
+        },
+        {
+          "key": "new_agents",
+          "from": "new_agents",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_memory_list",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.memory.list",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_memory_add",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "topic",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "text",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "kind",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.memory.add",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        },
+        {
+          "key": "topic",
+          "from": "topic",
+          "optional": false
+        },
+        {
+          "key": "text",
+          "from": "text",
+          "optional": false
+        },
+        {
+          "key": "kind",
+          "from": "kind",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_office_list",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.office.list",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_office_post",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "text",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.office.post",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        },
+        {
+          "key": "text",
+          "from": "text",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_errand_create",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "errand",
+          "type": "serde_json::Value",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.errand.create",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        },
+        {
+          "key": "errand",
+          "from": "errand",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_errand_list",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.errand.list",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_errand_review",
+      "module": "agency",
+      "args": [
+        {
+          "name": "errand_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "accepted",
+          "type": "bool",
+          "optional": false
+        },
+        {
+          "name": "reason",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.errand.review",
+      "engine_params": [
+        {
+          "key": "errand_id",
+          "from": "errand_id",
+          "optional": false
+        },
+        {
+          "key": "accepted",
+          "from": "accepted",
+          "optional": false
+        },
+        {
+          "key": "reason",
+          "from": "reason",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_errand_cancel",
+      "module": "agency",
+      "args": [
+        {
+          "name": "errand_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.errand.cancel",
+      "engine_params": [
+        {
+          "key": "errand_id",
+          "from": "errand_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_errand_retry",
+      "module": "agency",
+      "args": [
+        {
+          "name": "errand_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.errand.retry",
+      "engine_params": [
+        {
+          "key": "errand_id",
+          "from": "errand_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_settings_get",
+      "module": "agency",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.settings.get",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_settings_set",
+      "module": "agency",
+      "args": [
+        {
+          "name": "budget",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        },
+        {
+          "name": "errand_mode",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.settings.set",
+      "engine_params": [
+        {
+          "key": "budget",
+          "from": "budget",
+          "optional": true
+        },
+        {
+          "key": "errand_mode",
+          "from": "errand_mode",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_agent_unarchive",
+      "module": "agency",
+      "args": [
+        {
+          "name": "agent_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.agent.unarchive",
+      "engine_params": [
+        {
+          "key": "agent_id",
+          "from": "agent_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_templates_list",
+      "module": "agency",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.templates.list",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_from_template",
+      "module": "agency",
+      "args": [
+        {
+          "name": "template_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "model",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.from_template",
+      "engine_params": [
+        {
+          "key": "template_id",
+          "from": "template_id",
+          "optional": false
+        },
+        {
+          "key": "model",
+          "from": "model",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "documents_capabilities_get",
       "module": "desktop",
       "args": [
@@ -7053,6 +9608,16 @@
           "name": "topic",
           "type": "String",
           "optional": true
+        },
+        {
+          "name": "place",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "project_root",
+          "type": "Option<String>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -7077,6 +9642,16 @@
         {
           "key": "topic",
           "from": "topic",
+          "optional": true
+        },
+        {
+          "key": "place",
+          "from": "place",
+          "optional": true
+        },
+        {
+          "key": "project_root",
+          "from": "project_root",
           "optional": true
         }
       ],
@@ -7233,6 +9808,856 @@
         {
           "key": "language",
           "from": "language",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "repo_status",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "refresh",
+          "type": "Option<bool>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "repo.status",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        },
+        {
+          "key": "refresh",
+          "from": "refresh",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "repo_pr_create",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "title",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "base",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "body",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "repo.pr.create",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        },
+        {
+          "key": "title",
+          "from": "title",
+          "optional": false
+        },
+        {
+          "key": "base",
+          "from": "base",
+          "optional": false
+        },
+        {
+          "key": "body",
+          "from": "body",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_summary",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.summary",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "turn_steer_update",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "steer_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "message",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.turn.steer.update",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "steer_id",
+          "from": "steer_id",
+          "optional": false
+        },
+        {
+          "key": "message",
+          "from": "message",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "turn_steer_cancel",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "steer_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.turn.steer.cancel",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "steer_id",
+          "from": "steer_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "turn_steer_promote",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "steer_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.turn.steer.promote",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "steer_id",
+          "from": "steer_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "project_init_start",
+      "module": "projects",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "project.init.start",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "project_instructions_resolve",
+      "module": "projects",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "proposalId",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "decision",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "content",
+          "type": "String",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "project.instructions.resolve",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        },
+        {
+          "key": "proposal_id",
+          "from": "proposalId",
+          "optional": false
+        },
+        {
+          "key": "decision",
+          "from": "decision",
+          "optional": false
+        },
+        {
+          "key": "content",
+          "from": "content",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "turn_steer_now",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "message",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "attachments",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.turn.steer_now",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "message",
+          "from": "message",
+          "optional": false
+        },
+        {
+          "key": "attachments",
+          "from": "attachments",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_tool_background",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "tool_call_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.tool.background",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "tool_call_id",
+          "from": "tool_call_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_tool_output",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "tool_call_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.tool.output",
+      "engine_params": [
+        {
+          "key": "ref",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "tool_call_id",
+          "from": "tool_call_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "process_orphans_list",
+      "module": "desktop",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "process.orphans.list",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "process_orphan_stop",
+      "module": "desktop",
+      "args": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "process.orphan.stop",
+      "engine_params": [
+        {
+          "key": "id",
+          "from": "id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "process_persistent_list",
+      "module": "desktop",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "process.persistent.list",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "process_persistent_stop",
+      "module": "desktop",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "process.persistent.stop",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_children_list",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.children.list",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_child_integrate",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "childSessionId",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.child.integrate",
+      "engine_params": [
+        {
+          "key": "child_session_id",
+          "from": "childSessionId",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_child_discard",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "childSessionId",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.child.discard",
+      "engine_params": [
+        {
+          "key": "child_session_id",
+          "from": "childSessionId",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_children_isolation",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "isolation",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.children.isolation",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        },
+        {
+          "key": "isolation",
+          "from": "isolation",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_child_start",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "sessionId",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "prompt",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "title",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.child.start",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "sessionId",
+          "optional": false
+        },
+        {
+          "key": "prompt",
+          "from": "prompt",
+          "optional": false
+        },
+        {
+          "key": "title",
+          "from": "title",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "memory_about_get",
+      "module": "memory",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "memory.about.get",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "memory_about_set",
+      "module": "memory",
+      "args": [
+        {
+          "name": "name",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "uses",
+          "type": "Option<Vec<String>>",
+          "optional": true
+        },
+        {
+          "name": "preferences",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "memory.about.set",
+      "engine_params": [
+        {
+          "key": "name",
+          "from": "name",
+          "optional": true
+        },
+        {
+          "key": "uses",
+          "from": "uses",
+          "optional": true
+        },
+        {
+          "key": "preferences",
+          "from": "preferences",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "memory_move",
+      "module": "memory",
+      "args": [
+        {
+          "name": "id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "place",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "place_ref",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "project_root",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "memory.move",
+      "engine_params": [
+        {
+          "key": "id",
+          "from": "id",
+          "optional": false
+        },
+        {
+          "key": "place",
+          "from": "place",
+          "optional": false
+        },
+        {
+          "key": "place_ref",
+          "from": "place_ref",
+          "optional": true
+        },
+        {
+          "key": "project_root",
+          "from": "project_root",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "usage_report",
+      "module": "usage",
+      "args": [
+        {
+          "name": "scope",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "ref",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "save",
+          "type": "Option<bool>",
+          "optional": true
+        },
+        {
+          "name": "session_id",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "app_version",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "usage.report",
+      "engine_params": [
+        {
+          "key": "scope",
+          "from": "scope",
+          "optional": false
+        },
+        {
+          "key": "ref",
+          "from": "ref",
+          "optional": true
+        },
+        {
+          "key": "save",
+          "from": "save",
+          "optional": true
+        },
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": true
+        },
+        {
+          "key": "app_version",
+          "from": "app_version",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "usage_report_list",
+      "module": "usage",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "usage.report.list",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "session_review_export",
+      "module": "sessions",
+      "args": [
+        {
+          "name": "session_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "from_seq",
+          "type": "Option<u64>",
+          "optional": true
+        },
+        {
+          "name": "include_messages",
+          "type": "Option<bool>",
+          "optional": true
+        },
+        {
+          "name": "from_turn_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "session.review.export",
+      "engine_params": [
+        {
+          "key": "session_id",
+          "from": "session_id",
+          "optional": false
+        },
+        {
+          "key": "from_seq",
+          "from": "from_seq",
+          "optional": true
+        },
+        {
+          "key": "include_messages",
+          "from": "include_messages",
+          "optional": true
+        },
+        {
+          "key": "from_turn_id",
+          "from": "from_turn_id",
           "optional": true
         }
       ],

@@ -181,7 +181,6 @@ export interface PaneStatus {
   /** `null` = colección no reconciliada (no afirmar cero). */
   pendingApprovals: number | null
   pendingQuestions: number | null
-  unreadPeerCount: number | null
   startedAt?: number
   completedAt?: number
   error?: string
@@ -238,7 +237,6 @@ export interface PaneStatusInput {
   pendingApprovals: number | null
   pendingQuestions: number | null
   unreadResultCount: number
-  unreadPeerCount: number | null
   availability: PaneAvailabilityState
 }
 
@@ -260,7 +258,6 @@ export function derivePaneStatus(input: PaneStatusInput): PaneStatus {
     unreadResultCount: input.unreadResultCount,
     pendingApprovals: input.pendingApprovals,
     pendingQuestions: input.pendingQuestions,
-    unreadPeerCount: input.unreadPeerCount,
     availability: input.availability,
   }
   if (input.availability === 'loading') {
@@ -300,7 +297,7 @@ export function samePaneStatus(a: PaneStatus | null, b: PaneStatus): boolean {
     a.latestTerminalTurnId === b.latestTerminalTurnId && a.latestOutcome === b.latestOutcome &&
     a.unread === b.unread && a.unreadResultCount === b.unreadResultCount &&
     a.pendingApprovals === b.pendingApprovals && a.pendingQuestions === b.pendingQuestions &&
-    a.unreadPeerCount === b.unreadPeerCount && a.startedAt === b.startedAt && a.completedAt === b.completedAt &&
+    a.startedAt === b.startedAt && a.completedAt === b.completedAt &&
     a.error === b.error && a.availability === b.availability &&
     a.stopReason?.code === b.stopReason?.code && a.stopReason?.message === b.stopReason?.message
   )

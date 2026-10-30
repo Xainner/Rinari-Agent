@@ -1,6 +1,27 @@
 import { useEffect, useRef } from 'react'
 import { inProfile, useProfileStore } from './profileStore'
 
+/**
+ * Un cambio de perfil para abrir una conversación concreta (un aviso de otro
+ * perfil, #34): esa conversación llega enseguida, así que no se abre un
+ * borrador nuevo por el camino.
+ */
+let arriving = false
+
+/** Cambia al perfil de la conversación si hace falta; resuelve cuando ya está activo. */
+export async function switchToProfileOf(profileId: string | null | undefined): Promise<void> {
+  const store = useProfileStore.getState()
+  const target = profileId || 'default'
+  if (!store.activeId || store.activeId === target) return
+  arriving = true
+  try {
+    await store.activate(target)
+  } catch (error) {
+    arriving = false
+    throw error
+  }
+}
+
 interface Options {
   ready: boolean
   /** The open conversation, if any. */
@@ -29,11 +50,14 @@ export function useProfileWorkspace({ ready, activeRecord, refreshSessions, refr
     if (ready) void load()
   }, [ready, load])
 
+  // Al volver a la ventana se relee (la CLI pudo cambiar de perfil), pero
+  // nunca antes de que el motor esté listo: era un ENGINE_DOWN por arranque (#91).
   useEffect(() => {
+    if (!ready) return
     const onFocus = () => void load()
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
-  }, [load])
+  }, [load, ready])
 
   const firstRevision = useRef(true)
   useEffect(() => {
@@ -57,6 +81,10 @@ export function useProfileWorkspace({ ready, activeRecord, refreshSessions, refr
     const key = `${activeRecord.id}:${activeId}`
     if (leftFor.current === key) return
     leftFor.current = key
+    if (arriving) {
+      arriving = false
+      return
+    }
     openDraft()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId, activeRecord?.id, activeRecord?.rinari_profile_id])

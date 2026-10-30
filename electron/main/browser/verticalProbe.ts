@@ -101,6 +101,35 @@ export interface VerticalDeps {
 }
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+
+/** Qué ventana de Windows hay en un punto de la pantalla (diagnóstico de clics físicos). */
+async function windowAt(x: number, y: number): Promise<string> {
+  if (process.platform !== 'win32') return ''
+  const { execFile } = await import('node:child_process')
+  const script = `Add-Type -TypeDefinition @'
+using System; using System.Text; using System.Runtime.InteropServices;
+public class RinariWindowAt {
+  [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X; public int Y; }
+  [DllImport("user32.dll")] public static extern IntPtr WindowFromPoint(POINT p);
+  [DllImport("user32.dll")] public static extern IntPtr GetAncestor(IntPtr h, uint f);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetClassName(IntPtr h, StringBuilder s, int n);
+  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+}
+'@
+$p = New-Object RinariWindowAt+POINT; $p.X = ${x}; $p.Y = ${y}
+$h = [RinariWindowAt]::WindowFromPoint($p); $r = [RinariWindowAt]::GetAncestor($h, 2)
+$t = New-Object System.Text.StringBuilder 256; $c = New-Object System.Text.StringBuilder 256
+[void][RinariWindowAt]::GetWindowText($r, $t, 256); [void][RinariWindowAt]::GetClassName($h, $c, 256)
+$pid2 = 0; [void][RinariWindowAt]::GetWindowThreadProcessId($r, [ref]$pid2)
+$proc = (Get-Process -Id $pid2 -ErrorAction SilentlyContinue).ProcessName
+Write-Output "title=$t class=$c process=$proc pid=$pid2"`
+  return new Promise((resolve) => {
+    execFile('powershell.exe', ['-NoProfile', '-Command', script], (error, stdout) =>
+      resolve(error ? `error: ${error.message}` : String(stdout).trim()),
+    )
+  })
+}
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error))
 const overlaps = (
   a: { x: number; y: number; width: number; height: number },
@@ -167,10 +196,12 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
   /**
    * Cambia el guion del modelo falso para el siguiente turno.
    *
-   * Cada guion empieza activando las herramientas del browser: son de origen
-   * lazy y no están expuestas al modelo hasta que alguien las pide. Eso es
-   * parte del pipeline real —el §3 pide ejercitarlo, no esquivarlo—, así que
-   * el modelo falso hace lo mismo que haría uno de verdad.
+   * Cada guion empieza pidiendo las herramientas del browser: son bajo
+   * demanda y no están en la lista fija de la conversación (F42), así que el
+   * modelo pide su llamada exacta antes de usarlas. Eso es parte del pipeline
+   * real —el §3 pide ejercitarlo, no esquivarlo—, así que el modelo falso hace
+   * lo mismo que haría uno de verdad; el Engine ejecuta por nombre aunque la
+   * herramienta no esté en la lista.
    */
   const script = async (entries: unknown[]) => {
     const withActivation = [
@@ -471,29 +502,47 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     // estuviera compuesta y el click no llegaba a ninguna parte.
     const painted = await awaitPainted(view)
     const clicksAtStart = await read<number>(view, 'window.__probe.clicks')
-    const fieldAtStart = await read<string>(view, "document.getElementById('field').value")
+    // Plan 0.4.0 #46: la página se ve en vivo también con el agente al mando,
+    // y el dueño la toma con solo usarla. Un clic físico llega a la página y
+    // el Engine confirma que el navegador pasó al dueño; antes la página
+    // estaba a 1×1 y el clic no llegaba a ninguna parte.
+    const eventsBeforePhysical = events.length
+    let claimed = false
     if (deps.physicalClick) {
-      const bounds = deps.window.getBounds()
+      const content = deps.window.getContentBounds()
+      const presented = context.container.getBounds()
       deps.window.show()
       deps.window.focus()
       await sleep(300)
-      await deps.physicalClick(bounds.x + 24 + 80, bounds.y + 120 + 120, 'fisico-bloqueado')
-      await sleep(300)
+      // En una zona vacía de la página: ahora el clic llega, y sobre el
+      // `<input type="file">` del fixture abría el diálogo «Abrir», que se
+      // quedaba encima y tapaba los clics físicos de los pasos siguientes.
+      await deps.physicalClick(
+        Math.round(content.x + presented.x + 300),
+        Math.round(content.y + presented.y + 320),
+      )
+      for (let attempt = 0; attempt < 40 && !claimed; attempt += 1) {
+        claimed = events.slice(eventsBeforePhysical).some(
+          (entry) =>
+            entry.event === 'browser.control.changed' &&
+            (entry.payload as Record<string, unknown> | undefined)?.control_state === 'user',
+        )
+        if (!claimed) await sleep(100)
+      }
     }
     const clicksAfterPhysical = await read<number>(view, 'window.__probe.clicks')
-    const fieldAfterPhysical = await read<string>(view, "document.getElementById('field').value")
     record({
       id: 'V2p',
-      title: 'Con control del agente, mouse y teclado físicos no alcanzan la página',
+      title: 'Con el agente al mando, el dueño toma la página con solo usarla',
       status: deps.physicalClick
-        ? clicksAfterPhysical === clicksAtStart && fieldAfterPhysical === fieldAtStart
+        ? clicksAfterPhysical > clicksAtStart && claimed && context.control === 'user'
           ? 'ok'
           : 'failed'
         : 'skipped',
       detail: deps.physicalClick
-        ? `clicks ${clicksAtStart} → ${clicksAfterPhysical}; campo sin cambios: ${fieldAfterPhysical === fieldAtStart}`
+        ? `clicks ${clicksAtStart} → ${clicksAfterPhysical}; el Engine lo dio al dueño: ${claimed}; main: ${context.control}`
         : 'la síntesis física sólo está disponible en la sonda de Windows',
-      evidence: { clicksAtStart, clicksAfterPhysical, fieldAtStart, fieldAfterPhysical },
+      evidence: { clicksAtStart, clicksAfterPhysical, claimed, control: context.control },
     })
     const debug = view.webContents.debugger
     if (!debug.isAttached()) debug.attach('1.3')
@@ -553,6 +602,33 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
           ? `la vista visible muestra «${dom.text}», con el valor que escribió la herramienta`
           : `la vista muestra estado ${dom.state} y texto «${dom.text}»`,
       evidence: { tools: names, trace: mutated.trace, dom, typed },
+    })
+
+    // ── CURSOR (plan 0.4.0 #46): el cursor del agente llegó a donde hizo clic,
+    //    en una vista aparte encima de la página (no en su DOM).
+    const goCenter = await read<{ x: number; y: number }>(
+      view,
+      `(() => { const r = document.getElementById('go').getBoundingClientRect();
+                return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) }; })()`,
+    )
+    // La onda dura menos de medio segundo; después vuelve la flecha.
+    await sleep(500)
+    const cursorAt = (context.cursor as { describe?: () => { x: number; y: number } | null } | null)?.describe?.() ?? null
+    const cursorPage = context.geometry?.page ?? { x: 0, y: 0 }
+    const cursorNear = Boolean(
+      cursorAt &&
+        Math.abs(cursorAt.x - (cursorPage.x + goCenter.x)) <= 8 &&
+        Math.abs(cursorAt.y - (cursorPage.y + goCenter.y)) <= 8,
+    )
+    const cursorInDom = await read<boolean>(view, "Boolean(document.querySelector('[data-rinari-cursor]'))")
+    record({
+      id: 'CURSOR',
+      title: 'El cursor del agente llega al punto del clic, fuera del DOM de la página',
+      status: cursorNear && !cursorInDom ? 'ok' : 'failed',
+      detail: cursorNear
+        ? `el cursor quedó en ${cursorAt!.x},${cursorAt!.y}, junto al botón (${goCenter.x},${goCenter.y} de la página)`
+        : `cursor ${JSON.stringify(cursorAt)}; botón ${JSON.stringify(goCenter)}; página en ${JSON.stringify(cursorPage)}`,
+      evidence: { cursorAt, goCenter, cursorPage, cursorInDom },
     })
 
     // ── Paso 4: la captura del Engine contiene el estado visible, con tamaño
@@ -774,10 +850,6 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
       control_state: String(confirmed.control_state),
     }
 
-    await script([{ tool: 'browser.click', args: { selector: '#go' } }, { text: 'intentado' }])
-    const blocked = await runTurn(sessionId, 'vuelve a pulsar aplicar')
-    const blockedTool = blocked.tools.find((tool) => tool.tool === 'browser.click')
-
     // Edición manual **con entrada real del widget**, que es la ruta del
     // usuario. La versión anterior asignaba `value` y además `setAttribute`
     // para que el HTML serializado lo contuviera; eso probaba una edición
@@ -790,12 +862,41 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     )
     await read(view, "(document.getElementById('field').value = '', true)")
     const manual = `manual${Date.now()}`
+    const clicksBeforeTyping = await read<number>(view, 'window.__probe.clicks')
+    const fieldGeometry = {
+      clicksBeforeTyping,
+      content: deps.window.getContentBounds(),
+      container: context.container.getBounds(),
+      page: context.geometry?.page ?? null,
+      rect,
+    }
+    const missedAt: string[] = []
     if (deps.physicalClick) {
-      const bounds = deps.window.getBounds()
-      deps.window.show()
-      deps.window.focus()
-      await sleep(300)
-      await deps.physicalClick(bounds.x + 24 + rect.x, bounds.y + 120 + rect.y, manual)
+      const { content, container } = fieldGeometry
+      const pageOffset = fieldGeometry.page ?? { x: 0, y: 0 }
+      // Un clic del sistema puede perderse si otra ventana tiene el primer
+      // plano en ese instante; se reintenta mientras no haya llegado a la
+      // página (lo dice el contador de clics del fixture).
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        deps.window.show()
+        deps.window.focus()
+        await sleep(300)
+        await read(view, "(document.getElementById('field').value = '', true)")
+        const before = await read<number>(view, 'window.__probe.clicks')
+        await deps.physicalClick(
+          Math.round(content.x + container.x + pageOffset.x + rect.x),
+          Math.round(content.y + container.y + pageOffset.y + rect.y),
+          manual,
+        )
+        await sleep(300)
+        if ((await read<number>(view, 'window.__probe.clicks')) > before) break
+        missedAt.push(
+          await windowAt(
+            Math.round(content.x + container.x + pageOffset.x + rect.x),
+            Math.round(content.y + container.y + pageOffset.y + rect.y),
+          ),
+        )
+      }
     } else {
       view.webContents.focus()
       for (const type of ['mouseDown', 'mouseUp'] as const) {
@@ -809,17 +910,124 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     }
     await sleep(400)
     const typedLive = await read<string>(view, "document.getElementById('field').value")
+    const afterTyping = {
+      pageFocused: view.webContents.isFocused(),
+      active: await read<string>(view, "document.activeElement ? (document.activeElement.id || document.activeElement.tagName) : ''"),
+      hasFocus: await read<boolean>(view, 'document.hasFocus()'),
+      clicks: await read<number>(view, 'window.__probe.clicks'),
+      container: context.container.getBounds(),
+      control: context.control,
+      children: context.container.children.map((child) => ({
+        bounds: child.getBounds(),
+        visible: child.getVisible(),
+        page: child === view,
+      })),
+      windowChildren: deps.window && 'contentView' in deps.window
+        ? ((deps.window as unknown as { contentView: { children: Array<{ getBounds(): unknown; getVisible(): boolean }> } }).contentView.children.map((child) => ({ bounds: child.getBounds(), visible: child.getVisible() })))
+        : null,
+    }
 
-    // User → Agent pasa por el servicio real de main. Este retira la vista y
-    // devuelve el foco al renderer **antes** de pedir el cambio al Engine.
+    // ── Control sin botones (plan 0.4.0 #46). El dueño sigue en el campo que
+    //    acaba de rellenar: el agente no le quita el navegador, espera. Antes
+    //    la herramienta se rechazaba con CONFLICT y el dueño tenía que pulsar
+    //    «Devolver al agente».
+    const page = view
+    const resultState = () =>
+      read<string | null>(page, "document.getElementById('result').getAttribute('data-state')")
+    await read(view, "(document.getElementById('result').setAttribute('data-state', 'pending'), true)")
+    await script([{ tool: 'browser.click', args: { selector: '#go' } }, { text: 'esperé' }])
+    const waitingTurn = runTurn(sessionId, 'vuelve a pulsar aplicar', 90_000)
+    let sawWaiting = false
+    for (let attempt = 0; attempt < 100 && !sawWaiting; attempt += 1) {
+      sawWaiting = events.some(
+        (entry) =>
+          entry.event === 'browser.control.changed' &&
+          (entry.payload as Record<string, unknown> | undefined)?.agent_waiting === true,
+      )
+      if (!sawWaiting) await sleep(100)
+    }
+    // Más que los 3 s de reposo: con el foco en un campo a medio rellenar,
+    // el agente sigue esperando.
+    await sleep(4_500)
+    const stateWhileHeld = await resultState()
+    const heldBack = stateWhileHeld === 'pending'
+
+    // El dueño suelta el campo con un clic fuera. A los 3 s sin tocarlo, el
+    // agente retoma y hace su clic.
+    const releasedAt = Date.now()
+    view.webContents.focus()
+    for (const type of ['mouseDown', 'mouseUp'] as const) {
+      view.webContents.sendInputEvent({ type, x: 4, y: 4, button: 'left', clickCount: 1 })
+    }
+    const waited = await waitingTurn
+    const resumedAfterMs = Date.now() - releasedAt
+    const waitedTool = waited.tools.find((tool) => tool.tool === 'browser.click')
+    const resumed = waitedTool?.outcome === 'completed' && waitedTool.ok === true
+    const stateAfterResume = await resultState()
+    const applied = await read<string>(view, "document.getElementById('result').textContent")
+    const backToAgent = context.control === 'agent'
+
+    // El agente observa el **valor vivo** por a11y, no el HTML serializado:
+    // escribir en un campo no cambia su atributo, así que un snapshot no lo
+    // vería y el paso mediría la forma de la comprobación en vez del
+    // comportamiento.
+    await script([{ tool: 'browser.a11y', args: {} }, { text: 'observado' }])
+    const observed = await runTurn(sessionId, 'mira cómo quedó el campo')
+    const a11yTool = observed.tools.find((tool) => tool.tool === 'browser.a11y')
+    const tree = parseObservation(a11yTool?.observation)
+    const sawManual = JSON.stringify(tree?.nodes ?? []).includes(manual)
+
+    const typedForReal = typedLive === manual
+    const handoffOk =
+      typedForReal &&
+      sawWaiting &&
+      heldBack &&
+      resumed &&
+      stateAfterResume === 'applied' &&
+      applied.includes(manual) &&
+      resumedAfterMs >= 2_500 &&
+      backToAgent &&
+      sawManual
+    record({
+      id: 'V5',
+      title: 'Control sin botones: el agente espera a que el dueño suelte la página y la retoma a los 3 s',
+      status: handoffOk ? 'ok' : 'failed',
+      detail: !typedForReal
+        ? `la edición manual no llegó a la página: el campo quedó en «${typedLive}»`
+        : handoffOk
+          ? `con el dueño en un campo a medio rellenar el agente esperó (se avisó) sin tocar la página; al soltarlo retomó a los ${Math.round(resumedAfterMs / 100) / 10} s y leyó el valor manual por a11y`
+          : `espera avisada: ${sawWaiting}; contenido mientras tanto: ${heldBack}; reanudó: ${resumed} a los ${resumedAfterMs} ms; resultado ${stateWhileHeld}→${stateAfterResume}; agente al mando: ${backToAgent}; vio la edición: ${sawManual}`,
+      evidence: {
+        typedLive,
+        typedForReal,
+        // La petición vuelve sin conceder: la confirmación llega por evento.
+        requestedState: requested.control_state,
+        requestedOwnerAtReply: requested.control,
+        takenRevision: taken.control_revision,
+        sawWaiting,
+        heldBack,
+        resumed,
+        resumedAfterMs,
+        result: [stateWhileHeld, stateAfterResume, applied],
+        sawManualEdit: sawManual,
+        fieldGeometry,
+        afterTyping,
+        missedAt,
+        rinariPid: process.pid,
+        trace: waited.trace,
+      },
+    })
+
+    // ── Devolverlo a mano sigue existiendo como API (lo usa la barra al
+    //    terminar de navegar): retira el foco de la página **antes** de que el
+    //    Engine vuelva a admitir mutaciones.
+    await call('browser.control.set', { session_id: sessionId, owner: 'user' })
+    const retaken = await awaitControl('user')
     const returnPromise = deps.services.setControl(
       sessionId,
       'agent',
-      taken.control_revision,
+      Number(retaken.control_revision),
     )
-    const floorBeforeEngineReply = context.container.getBounds()
-    const physicallyRetired =
-      floorBeforeEngineReply.width <= 1 && floorBeforeEngineReply.height <= 1
     const remoteFocusedAfterReturn = view.webContents.isFocused()
 
     const focusSuffix = 'XYZ'
@@ -828,25 +1036,24 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     const valueAfterReturnTyping = await read<string>(view, "document.getElementById('field').value")
 
     // Se lanza una mutación sin esperar la respuesta del cambio. Puede entrar
-    // sólo cuando el Engine confirme agent; para entonces la vista ya estaba
-    // físicamente en el suelo.
+    // sólo cuando el Engine confirme agent.
     await script([{ tool: 'browser.click', args: { selector: '#go' } }, { text: 'race' }])
     const racingTurn = runTurn(sessionId, 'click inmediato al devolver control', 45_000)
     await returnPromise
-    const returned = await awaitControl('agent')
+    await awaitControl('agent')
     const raced = await racingTurn
     const racedTool = raced.tools.find((tool) => tool.tool === 'browser.click')
     const raceCompleted = racedTool?.outcome === 'completed' && racedTool.ok === true
 
     record({
       id: 'RETURN-AGENT-RACE',
-      title: 'Return to Agent retira la superficie antes de reabrir mutaciones',
-      status: physicallyRetired && raceCompleted ? 'ok' : 'failed',
+      title: 'Devolver el control retira la página antes de reabrir mutaciones',
+      status: !remoteFocusedAfterReturn && raceCompleted ? 'ok' : 'failed',
       detail:
-        physicallyRetired && raceCompleted
-          ? 'main bajó la vista a 1×1 antes de esperar al Engine; el click inmediato sólo corrió después del traspaso seguro'
-          : `suelo previo ${JSON.stringify(floorBeforeEngineReply)}; click ${racedTool?.outcome ?? 'ausente'}`,
-      evidence: { floorBeforeEngineReply, physicallyRetired, raceCompleted, trace: raced.trace },
+        !remoteFocusedAfterReturn && raceCompleted
+          ? 'main quitó el foco de la página antes de esperar al Engine; el click inmediato sólo corrió después del traspaso seguro'
+          : `foco remoto tras devolver: ${remoteFocusedAfterReturn}; click ${racedTool?.outcome ?? 'ausente'}`,
+      evidence: { remoteFocusedAfterReturn, raceCompleted, trace: raced.trace },
     })
 
     record({
@@ -869,53 +1076,10 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
       },
     })
 
-    // El agente observa el **valor vivo** por a11y, no el HTML serializado:
-    // escribir en un campo no cambia su atributo, así que un snapshot no lo
-    // vería y el paso mediría la forma de la comprobación en vez del
-    // comportamiento.
-    await script([{ tool: 'browser.a11y', args: {} }, { text: 'observado' }])
-    const observed = await runTurn(sessionId, 'mira cómo quedó el campo')
-    const a11yTool = observed.tools.find((tool) => tool.tool === 'browser.a11y')
-    const tree = parseObservation(a11yTool?.observation)
-    const sawManual = JSON.stringify(tree?.nodes ?? []).includes(manual)
-
-    // Se distingue «rechazado» de «no llegó a ejecutarse»: un turno que no
-    // produjo la herramienta no demuestra exclusión, y darlo por bueno sería
-    // aprobar el paso por una ausencia.
-    const blockedCode = errorCodeOf(blockedTool)
-    const refused = blockedTool?.outcome !== 'completed' && blockedCode === 'CONFLICT'
-    const ranAnyway = blockedTool?.outcome === 'completed' && blockedTool?.ok === true
-    // La edición tiene que haber ocurrido de verdad antes de exigir que se
-    // observe: si el tecleo no llegó, `sawManual` sería falso por otra razón.
-    const typedForReal = typedLive === manual
-    record({
-      id: 'V5',
-      title: 'Control manual: sin mutaciones concurrentes, y la edición manual se observa al devolverlo',
-      status: refused && typedForReal && sawManual ? 'ok' : 'failed',
-      detail: !typedForReal
-        ? `la edición manual no llegó a la página: el campo quedó en «${typedLive}»`
-        : refused
-          ? sawManual
-            ? `con el usuario al mando el click se rechazó (${blockedCode}); tecleado real en el campo, y al devolver el control el agente lo leyó por a11y`
-            : 'el click se rechazó y el tecleo llegó, pero el agente no vio el valor vivo al recuperar el control'
-          : ranAnyway
-            ? 'el click del agente se ejecutó con el usuario al mando: no hay exclusión'
-            : `el click no se ejecutó, pero tampoco se rechazó por control (${blockedCode ?? 'sin evento terminal'}): la exclusión no queda demostrada`,
-      evidence: {
-        typedLive,
-        typedForReal,
-        // La petición vuelve sin conceder: la confirmación llega por evento.
-        requestedState: requested.control_state,
-        requestedOwnerAtReply: requested.control,
-        takenRevision: taken.control_revision,
-        returnedRevision: returned.control_revision,
-        blockedError: blockedCode,
-        blockedTrace: blocked.trace,
-        sawManualEdit: sawManual,
-      },
-    })
-
-    // ── Paso 6: segunda sesión con la misma URL. Ni almacenamiento ni targets.
+    // ── Paso 6: segunda sesión con la misma URL. El perfil es uno solo y
+    //    guardado (decisión del dueño): comparten almacenamiento, y con él las
+    //    sesiones iniciadas. Las pestañas no: un target sigue siendo de su
+    //    contexto (§5.3).
     const secondCreated = (await call('session.create', { title: 'browser vertical 2' })) as {
       session: { id: string }
     }
@@ -938,12 +1102,12 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
 
     record({
       id: 'V6',
-      title: 'Una segunda sesión con la misma URL no comparte almacenamiento ni targets',
-      status: ownRead === marker && crossRead === null && crossTarget === undefined ? 'ok' : 'failed',
+      title: 'Una segunda sesión comparte el perfil del navegador, pero no sus pestañas',
+      status: ownRead === marker && crossRead === marker && crossTarget === undefined ? 'ok' : 'failed',
       detail:
-        crossRead === null && crossTarget === undefined
-          ? 'particiones distintas: la segunda sesión no ve el almacenamiento de la primera, y su target no se resuelve desde el contexto ajeno'
-          : `fuga: almacenamiento ${crossRead}, target ajeno ${crossTarget ? 'resuelto' : 'no'}`,
+        crossRead === marker && crossTarget === undefined
+          ? 'el mismo perfil: la segunda sesión ve el almacenamiento de la primera, y su target no se resuelve desde el contexto ajeno'
+          : `almacenamiento ${crossRead === marker ? 'compartido' : 'no compartido'}, target ajeno ${crossTarget ? 'resuelto' : 'no'}`,
       evidence: {
         ownRead,
         crossRead,
@@ -1940,11 +2104,13 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
     const valueBeforeUserRestart = await read<string>(view, "document.getElementById('field').value")
     const restartBindingBefore = deps.host.bindingId
     const restartUserPromise = deps.engine.restart()
-    let flooredOnLoss = false
+    // El permiso manual se revoca con el Engine que lo dio. La página sigue
+    // a la vista (plan 0.4.0 #46: se ve en vivo mande quien mande), pero
+    // pierde el foco: lo que el dueño teclee no le llega sin volver a usarla.
+    let revokedOnLoss = false
     for (let attempt = 0; attempt < 80; attempt += 1) {
-      const bounds = context.container.getBounds()
-      flooredOnLoss = bounds.width <= 1 && bounds.height <= 1 && context.control === 'agent'
-      if (flooredOnLoss) break
+      revokedOnLoss = context.control === 'agent'
+      if (revokedOnLoss) break
       await sleep(50)
     }
     const focusedAfterLoss = view.webContents.isFocused()
@@ -1980,7 +2146,7 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
       : true
     const restartUserOk =
       valueBeforeUserRestart === restartMarker &&
-      flooredOnLoss &&
+      revokedOnLoss &&
       !focusedAfterLoss &&
       physicalProtected &&
       restartBindingAfter !== null &&
@@ -1996,10 +2162,10 @@ export async function runVerticalProof(deps: VerticalDeps): Promise<{
       title: 'Reiniciar el Engine revoca control manual y conserva la misma página',
       status: restartUserOk ? 'ok' : 'failed',
       detail: restartUserOk
-        ? 'la vista bajó a 1×1, perdió foco y no aceptó tecleo físico; el Engine nuevo reusó target/URL/DOM y volvió a operar'
-        : `typed=${valueBeforeUserRestart === restartMarker}; floor=${flooredOnLoss}; focus=${focusedAfterLoss}; physical=${physicalProtected}; binding=${restartBindingBefore}→${restartBindingAfter}; target=${restartTargetBefore}→${restartTargetAfter}; tools=${restartToolsOk}`,
+        ? 'el control manual se revocó, la página perdió el foco y no aceptó tecleo físico; el Engine nuevo reusó target/URL/DOM y volvió a operar'
+        : `typed=${valueBeforeUserRestart === restartMarker}; revoked=${revokedOnLoss}; focus=${focusedAfterLoss}; physical=${physicalProtected}; binding=${restartBindingBefore}→${restartBindingAfter}; target=${restartTargetBefore}→${restartTargetAfter}; tools=${restartToolsOk}`,
       evidence: {
-        flooredOnLoss,
+        revokedOnLoss,
         focusedAfterLoss,
         physicalMeasured: Boolean(deps.physicalType),
         physicalProtected,

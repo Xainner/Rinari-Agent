@@ -15,7 +15,7 @@ async function fillHistory(prefix, n) {
   await delay(300)
 }
 async function readUp(prefix) {
-  await evaluate(`(() => {const el=${q(prefix + ' ' + scroller)};el.scrollTop=200;el.dispatchEvent(new Event('scroll'))})()`)
+  await evaluate(`(() => {const el=${q(prefix + ' ' + scroller)};el.dispatchEvent(new WheelEvent('wheel',{bubbles:true,deltaY:-120}));el.scrollTop=200;el.dispatchEvent(new Event('scroll'))})()`)
   await wait(`Boolean(${q(prefix + ' button[aria-label="Ir al final"]')})`)
   assert.equal(await evaluate(atEnd(prefix)), false)
 }

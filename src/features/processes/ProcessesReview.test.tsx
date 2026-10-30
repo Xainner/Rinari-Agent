@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { installMockPlatform } from '../../test/mockPlatform'
-const { invoke, openUrl } = installMockPlatform()
+const { invoke, openUrl, bridge } = installMockPlatform()
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { ProcessRuntimeProvider } from './ProcessRuntimeProvider'
@@ -473,12 +473,16 @@ it('T-13: URLs no http(s) o con credenciales no ofrecen Abrir', async () => {
   // Solo la fila válida expone Abrir (más el inspector si se abre).
   expect(openButtons).toHaveLength(1)
   fireEvent.click(openButtons[0]!)
-  await waitFor(() => expect(openUrl).toHaveBeenCalledWith('https://127.0.0.1:8080/'))
+  // Se abre en el navegador del panel de la conversación (#90).
+  await waitFor(() => expect(bridge.browserCalls).toContainEqual(expect.objectContaining({ kind: 'navigate', url: 'https://127.0.0.1:8080/' })))
+  expect(openUrl).not.toHaveBeenCalled()
   expect(screen.queryByRole('alert')).toBeNull()
-  // Un fallo de apertura sí se reporta de forma localizada.
+  // Sin panel, el navegador del sistema; y un fallo ahí se reporta en la fila.
+  const navigate = vi.spyOn(bridge.browser, 'navigate').mockRejectedValueOnce(new Error('no panel'))
   vi.mocked(openUrl).mockRejectedValueOnce(new Error('nope'))
   fireEvent.click(openButtons[0]!)
   expect(await screen.findByText('nope')).toBeTruthy()
+  navigate.mockRestore()
 })
 
 it('E-2: fallo de copia en detalle avisa en vez de callar', async () => {  const { copyText } = await import('../../lib/clipboard')

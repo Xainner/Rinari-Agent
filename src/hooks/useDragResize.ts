@@ -1,4 +1,4 @@
-import { useCallback, useRef, type KeyboardEvent, type PointerEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 
 export interface DragResizeOptions {
   value: number
@@ -24,6 +24,7 @@ export interface ResizeHandleProps {
   'aria-valuemin': number
   'aria-valuemax': number
   'aria-disabled'?: boolean
+  'data-dragging'?: boolean
   tabIndex: number
   onPointerDown: (event: PointerEvent<HTMLElement>) => void
   onPointerMove: (event: PointerEvent<HTMLElement>) => void
@@ -45,6 +46,7 @@ export function useDragResize(options: DragResizeOptions): { handleProps: Resize
   const { value, min, direction, onChange, onCommit, step = 20, disabled = false } = options
   const maxValue = typeof options.max === 'function' ? options.max() : options.max
   const dragging = useRef<{ pointerId: number; startX: number; startValue: number } | null>(null)
+  const [active, setActive] = useState(false)
   const latest = useRef(value)
   latest.current = value
 
@@ -53,20 +55,19 @@ export function useDragResize(options: DragResizeOptions): { handleProps: Resize
     return Math.round(Math.max(min, Math.min(max, next)))
   }, [min, options])
 
+  /** Quita los listeners de la ventana del arrastre en curso. */
+  const detach = useRef<(() => void) | null>(null)
+
   const finish = useCallback((commit: boolean) => {
     if (!dragging.current) return
     dragging.current = null
+    setActive(false)
+    detach.current?.()
+    detach.current = null
     if (commit) onCommit?.(latest.current)
   }, [onCommit])
 
-  const onPointerDown = useCallback((event: PointerEvent<HTMLElement>) => {
-    if (disabled || event.button !== 0) return
-    event.preventDefault()
-    event.currentTarget.setPointerCapture(event.pointerId)
-    dragging.current = { pointerId: event.pointerId, startX: event.clientX, startValue: latest.current }
-  }, [disabled])
-
-  const onPointerMove = useCallback((event: PointerEvent<HTMLElement>) => {
+  const move = useCallback((event: globalThis.PointerEvent) => {
     const drag = dragging.current
     if (!drag || drag.pointerId !== event.pointerId) return
     const delta = event.clientX - drag.startX
@@ -77,21 +78,39 @@ export function useDragResize(options: DragResizeOptions): { handleProps: Resize
     }
   }, [clamp, direction, onChange])
 
+  // El arrastre se sigue en la ventana, no solo con la captura del puntero:
+  // una vista nativa que se mueve o se retira (el navegador del panel lateral)
+  // puede quitarle la captura al separador a mitad de camino, y el arrastre se
+  // cortaba ahí.
+  const onPointerDown = useCallback((event: PointerEvent<HTMLElement>) => {
+    if (disabled || event.button !== 0) return
+    event.preventDefault()
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+    const pointerId = event.pointerId
+    dragging.current = { pointerId, startX: event.clientX, startValue: latest.current }
+    setActive(true)
+    const up = (upEvent: globalThis.PointerEvent) => { if (upEvent.pointerId === pointerId) finish(true) }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+    window.addEventListener('pointercancel', up)
+    detach.current = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      window.removeEventListener('pointercancel', up)
+    }
+  }, [disabled, finish, move])
+
+  // Los eventos del propio separador llegan a la ventana por burbujeo; aquí no
+  // se procesan dos veces. Perder la captura ya no termina el arrastre.
+  const onPointerMove = useCallback(() => {}, [])
   const onPointerUp = useCallback((event: PointerEvent<HTMLElement>) => {
-    if (dragging.current?.pointerId !== event.pointerId) return
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
-    finish(true)
-  }, [finish])
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+  }, [])
+  const onPointerCancel = useCallback(() => {}, [])
+  const onLostPointerCapture = useCallback(() => {}, [])
 
-  const onPointerCancel = useCallback((event: PointerEvent<HTMLElement>) => {
-    if (dragging.current?.pointerId !== event.pointerId) return
-    finish(true)
-  }, [finish])
-
-  const onLostPointerCapture = useCallback((event: PointerEvent<HTMLElement>) => {
-    if (dragging.current?.pointerId !== event.pointerId) return
-    finish(true)
-  }, [finish])
+  // Desmontar a mitad de un arrastre no deja listeners en la ventana.
+  useEffect(() => () => detach.current?.(), [])
 
   const onKeyDown = useCallback((event: KeyboardEvent<HTMLElement>) => {
     if (disabled) return
@@ -117,6 +136,8 @@ export function useDragResize(options: DragResizeOptions): { handleProps: Resize
       'aria-valuemin': min,
       'aria-valuemax': maxValue,
       'aria-disabled': disabled || undefined,
+      // Mientras se arrastra, el asa se ve aunque el puntero se salga de ella.
+      'data-dragging': active || undefined,
       tabIndex: disabled ? -1 : 0,
       onPointerDown,
       onPointerMove,

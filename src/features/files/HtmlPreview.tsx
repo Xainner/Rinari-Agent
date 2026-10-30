@@ -6,7 +6,7 @@ import {
   type FilePreview,
   type WebPreview,
 } from '../../services/desktop'
-import { commandMessage } from '../../services/engine'
+import { commandMessage, isCommandError } from '../../services/engine'
 import { CodeBlock } from '../../components/Markdown'
 import { useI18n } from '../../i18n'
 
@@ -126,11 +126,10 @@ export default function HtmlPreview({
       .catch((reason) => {
         if (disposed) return
         const message = commandMessage(reason)
-        setIsVite(message.includes('PREVIEW_DEV_REQUIRED'))
-        setDevRequired(
-          message.includes('PREVIEW_DEV_REQUIRED') ||
-            message.includes('PREVIEW_SERVER_REQUIRED'),
-        )
+        // Por el código, no por el texto: el mensaje ya sale traducido (#68).
+        const code = isCommandError(reason) ? reason.code : String(reason)
+        setIsVite(code.includes('PREVIEW_DEV_REQUIRED'))
+        setDevRequired(code.includes('PREVIEW_DEV_REQUIRED') || code.includes('PREVIEW_SERVER_REQUIRED'))
         setError(message)
       })
     return () => {

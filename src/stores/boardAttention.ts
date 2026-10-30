@@ -2,13 +2,16 @@ import { create } from 'zustand'
 import { getProfileKey } from './profileKey'
 
 /**
- * Registro local de **reconocimiento del usuario** sobre resultados de turno y
- * mensajes de otros paneles. No es una segunda base de chat: guarda ids,
+ * Registro local de **reconocimiento del usuario** sobre resultados de turno.
+ * No es una segunda base de chat: guarda ids,
  * estados y tiempos, nunca contenido, rutas, tokens ni errores completos. La
  * proyección (qué turnos existen, qué terminaron) siempre puede reconstruirse
  * desde el timeline; aquí solo vive la voluntad "visto".
  *
- * Clave `rinari.board.attention.v1`, indexada por perfil local y sesión.
+ * Clave `rinari.board.attention.v1`, indexada por perfil local + home del
+ * Engine (`<perfil>@<home_id>`, plan-boards C12) y sesión: otro home con la
+ * misma instalación no comparte recibos. Lo guardado antes de conocer el home
+ * (o por una versión anterior) lo adopta el primer home que llega.
  */
 export const ATTENTION_STORAGE_KEY = 'rinari.board.attention.v1'
 export const ATTENTION_SCHEMA_VERSION = 1 as const
@@ -25,6 +28,8 @@ export interface TurnReadReceipt {
   completedAt?: number
   /** Dedupe del *intento* de aviso; no acredita entrega. */
   notificationKey?: string
+  /** Terminó con la ventana sin atención: al volver se lee con actividad o a los 3 s (#62). */
+  away?: boolean
 }
 
 export interface SessionAttention {
@@ -34,8 +39,6 @@ export interface SessionAttention {
   /** Turnos activos vistos por este cliente: si terminan sin que lo veamos, quedan unread. */
   trackedActiveTurnIds: string[]
   turns: Record<string, TurnReadReceipt>
-  /** Mensajes de otros paneles aceptados y aún no reconocidos (por messageId). */
-  unreadPeerMessageIds: string[]
 }
 
 interface PersistedAttention {
@@ -65,23 +68,35 @@ interface AttentionState {
     outcome: TerminalOutcome,
     source: TerminalSource,
     completedAt?: number,
+    options?: TerminalObservation,
   ) => void
   markTurnSeen: (sessionId: string, turnId: string) => void
+  /** Este resultado y los anteriores de la sesión: ver uno posterior es haber pasado por ellos (#84). */
+  markSeenThrough: (sessionId: string, turnId: string) => void
+  /** «Marcar todo como leído»: los resultados de todas las sesiones (#84). */
+  markAllSeen: () => void
   markSessionResultsSeen: (sessionId: string, turnIds: string[]) => void
   markAllBoardResultsSeen: (snapshot: Record<string, string[]>) => void
   claimNotification: (sessionId: string, turnId: string, key: string) => boolean
-  observePeerMessage: (sessionId: string, messageId: string) => void
-  markPeerMessagesSeen: (sessionId: string, messageIds: string[]) => void
   /** Solo ante eliminación autoritativa de la sesión (no al quitarla del layout). */
   forgetSession: (sessionId: string) => void
   /** Tests y recuperación: sustituye el estado del perfil actual. */
   hydrate: (sessions: Record<string, SessionAttention>) => void
+  /** El `home_id` del hello: los recibos pasan a ser de ese home (C12). */
+  setHomeId: (homeId: string | null) => void
+}
+
+export interface TerminalObservation {
+  /** Sin bloque de resultado (solo compactó, o se detuvo sin escribir): nace visto (#84). */
+  quiet?: boolean
+  /** La ventana no tenía atención cuando terminó (#62). */
+  away?: boolean
 }
 
 const OUTCOMES: readonly TerminalOutcome[] = ['completed', 'failed', 'cancelled', 'stopped']
 
 export function emptySessionAttention(): SessionAttention {
-  return { initialized: false, lastSeenTurnId: null, trackedActiveTurnIds: [], turns: {}, unreadPeerMessageIds: [] }
+  return { initialized: false, lastSeenTurnId: null, trackedActiveTurnIds: [], turns: {} }
 }
 
 function isOutcome(value: unknown): value is TerminalOutcome {
@@ -105,6 +120,7 @@ function sanitizeSession(input: unknown): SessionAttention | null {
         outcome: receipt.outcome,
         completedAt: typeof receipt.completedAt === 'number' && Number.isFinite(receipt.completedAt) ? receipt.completedAt : undefined,
         notificationKey: typeof receipt.notificationKey === 'string' ? receipt.notificationKey : undefined,
+        ...(receipt.away === true ? { away: true } : {}),
       }
     }
   }
@@ -114,7 +130,6 @@ function sanitizeSession(input: unknown): SessionAttention | null {
     lastSeenTurnId: typeof raw.lastSeenTurnId === 'string' && raw.lastSeenTurnId ? raw.lastSeenTurnId : null,
     trackedActiveTurnIds: ids(raw.trackedActiveTurnIds),
     turns,
-    unreadPeerMessageIds: ids(raw.unreadPeerMessageIds),
   }
 }
 
@@ -212,7 +227,7 @@ export const useBoardAttentionStore = create<AttentionState>((set, get) => ({
     return { ...session, trackedActiveTurnIds: [...session.trackedActiveTurnIds, turnId] }
   })),
 
-  observeTerminal: (sessionId, turnId, outcome, source, completedAt) => set((state) => withSession(state, sessionId, (session) => {
+  observeTerminal: (sessionId, turnId, outcome, source, completedAt, options = {}) => set((state) => withSession(state, sessionId, (session) => {
     const existing = session.turns[turnId]
     const tracked = session.trackedActiveTurnIds.includes(turnId)
     if (existing) {
@@ -222,15 +237,38 @@ export const useBoardAttentionStore = create<AttentionState>((set, get) => ({
     // Cancelar a mano no es un resultado a revisar; terminales que solo
     // aparecen en historia/snapshot sin haber sido rastreados son baseline.
     const isNew = source === 'live' || tracked
-    const stateValue: ReceiptState = !isNew ? 'baseline' : outcome === 'cancelled' ? 'seen' : 'unread'
+    const stateValue: ReceiptState = !isNew ? 'baseline' : outcome === 'cancelled' || options.quiet ? 'seen' : 'unread'
+    const receipt: TurnReadReceipt = { turnId, state: stateValue, outcome, completedAt }
+    if (stateValue === 'unread' && options.away) receipt.away = true
     return {
       ...session,
       trackedActiveTurnIds: tracked ? session.trackedActiveTurnIds.filter((id) => id !== turnId) : session.trackedActiveTurnIds,
-      turns: { ...session.turns, [turnId]: { turnId, state: stateValue, outcome, completedAt } },
+      turns: { ...session.turns, [turnId]: receipt },
     }
   })),
 
   markTurnSeen: (sessionId, turnId) => set((state) => withSession(state, sessionId, (session) => seen(session, [turnId]))),
+
+  markSeenThrough: (sessionId, turnId) => set((state) => withSession(state, sessionId, (session) => {
+    const target = session.turns[turnId]
+    if (!target) return session
+    const until = target.completedAt
+    const ids = Object.values(session.turns)
+      .filter((receipt) => receipt.state === 'unread' && (receipt.turnId === turnId || (until !== undefined && receipt.completedAt !== undefined && receipt.completedAt <= until)))
+      .map((receipt) => receipt.turnId)
+    return seen(session, ids)
+  })),
+
+  markAllSeen: () => set((state) => {
+    let sessions = state.sessions
+    for (const [sessionId, current] of Object.entries(state.sessions)) {
+      const next = seen(current, unreadTurnIds(current))
+      if (next === current) continue
+      if (sessions === state.sessions) sessions = { ...sessions }
+      sessions[sessionId] = next
+    }
+    return sessions === state.sessions ? state : { sessions }
+  }),
 
   markSessionResultsSeen: (sessionId, turnIds) => set((state) => withSession(state, sessionId, (session) => seen(session, turnIds))),
 
@@ -258,17 +296,6 @@ export const useBoardAttentionStore = create<AttentionState>((set, get) => ({
     return true
   },
 
-  observePeerMessage: (sessionId, messageId) => set((state) => withSession(state, sessionId, (session) => {
-    if (session.unreadPeerMessageIds.includes(messageId)) return session
-    return { ...session, unreadPeerMessageIds: [...session.unreadPeerMessageIds, messageId] }
-  })),
-
-  markPeerMessagesSeen: (sessionId, messageIds) => set((state) => withSession(state, sessionId, (session) => {
-    const drop = new Set(messageIds)
-    const remaining = session.unreadPeerMessageIds.filter((id) => !drop.has(id))
-    return remaining.length === session.unreadPeerMessageIds.length ? session : { ...session, unreadPeerMessageIds: remaining }
-  })),
-
   forgetSession: (sessionId) => set((state) => {
     if (!state.sessions[sessionId]) return state
     const sessions = { ...state.sessions }
@@ -277,6 +304,31 @@ export const useBoardAttentionStore = create<AttentionState>((set, get) => ({
   }),
 
   hydrate: (sessions) => set({ sessions }),
+
+  setHomeId: (homeId) => {
+    const base = get().profileKey.split('@')[0]
+    const next = homeId ? `${base}@${homeId}` : base
+    const current = get().profileKey
+    if (next === current) return
+    const document = loadAll()
+    const stored = document.profiles[next]
+    // Primera vez en este home: adopta lo guardado sin home (y lo quita de
+    // ahí, para que otro home no lo herede también).
+    const adopt = !stored && current === base
+    const sessions = stored ?? (adopt ? get().sessions : {})
+    if (adopt) delete document.profiles[base]
+    document.profiles[next] = sessions
+    if (typeof window !== 'undefined') {
+      try {
+        const payload = JSON.stringify(document)
+        window.localStorage.setItem(ATTENTION_STORAGE_KEY, payload)
+        lastSerialized = payload
+      } catch {
+        // Sin almacenamiento sigue en memoria; el próximo cambio reintenta.
+      }
+    }
+    set({ profileKey: next, sessions })
+  },
 }))
 
 // -- selectores puros -----------------------------------------------------------
@@ -288,10 +340,6 @@ export function unreadTurnIds(session: SessionAttention | undefined): string[] {
 
 export function unreadResultCount(session: SessionAttention | undefined): number {
   return unreadTurnIds(session).length
-}
-
-export function unreadPeerCount(session: SessionAttention | undefined): number {
-  return session?.unreadPeerMessageIds.length ?? 0
 }
 
 // -- persistencia agrupada: solo al cambiar recibos, nunca por token ---------

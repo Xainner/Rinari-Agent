@@ -126,7 +126,10 @@ export function contentSecurityPolicy(devOrigin?: string): string {
     `media-src ${self}${dev} data: blob:`,
     `connect-src ${self}${dev}${socket}`,
     "object-src 'none'",
-    "frame-src 'none'",
+    // Solo las vistas previas HTML locales y aisladas (HtmlPreview: loopback
+    // o `<id>.localhost`), nunca un sitio remoto (plan 0.4.0 #58). CSP no
+    // admite literales IPv6 (`[::1]`): esa vista previa queda fuera.
+    "frame-src http://localhost:* http://127.0.0.1:* http://*.localhost:*",
     "worker-src 'none'",
     "base-uri 'none'",
     "form-action 'none'",

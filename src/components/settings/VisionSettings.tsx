@@ -5,6 +5,8 @@ import type { VisionSettings as Config } from '../../types/protocol.generated'
 import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
 import { inputClass, Section } from './parts'
+import { useImageReadPrefs } from '../../stores/imageReadPrefs'
+import ImageCreationSettings from './ImageCreationSettings'
 
 type Mode = Config['mode']
 
@@ -20,7 +22,7 @@ const MODES: ReadonlyArray<{ value: Mode; title: 'vision.mode.automatic' | 'visi
  * modelos), así que aquí no se declara a mano. Los cambios se guardan al
  * elegir; la ejecución de modelos vive en Avanzado.
  */
-export default function VisionSettings({ models, providers }: { models: ModelSummary[]; providers: ProviderSummary[] }) {
+export default function VisionSettings({ models, providers, imageCreation = false }: { models: ModelSummary[]; providers: ProviderSummary[]; imageCreation?: boolean }) {
   const { t } = useI18n()
   const [config, setConfig] = useState<Config>()
   const [error, setError] = useState('')
@@ -58,6 +60,7 @@ export default function VisionSettings({ models, providers }: { models: ModelSum
         <p className="mt-1 text-sm text-[var(--text-muted)]">{t('vision.intro')}</p>
       </div>
       {error && <p role="alert" className="text-sm text-[var(--danger)]">{error}</p>}
+      <DefaultImageMode />
       {config && (
         <>
           <Section title={t('vision.modeTitle')}>
@@ -116,6 +119,22 @@ export default function VisionSettings({ models, providers }: { models: ModelSum
           )}
         </>
       )}
+      {/* Crear y editar imágenes, con el Engine que lo anuncia (plan 0.4.0 #28). */}
+      {imageCreation && <ImageCreationSettings />}
     </div>
+  )
+}
+
+/** «Cómo enviar imágenes por defecto» (#77): Imagen salvo que el dueño elija otra cosa. */
+function DefaultImageMode() {
+  const { t } = useI18n()
+  const mode = useImageReadPrefs((state) => state.mode)
+  const setMode = useImageReadPrefs((state) => state.setMode)
+  return (
+    <Section title={t('vision.defaultRead')} desc={t('vision.defaultReadHint')}>
+      <select aria-label={t('vision.defaultRead')} className={inputClass} value={mode} onChange={(event) => setMode(event.target.value as typeof mode)} data-testid="vision-default-read">
+        {(['image', 'text', 'both'] as const).map((value) => <option key={value} value={value}>{t(`attach.read.${value}`)}</option>)}
+      </select>
+    </Section>
   )
 }

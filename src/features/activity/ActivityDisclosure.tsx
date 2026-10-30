@@ -34,8 +34,13 @@ function InspectionBody({ stateKey, children, id, className = 'space-y-1.5' }: {
   return <div ref={ref} id={id} className={className} data-activity-body data-inspection-root={stateKey}>{children}</div>
 }
 
-export const ActivityDisclosure = memo(function ActivityDisclosure({ stateKey, header, children, inspectLabel, operations = false, defaultOpen = false }: {
-  stateKey: string; header: ReactNode; children?: ReactNode; inspectLabel?: string; operations?: boolean; defaultOpen?: boolean
+/**
+ * `card`: la cabecera del turno terminado, con el marco de la tarjeta de
+ * trabajando (TurnStatusCard): el chevrón va a la derecha y el aviso de
+ * incidencias viaja dentro de la cabecera (y en la descripción del botón).
+ */
+export const ActivityDisclosure = memo(function ActivityDisclosure({ stateKey, header, children, inspectLabel, operations = false, defaultOpen = false, card = false, tone }: {
+  stateKey: string; header: ReactNode; children?: ReactNode; inspectLabel?: string; operations?: boolean; defaultOpen?: boolean; card?: boolean; tone?: 'danger' | 'muted'
 }) {
   const { t } = useI18n()
   const open = useActivityDisclosure(s => s.entries[stateKey]?.open ?? defaultOpen)
@@ -51,7 +56,18 @@ export const ActivityDisclosure = memo(function ActivityDisclosure({ stateKey, h
     if (anchor.current) finish.current = layout?.begin(anchor.current) ?? null
     useActivityDisclosure.getState().setOpen(stateKey, next)
   }
-  if (!children) return <div className="py-1 text-[13px] text-[var(--text-muted)]">{header}</div>
+  if (!children) return card
+    ? <div className="disclosure-button is-turn-card is-static" data-tone={tone}>{header}</div>
+    : <div className="py-1 text-[13px] text-[var(--text-muted)]">{header}</div>
+  if (card) return <section data-activity-disclosure="turn" className="min-w-0 space-y-2">
+    <button ref={anchor} type="button" aria-label={t(open ? 'activity.hide' : 'activity.show')} aria-describedby={inspectLabel ? id + '-issues' : undefined} aria-expanded={open} aria-controls={id}
+      onClick={() => toggle()} className="disclosure-button is-turn-card" data-tone={tone}>
+      <span className="min-w-0 flex-1">{header}</span>
+      {inspectLabel && <span id={id + '-issues'} className="sr-only">{inspectLabel}</span>}
+      <ChevronRight size={16} aria-hidden="true" className={`turn-done-chevron shrink-0 transition-transform duration-200 ${open ? 'rotate-90' : ''}`} />
+    </button>
+    {open && <InspectionBody stateKey={stateKey} id={id} className="space-y-2 pt-1">{children}</InspectionBody>}
+  </section>
   return <section data-activity-disclosure={operations ? "operations" : "turn"} className="min-w-0 space-y-2">
     <div className="flex min-w-0 items-center gap-2">
       <button ref={anchor} type="button" aria-label={t(operations ? open ? 'activity.hideOperations' : 'activity.showOperations' : open ? 'activity.hide' : 'activity.show')} aria-expanded={open} aria-controls={id}

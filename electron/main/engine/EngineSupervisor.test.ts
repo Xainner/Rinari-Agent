@@ -11,7 +11,10 @@ import {
   ENV_ENGINE_CWD,
   EngineNotFound,
   locateEngine,
+  sidecarCommand,
 } from './engineLocator'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 
 const FAKE = join(dirname(fileURLToPath(import.meta.url)), 'fixtures', 'fakeEngine.mjs')
 const started: EngineSupervisor[] = []
@@ -48,6 +51,20 @@ afterEach(async () => {
 })
 
 describe('resolución del ejecutable', () => {
+  it('el sidecar arranca por la entrada rápida del Engine cuando la trae (#91)', () => {
+    const root = mkdtempSync(join(tmpdir(), 'rinari-sidecar-'))
+    try {
+      const dist = join(root, 'engine-dist')
+      mkdirSync(join(dist, 'Lib', 'site-packages', 'rinari', 'engine_protocol'), { recursive: true })
+      writeFileSync(join(dist, process.platform === 'win32' ? 'python.exe' : 'python'), '')
+      expect(sidecarCommand(root)?.args).toEqual(['-m', 'rinari', 'engine', '--stdio'])
+      writeFileSync(join(dist, 'Lib', 'site-packages', 'rinari', 'engine_protocol', '__main__.py'), '')
+      expect(sidecarCommand(root)?.args).toEqual(['-m', 'rinari.engine_protocol'])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   it('en producción sin sidecar falla con un mensaje accionable, no cae al PATH', () => {
     // Arrancar otro `rinari` del PATH cambiaría esquema, capabilities y home.
     expect(() => locateEngine({ packaged: true, env: {} })).toThrow(EngineNotFound)
@@ -101,10 +118,12 @@ describe('resolución del ejecutable', () => {
 
 describe('plazos por método', () => {
   it('conserva la diferenciación en vez de aplanar a 60 s', () => {
-    expect(deadlineFor('project.status')).toBe(5_000)
     expect(deadlineFor('session.turn.start')).toBe(5_000)
     expect(deadlineFor('session.list')).toBe(10_000)
-    expect(deadlineFor('session.history')).toBe(10_000)
+    expect(deadlineFor('project.status')).toBe(10_000)
+    // Abrir una conversación larga en un equipo lento (#70).
+    expect(deadlineFor('session.history')).toBe(30_000)
+    expect(deadlineFor('session.timeline')).toBe(30_000)
     expect(deadlineFor('workspace.file.read')).toBe(60_000)
   })
 })
@@ -118,6 +137,40 @@ describe('ciclo de vida', () => {
     expect(engine.status().engine_version).toBe('fake-1.0')
     expect(engine.status().home_id).toBe('home_fake')
     expect(statuses).toContain('handshaking')
+  })
+
+  it('un saludo lento dentro del plazo arranca y se mide (#70)', async () => {
+    const times: number[] = []
+    const engine = new EngineSupervisor({ onEvent: () => {}, handshakeTimeoutMs: () => 2_000, onStarted: (ms) => times.push(ms) })
+    const previous = process.env.RINARI_FAKE_HELLO_DELAY_MS
+    process.env.RINARI_FAKE_HELLO_DELAY_MS = '400'
+    try {
+      await withScenario('slow-hello', () => engine.startWithCommand(fakeCommand()))
+      expect(engine.status().state).toBe('ready')
+    } finally {
+      if (previous === undefined) delete process.env.RINARI_FAKE_HELLO_DELAY_MS
+      else process.env.RINARI_FAKE_HELLO_DELAY_MS = previous
+      await engine.shutdown()
+    }
+    expect(times).toHaveLength(1)
+    expect(times[0]).toBeGreaterThanOrEqual(350)
+  })
+
+  it('un primer arranque que no saluda se reintenta una vez antes del error (#70)', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'rinari-retry-'))
+    const lines: string[] = []
+    const engine = new EngineSupervisor({ onEvent: () => {}, handshakeTimeoutMs: () => 800, onStderr: (line) => lines.push(line) })
+    process.env.RINARI_FAKE_MARKER = join(dir, 'first')
+    try {
+      await withScenario('hello-on-retry', () => engine.startWithCommand(fakeCommand()))
+      expect(engine.status().state).toBe('ready')
+      expect(engine.status().engine_version).toBe('fake-retry')
+      expect(lines.some((line) => line.includes('retrying once'))).toBe(true)
+    } finally {
+      delete process.env.RINARI_FAKE_MARKER
+      await engine.shutdown()
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 
   it('arrancar dos veces no lanza un segundo proceso', async () => {

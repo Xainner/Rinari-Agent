@@ -96,8 +96,29 @@ async function click(selector, button = 'left') {
   await wait(`Boolean(${q(selector)}) && !${q(selector)}.disabled`)
   await evaluate(`${q(selector)}.scrollIntoView({behavior:'instant',block:'nearest',inline:'nearest'})`)
   await delay(150)
+  // Virtua quita `pointer-events` a la lista mientras se desplaza y los
+  // devuelve 150 ms después del último scroll: un clic en ese rato cae en el
+  // contenedor. Se espera a que el elemento reciba el clic en su centro (sin
+  // fallar si algo lo tapa a propósito: el escenario lo comprobará).
+  const hit = `(() => {const el=${q(selector)};if(!el)return false;const r=el.getBoundingClientRect();const at=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return Boolean(at&&(at===el||el.contains(at)))})()`
+  await until(() => evaluate(hit), selector + ' receives the click', 2_000).catch(() => {})
   const point = await center(selector)
   await clickAt(point.x, point.y, button)
+}
+/**
+ * Abre o cierra una vista del panel lateral como lo haría una persona: con su
+ * botón de la barra de título o, si va en el menú «⋮» (Agentes, Flujos
+ * o lo que no cabe en una ventana estrecha), desde ese menú.
+ */
+async function toggleDockView(view) {
+  const button = `.dock-view-bar button[data-view="${view}"]`
+  if (await evaluate(`Boolean(${q(button)})`)) return click(button)
+  await click('.dock-view-bar button[data-view="more"]')
+  const item = `[role="menuitemcheckbox"][data-view="${view}"]`
+  await wait(`Boolean(${q(item)})`)
+  await click(item)
+  await wait(`!${q(item)}`)
+  await delay(150)
 }
 /** `click()` del DOM: para menús y filas cuya posición no se prueba. */
 async function domClick(selector) {
@@ -168,6 +189,11 @@ async function ready() {
   await wait('(async () => (await window.rinariDesktop.engine.status()).state === "ready")()', 60_000)
   await wait('Boolean(document.querySelector(".view-switcher"))')
   await delay(400)
+  // Primer uso (#71): la bienvenida va antes del asistente de proveedores.
+  if (await evaluate(`Boolean(document.querySelector('[data-testid="welcome-skip"]'))`)) {
+    await evaluate(`document.querySelector('[data-testid="welcome-skip"]').click()`)
+    await delay(400)
+  }
   await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Configurar después')?.click()`)
   await evaluate('document.fonts.ready')
 }
@@ -269,7 +295,7 @@ function scenario(body, { width = 1500, height = 900, timeout = 300_000 } = {}) 
 }
 
 module.exports = {
-  ui, delay, evaluate, settleAnimations, q, until, wait, center, clickAt, click, domClick, clickText, key, menuShortcut, wheel, input,
+  ui, delay, evaluate, settleAnimations, q, until, wait, center, clickAt, click, toggleDockView, domClick, clickText, key, menuShortcut, wheel, input,
   command, stored, screenshot, ready, reload, size, language, useLocalModel, seedBoard, panesFor,
   report, scenario, DEAD_MODEL,
 }

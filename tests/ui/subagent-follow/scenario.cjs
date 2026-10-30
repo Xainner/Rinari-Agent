@@ -2,7 +2,33 @@
 // pausa al subir (solo en esa tarjeta) y vuelve con «Ir al final». El
 // subagente avanza paso a paso: el modelo falso retiene cada respuesta suya.
 const assert = require('node:assert/strict')
-const { click, clickText, command, evaluate, input, panesFor, seedBoard, report, scenario, screenshot, until, useLocalModel, wait, delay, ui } = require('../harness.cjs')
+const { click, clickText, command, evaluate, input, panesFor, seedBoard, report, scenario, screenshot, settleAnimations, toggleDockView, until, useLocalModel, wait, delay, ui } = require('../harness.cjs')
+/** La geometría de un riel (#10, #21): el eje de la línea frente al de cada bolita, y la pista frente a la primera y la última. */
+function railGeometry(railSelector, nodeSelector, pseudo) {
+  return `(() => {
+    const rail = document.querySelector(${JSON.stringify(railSelector)})
+    if (!rail) return null
+    const box = rail.getBoundingClientRect()
+    const line = getComputedStyle(rail, '::before')
+    const lineX = box.left + parseFloat(line.left) + parseFloat(line.width) / 2
+    const start = box.top + parseFloat(line.top)
+    const end = start + parseFloat(line.height)
+    const nodes = [...rail.querySelectorAll(${JSON.stringify(nodeSelector)})].map((el) => {
+      const r = el.getBoundingClientRect()
+      if (!${JSON.stringify(pseudo)}) return { x: r.left + r.width / 2, y: r.top + r.height / 2 }
+      const s = getComputedStyle(el, ${JSON.stringify(pseudo)})
+      return { x: r.left + parseFloat(s.left) + parseFloat(s.width) / 2, y: r.top + parseFloat(s.top) + parseFloat(s.height) / 2 }
+    })
+    return { lineX, start, end, nodes, track: rail.dataset.track }
+  })()`
+}
+function assertRail(geom, label) {
+  assert.ok(geom && geom.nodes.length >= 2, `${label}: a rail with at least two nodes (${JSON.stringify(geom)})`)
+  for (const node of geom.nodes) assert.ok(Math.abs(node.x - geom.lineX) <= 1, `${label}: the line is centered on every node (${JSON.stringify(geom)})`)
+  assert.ok(Math.abs(geom.start - geom.nodes[0].y) <= 1, `${label}: the line starts at the first node (${JSON.stringify(geom)})`)
+  assert.ok(Math.abs(geom.end - geom.nodes.at(-1).y) <= 1, `${label}: the line ends at the last node (${JSON.stringify(geom)})`)
+}
+
 
 const card = '[data-testid="agent-card"]'
 const box = '[data-testid="agent-activity"]'
@@ -62,5 +88,16 @@ scenario(async () => {
   await wait(atEnd)
   await screenshot('finished')
   assert.equal(await pending(), 0)
-  report({ passed: ['opens at the end while running', 'follows new steps', 'pauses when reading up and across Normal/Boards', 'Ir al final resumes', 'final summary stays in view'], outerScrollTop: outer })
+  // The chat's rail goes from node to node, centered (#10).
+  await settleAnimations()
+  assertRail(await evaluate(railGeometry('.turn-rail', ':scope > * > .turn-node', null)), 'turn rail')
+  // The subagent's steps in the side panel, the same (#21).
+  await toggleDockView('agents')
+  await wait(`Boolean(document.querySelector('button.agent-entry'))`)
+  await click('button.agent-entry')
+  await wait(`document.querySelectorAll('.agent-steps > li.agent-step').length >= 2`)
+  await delay(200)
+  assertRail(await evaluate(railGeometry('.agent-steps', ':scope > li.agent-step', '::before')), 'agent steps')
+  await screenshot('agent-steps')
+  report({ passed: ['rails centered and from node to node', 'opens at the end while running', 'follows new steps', 'pauses when reading up and across Normal/Boards', 'Ir al final resumes', 'final summary stays in view'], outerScrollTop: outer })
 }, { width: 1400, height: 900 })

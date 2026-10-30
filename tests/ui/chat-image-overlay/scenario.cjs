@@ -2,9 +2,9 @@
 // bloquea el desplazamiento del fondo y conserva el foco, en Normal y Boards,
 // para adjuntos del historial y del composer. Los textos largos se desplazan
 // dentro del visor.
-const { dialog } = require('electron')
+const { clipboard, dialog, nativeImage } = require('electron')
 const assert = require('node:assert/strict')
-const { writeFileSync } = require('node:fs')
+const { readFileSync, writeFileSync } = require('node:fs')
 const { join } = require('node:path')
 const { ui, click, clickAt, clickText, command, evaluate, input, key, panesFor, q, reload, report, scenario, screenshot, seedBoard, size, until, useLocalModel, wait, wheel, delay } = require('../harness.cjs')
 
@@ -33,7 +33,7 @@ async function startOfChat(prefix = '') {
   // lectura: se navega después y se avisa al manejador de scroll real.
   const deadline = Date.now() + 10_000
   while (Date.now() < deadline) {
-    await evaluate(`(()=>{const e=${q(prefix + ' ' + scroller)};e.scrollTop=0;e.dispatchEvent(new Event("scroll"))})()`)
+    await evaluate(`(()=>{const e=${q(prefix + ' ' + scroller)};e.dispatchEvent(new WheelEvent("wheel",{bubbles:true,deltaY:-120}));e.scrollTop=0;e.dispatchEvent(new Event("scroll"))})()`)
     await delay(300)
     if (await evaluate(`Boolean(${q(prefix + ' ' + historical)})`)) return
   }
@@ -120,6 +120,48 @@ scenario(async () => {
   await openFromHistory()
   await verify('', 'normal-history')
   await openFromHistory()
+  // #77: el visor grande acerca con la rueda y el doble clic vuelve a ajustar.
+  await wait(`${q(preview + ' img')}?.naturalWidth>0`)
+  // Ronda 1434 (G): la ventana se ciñe a la imagen (900×500 cabe al 100 %): solo el marco alrededor.
+  await delay(400)
+  const geometry = () => evaluate(`(() => { const d = ${q(preview)}.getBoundingClientRect(); const s = ${q(preview + ' .image-viewer-stage')}.getBoundingClientRect(); const i = ${q(preview + ' img')}.getBoundingClientRect(); return { dialog: { w: Math.round(d.width), h: Math.round(d.height) }, spareX: Math.round(s.width - i.width), spareY: Math.round(s.height - i.height), inner: { w: innerWidth, h: innerHeight } } })()`)
+  const snug = await geometry()
+  assert.ok(Math.abs(snug.spareX - 48) <= 4 && Math.abs(snug.spareY - 48) <= 4, 'the viewer hugs the image with its frame: ' + JSON.stringify(snug))
+  const stage = await evaluate(`(()=>{const r=${q(preview + ' .image-viewer-stage')}.getBoundingClientRect();return {x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)}})()`)
+  // En sendInputEvent un deltaY positivo es rueda hacia arriba: acerca.
+  await wheel(stage.x, stage.y, 600)
+  await wait(`parseInt(${q(preview + ' .image-viewer-percent')}.textContent) > 100`)
+  await delay(300)
+  assert.deepEqual((await geometry()).dialog, snug.dialog, 'zooming enlarges the image inside; the window keeps its size')
+  await screenshot('viewer-zoomed')
+  await evaluate(`${q(preview + ' .image-viewer-stage')}.dispatchEvent(new MouseEvent('dblclick',{bubbles:true,clientX:${stage.x},clientY:${stage.y}}))`)
+  await wait(`${q(preview + ' button[aria-pressed="true"]')}?.textContent.includes('Ajustar')`)
+  // «Expandir» lleva la ventana al tamaño máximo y vuelve a ceñirla.
+  await click(preview + ' button[aria-label="Expandir la ventana"]')
+  await wait(`Math.abs(${q(preview)}.getBoundingClientRect().width - (innerWidth - 96)) < 2`)
+  await screenshot('viewer-expanded')
+  await click(preview + ' button[aria-label="Ceñir la ventana a la imagen"]')
+  await wait(`Math.abs(${q(preview)}.getBoundingClientRect().width - ${snug.dialog.w}) < 2`)
+  // «Copiar» deja la imagen entera en el portapapeles y «Descargar» guarda el archivo donde se elige.
+  const copies = []
+  const nativeWrite = clipboard.write
+  clipboard.write = async (items) => { copies.push(items) }
+  const nativeSave = dialog.showSaveDialog
+  const savedTo = join(ui.data, 'guardada.png')
+  dialog.showSaveDialog = async () => ({ canceled: false, filePath: savedTo })
+  try {
+    await click(preview + ' button[aria-label="Copiar imagen"]')
+    await wait(`Boolean(${q(preview + ' button[aria-label="Imagen copiada"]')})`)
+    const blob = await copies[0][0].getType('image/png')
+    const copied = nativeImage.createFromBuffer(Buffer.from(await blob.arrayBuffer())).getSize()
+    assert.deepEqual(copied, { width: 900, height: 500 }, 'the full image is copied, not the thumbnail')
+    await click(preview + ' button[aria-label="Descargar"]')
+    await until(() => { try { return readFileSync(savedTo).length > 0 } catch { return false } })
+    assert.deepEqual(nativeImage.createFromPath(savedTo).getSize(), { width: 900, height: 500 })
+  } finally {
+    clipboard.write = nativeWrite
+    dialog.showSaveDialog = nativeSave
+  }
   await click(preview + ' button[aria-label="Cerrar"]'); await wait(`!${q(preview)}`)
   await openFromHistory(); await clickAt(25, 200); await wait(`!${q(preview)}`)
 
@@ -153,5 +195,5 @@ scenario(async () => {
   await openFromHistory()
   await wait(`${q(preview + ' img')}?.naturalWidth>0`)
   await screenshot('ready-for-review')
-  report({ passed: ['real Engine image import and four turns', 'window-level portal and overlay', 'wheel and keyboard scroll blocked behind viewer', 'Escape, close button and backdrop', 'scroll resumes after dismissal', 'Normal and Boards history and composer', 'text attachment internal scroll', 'short window'], metrics })
+  report({ passed: ['real Engine image import and four turns', 'window-level portal and overlay', 'wheel and keyboard scroll blocked behind viewer', 'Escape, close button and backdrop', 'wheel zoom and double click back to fit', 'the window hugs the image, zoom stays inside, expand and back', 'copy and download the full image', 'scroll resumes after dismissal', 'Normal and Boards history and composer', 'text attachment internal scroll', 'short window'], metrics })
 })

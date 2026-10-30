@@ -25,6 +25,8 @@ export interface DiagnosticsOptions {
   engine: { status(): unknown; diagnostics(): Promise<unknown> }
   /** Otros registros del host que ya existen (el del actualizador). */
   extraLogFiles?: string[]
+  /** «Registros detallados» encendidos (Ajustes → Avanzado, #96): el host escribe más. */
+  detailed?: () => boolean
 }
 
 export interface EngineStateLike {
@@ -37,7 +39,14 @@ export function createDiagnostics(options: DiagnosticsOptions) {
   const engine = new RotatingLog({ dir: options.logsDir, name: 'engine' })
   const states: Array<{ at: string; state: string; detail: string | null }> = []
   let lastState: string | null = null
-  const original = { error: console.error.bind(console), warn: console.warn.bind(console) }
+  const original = { error: console.error.bind(console), warn: console.warn.bind(console), info: console.info.bind(console), log: console.log.bind(console) }
+  const detailed = () => {
+    try {
+      return options.detailed?.() ?? false
+    } catch {
+      return false
+    }
+  }
 
   const sources: BundleSources = {
     appVersion: options.appVersion,
@@ -67,6 +76,16 @@ export function createDiagnostics(options: DiagnosticsOptions) {
       console.warn = (...args: unknown[]) => {
         original.warn(...args)
         app.write('warn', format(...args))
+      }
+      // Lo informativo siempre: incluye las notas del renderer (`[rinari] attention …`),
+      // que dicen qué quedó pendiente. Con registros detallados, también `console.log`.
+      console.info = (...args: unknown[]) => {
+        original.info(...args)
+        app.write('info', format(...args))
+      }
+      console.log = (...args: unknown[]) => {
+        original.log(...args)
+        if (detailed()) app.write('debug', format(...args))
       }
     },
 
@@ -105,6 +124,11 @@ export function createDiagnostics(options: DiagnosticsOptions) {
      */
     commandFailed(command: string, code: string): void {
       app.write('warn', `command ${command} failed: ${code}`)
+    },
+
+    /** Con registros detallados: cada comando y lo que tardó, sin argumentos. */
+    commandDone(command: string, ms: number): void {
+      if (detailed()) app.write('debug', `command ${command} ${Math.round(ms)} ms`)
     },
 
     async preview(): Promise<BundlePreview> {

@@ -2,10 +2,10 @@ import { useSyncExternalStore } from 'react'
 
 /**
  * Interruptor de lo que la UI hace sola con el navegador: revelar el panel
- * cuando el contexto queda listo (`SessionWorkspace`) y repartir el control
- * entre turnos (`useNativeBrowser`). Encendido siempre en la app; sólo la
- * prueba vertical lo apaga, porque maqueta la vista y mueve el control a mano
- * y comprueba cada geometría y cada revisión.
+ * cuando el contexto queda listo (`SessionWorkspace`). Encendido siempre en la
+ * app; sólo la prueba vertical lo apaga, porque maqueta la vista a mano y
+ * comprueba cada geometría y cada revisión. (El control ya no lo reparte la
+ * UI: lo toma el dueño usando la página, plan 0.4.0 #46.)
  */
 let enabled = true
 const listeners = new Set<() => void>()

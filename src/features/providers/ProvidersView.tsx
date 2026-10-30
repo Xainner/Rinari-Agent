@@ -1,14 +1,12 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Plus } from 'lucide-react'
 import {
   commandMessage,
   engineApi,
-  type ProviderHealth,
   type ProviderSummary,
 } from '../../services/engine'
-import { useI18n } from '../../i18n'
-import { Section } from '../../components/settings/parts'
+import { useI18n, type I18nKey } from '../../i18n'
 import ProviderLogo from '../../components/ProviderLogo'
 import {
   Dialog,
@@ -27,15 +25,40 @@ import {
   AlertDialogTitle,
 } from '../../components/ui/alert-dialog'
 import ProviderForm, { initialForm, type ProviderFormData } from './ProviderForm'
-import { providerCreateSettings } from './presets'
 import { registerProviderModels } from './registerModels'
-import ProviderDetails from './ProviderDetails'
+import ProviderDetails, { type ProviderTestResult } from './ProviderDetails'
 import ProviderUsagePanel from './ProviderUsagePanel'
-import ModelCatalog from './ModelCatalog'
+import ProviderWizard from './ProviderWizard'
 import ExperimentalProvidersSetting from './ExperimentalProvidersSetting'
+import ResumeSetting from '../resume/ResumeSetting'
+import ModelRolesSetting from './ModelRolesSetting'
+import DisableProviderDialog from './DisableProviderDialog'
+import { Switch } from '../../components/ui/switch'
 import { useUIStore, type ProviderTab } from '../../stores/ui'
+import { art } from '../rinari/art'
+import { Select } from '../../components/ui/select'
 
-/** Ajustes > Proveedores: tarjetas con estado, probar, usar, editar y eliminar. */
+type Status = 'connected' | 'error' | 'noCredential' | 'unchecked' | 'off'
+const STATUS_TONE: Record<Status, string | undefined> = { connected: 'success', error: 'danger', noCredential: 'warning', unchecked: undefined, off: undefined }
+
+/** Un dato desconocido no es cero: sin comprobar se dice «Sin comprobar». */
+export function providerStatus(provider: ProviderSummary): Status {
+  if (provider.enabled === false) return 'off'
+  if (provider.auth_method === 'api-key' && !provider.has_credential) return 'noCredential'
+  if (provider.status_connected === true) return 'connected'
+  if (provider.status_connected === false) return 'error'
+  return 'unchecked'
+}
+
+const seconds = (ms: number) => (ms / 1000).toLocaleString(undefined, { maximumFractionDigits: 1, minimumFractionDigits: 1 })
+
+/**
+ * Ajustes > Proveedores (#97 B). Arriba lo global (respaldo y auxiliar);
+ * luego una tarjeta por proveedor con su logo, estado, modelos, el anillo de
+ * uso y el interruptor (desactivados al final y atenuados). Al abrir una,
+ * sus pestañas y acciones. «Agregar proveedor» es el mismo asistente que el
+ * primer arranque.
+ */
 export default function ProvidersView({
   providers,
   onChanged,
@@ -46,17 +69,15 @@ export default function ProvidersView({
   engineCapabilities?: Record<string, boolean>
 }) {
   const { t } = useI18n()
-  const [dialog, setDialog] = useState<
-    | { mode: 'add' }
-    | { mode: 'edit'; provider: ProviderSummary }
-    | null
-  >(null)
+  const [adding, setAdding] = useState(false)
+  const [editing, setEditing] = useState<ProviderSummary | null>(null)
   const [form, setForm] = useState<ProviderFormData>(() => initialForm())
   const [saving, setSaving] = useState(false)
-  const [health, setHealth] = useState<Record<string, ProviderHealth>>({})
+  const [tests, setTests] = useState<Record<string, ProviderTestResult>>({})
   const [testing, setTesting] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<ProviderSummary | null>(null)
+  const [disabling, setDisabling] = useState<ProviderSummary | null>(null)
   // «Revisar uso y límites» desde un error: abre esa tarjeta en esa pestaña.
   const focus = useUIStore((s) => s.providerFocus)
   const clearFocus = useUIStore((s) => s.clearProviderFocus)
@@ -85,14 +106,9 @@ export default function ProvidersView({
   }, [focus, providers, clearFocus])
   const [switchTo, setSwitchTo] = useState('')
 
-  function openAdd() {
-    setForm(initialForm())
-    setDialog({ mode: 'add' })
-  }
-
   function openEdit(provider: ProviderSummary) {
-    // En edición no se cambia el preset (selector oculto); el tipo real se
-    // conserva en el engine y aquí solo viajan los campos editables.
+    // En edición no se cambia el tipo; el tipo real se conserva en el Engine
+    // y aquí solo viajan los campos editables.
     setForm({
       ...initialForm(),
       alias: provider.alias,
@@ -105,75 +121,39 @@ export default function ProvidersView({
       secret_env: '',
       account_hint: provider.account_hint ?? '',
     })
-    setDialog({ mode: 'edit', provider })
+    setEditing(provider)
   }
 
-  async function save() {
+  async function saveEdit() {
+    if (!editing) return
     const alias = form.alias.trim()
     if (alias === '') return
-    if (!form.preset?.provider_type) {
-      toast.error(t('providers.noType'))
-      return
-    }
-    if (form.auth === 'api-key' && dialog?.mode === 'add' && form.secret === '' && form.secret_env === '') {
-      toast.error(t('providers.noCredential'))
-      return
-    }
     setSaving(true)
     try {
-      if (dialog?.mode === 'add') {
-        await engineApi.providerCreate({
-          alias,
-          provider_type: form.preset.provider_type,
-          auth_method: form.auth,
-          settings: providerCreateSettings(form.preset),
-          endpoint: form.endpoint.trim() === '' ? undefined : form.endpoint.trim(),
-          account_hint: form.account_hint.trim() === '' ? undefined : form.account_hint.trim(),
-          // Solo viaja el campo de la fuente activa; el incompatible queda vacío.
-          ...(form.auth !== 'api-key' ? {} : form.credentialSource === 'env'
-            ? { secret_env: form.secret_env === '' ? undefined : form.secret_env }
-            : { secret: form.secret === '' ? undefined : form.secret }),
-        })
-        toast.success(t('wizard.saved'))
-        setExpanded(alias)
-        void registerProviderModels(alias).then(onChanged)
-      } else if (dialog?.mode === 'edit') {
-        const patch: {
-          alias?: string
-          endpoint?: string
-          account_hint?: string
-          secret?: string
-          secret_env?: string
-        } = {}
-        if (alias !== dialog.provider.alias) patch.alias = alias
-        const endpoint = form.endpoint.trim()
-        // Un runtime externo no tiene endpoint editable ni credencial: su
-        // identidad (process://claude) es la que el Engine valida.
-        const external = form.auth === 'external-cli'
-        if (!external && endpoint !== (dialog.provider.endpoint ?? '')) patch.endpoint = endpoint
-        if (form.account_hint !== (dialog.provider.account_hint ?? '')) {
-          patch.account_hint = form.account_hint
-        }
-        // Solo el campo de la fuente activa puede rotar la credencial;
-        // el incompatible nunca se envía.
-        if (form.auth !== 'api-key') {
-          // Sin credencial que rotar.
-        } else if (form.credentialSource === 'env' && form.secret_env !== '') {
-          patch.secret_env = form.secret_env
-        } else if (form.credentialSource === 'literal' && form.secret !== '') {
-          patch.secret = form.secret
-        }
-        if (Object.keys(patch).length === 0) {
-          setDialog(null)
-          return
-        }
-        await engineApi.providerUpdate(dialog.provider.alias, patch)
-        // Credencial o endpoint nuevos pueden traer otro catálogo.
-        if (patch.secret || patch.secret_env || patch.endpoint !== undefined) {
-          void registerProviderModels(patch.alias ?? dialog.provider.alias).then(onChanged)
-        }
+      const patch: { alias?: string; endpoint?: string; account_hint?: string; secret?: string; secret_env?: string } = {}
+      if (alias !== editing.alias) patch.alias = alias
+      const endpoint = form.endpoint.trim()
+      // Un runtime externo no tiene endpoint editable ni credencial: su
+      // identidad (process://claude) es la que el Engine valida.
+      const external = form.auth === 'external-cli'
+      if (!external && endpoint !== (editing.endpoint ?? '')) patch.endpoint = endpoint
+      if (form.account_hint !== (editing.account_hint ?? '')) patch.account_hint = form.account_hint
+      // Solo el campo de la fuente activa puede rotar la credencial.
+      if (form.auth === 'api-key') {
+        if (form.credentialSource === 'env' && form.secret_env !== '') patch.secret_env = form.secret_env
+        else if (form.credentialSource === 'literal' && form.secret !== '') patch.secret = form.secret
       }
-      setDialog(null)
+      if (Object.keys(patch).length === 0) {
+        setEditing(null)
+        return
+      }
+      await engineApi.providerUpdate(editing.alias, patch)
+      // Credencial o endpoint nuevos pueden traer otro catálogo.
+      if (patch.secret || patch.secret_env || patch.endpoint !== undefined) {
+        void registerProviderModels(patch.alias ?? editing.alias).then(onChanged)
+      }
+      if (patch.alias && expanded === editing.alias) setExpanded(patch.alias)
+      setEditing(null)
       onChanged()
     } catch (err) {
       toast.error(commandMessage(err))
@@ -184,11 +164,10 @@ export default function ProvidersView({
 
   async function testProvider(alias: string) {
     setTesting(alias)
+    const started = performance.now()
     try {
       const result = await engineApi.providerTest(alias)
-      setHealth((prev) => ({ ...prev, [alias]: result }))
-      if (result.connected) toast.success(t('providers.healthOk', { n: result.models_discovered }))
-      else toast.error(t('providers.healthFail', { detail: result.detail }))
+      setTests((prev) => ({ ...prev, [alias]: { connected: result.connected, detail: result.detail, models: result.models_discovered, ms: performance.now() - started } }))
       onChanged()
     } catch (err) {
       toast.error(commandMessage(err))
@@ -209,11 +188,7 @@ export default function ProvidersView({
   async function removeProvider() {
     if (!deleting) return
     try {
-      const active = deleting.active
-      await engineApi.providerRemove(
-        deleting.alias,
-        active ? switchTo || undefined : undefined,
-      )
+      await engineApi.providerRemove(deleting.alias, deleting.active ? switchTo || undefined : undefined)
       setDeleting(null)
       onChanged()
     } catch (err) {
@@ -221,170 +196,137 @@ export default function ProvidersView({
     }
   }
 
+  async function enableProvider(alias: string) {
+    try {
+      await engineApi.providerUpdate(alias, { enabled: true })
+      toast.success(t('providers.enabledToast', { name: alias }))
+      onChanged()
+    } catch (err) {
+      toast.error(commandMessage(err))
+    }
+  }
+
   const others = deleting ? providers.filter((p) => p.alias !== deleting.alias) : []
+  // Desactivados al final (#97), sin cambiar el orden de los demás.
+  const ordered = [...providers.filter((p) => p.enabled !== false), ...providers.filter((p) => p.enabled === false)]
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-lg font-bold text-[var(--text)]">
-          {t('providers.list')}
-        </h2>
-        <button
-          type="button"
-          onClick={openAdd}
-          className="btn btn-primary btn-sm"
-        >
-          {t('providers.add')}
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-display text-lg font-bold text-[var(--text)]">{t('providers.list')}</h2>
+        <button type="button" onClick={() => setAdding(true)} className="btn btn-primary btn-sm">
+          <Plus size={14} aria-hidden="true" /> {t('providers.add')}
         </button>
       </div>
 
       {missing !== null && (
-        <p role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+        <p role="status" className="provider-missing">
           {missing ? t('providers.focusMissing', { name: missing }) : t('providers.focusUnknown')}
         </p>
       )}
 
+      {providers.length > 0 && <ModelRolesSetting />}
+
       {providers.length === 0 && (
-        <Section title={t('providers.list')}>
-          <p className="text-sm text-[var(--text-subtle)]">{t('wizard.welcome')}</p>
-        </Section>
+        <div className="dock-empty provider-empty">
+          <img src={art.chibi('plug')} alt="" aria-hidden="true" />
+          <p className="font-display text-base font-semibold text-[var(--text)]">{t('providers.emptyTitle')}</p>
+          <p className="text-sm text-[var(--text-muted)]">{t('wizard.welcome')}</p>
+          <button type="button" onClick={() => setAdding(true)} className="btn btn-primary btn-sm"><Plus size={14} aria-hidden="true" /> {t('providers.add')}</button>
+        </div>
       )}
 
-      {providers.map((provider) => {
-        const h = health[provider.alias]
-        const isOpen = expanded === provider.alias
-        return (
-          <Section
-            key={provider.id}
-            anchor={`provider:${provider.id}`}
-            title={
-              // The whole title opens the card: only the small «details» button did.
-              <button
-                type="button"
-                aria-expanded={isOpen}
-                onClick={() => setExpanded(isOpen ? null : provider.alias)}
-                className="flex w-full items-center gap-2.5 text-left"
-              >
-                <ProviderLogo productId={provider.product_id} alias={provider.alias} endpoint={provider.endpoint} size={22} />
-                <span className="min-w-0 flex-1 truncate">{`${provider.alias}${provider.active ? ` · ${t('providers.active')}` : ''}`}</span>
-                <ChevronDown size={16} aria-hidden="true" className={`shrink-0 text-[var(--text-subtle)] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-              </button>
-            }
-          >
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--text-subtle)]">
-              <span>{provider.product_name ?? provider.type}</span>
-              {provider.experimental && <span>{t('providers.experimental')}</span>}
-              {provider.account_hint && <span>{provider.account_hint}</span>}
-              {provider.model_count !== undefined && <span>{t('providers.savedModelCount', { n: provider.model_count })}</span>}
-              {provider.endpoint && <span className="truncate font-mono">{provider.endpoint}</span>}
-              <span>
-                {provider.has_credential ? t('providers.credentialOk') : t('providers.noCredential')}
-              </span>
-              <span>
-                {provider.status_connected === true
-                  ? t('settings.connection.connected')
-                  : provider.status_connected === false
-                    ? t('providers.offline')
-                    : t('settings.connection.notChecked')}
-              </span>
-            </div>
-            {h && (
-              <p className={h.connected ? 'text-xs text-[var(--success)]' : 'text-xs text-[var(--danger)]'}>
-                {h.connected
-                  ? t('providers.healthOk', { n: h.models_discovered })
-                  : t('providers.healthFail', { detail: h.detail })}
-              </p>
-            )}
-            {!isOpen && engineCapabilities?.provider_usage_v1 && <ProviderUsagePanel key={`${provider.id}:${provider.updated_at}`} providerAlias={provider.alias} compact />}
-            <div className="flex flex-wrap gap-2">
-              {!provider.active && (
-                <button
-                  type="button"
-                  onClick={() => void useProvider(provider.alias)}
-                  className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-[var(--bg-hover)]"
-                >
-                  {t('providers.use')}
+      <div className="provider-list">
+        {ordered.map((provider) => {
+          const isOpen = expanded === provider.alias
+          const off = provider.enabled === false
+          const status = providerStatus(provider)
+          const test = tests[provider.alias]
+          return (
+            <section key={provider.id} data-anchor={`provider:${provider.id}`} className="settings-card provider-card" data-open={isOpen || undefined} data-off={off || undefined}>
+              <h2 className="provider-card-head">
+                {/* Toda la cabecera abre la tarjeta; el interruptor va al lado: no cabe dentro de un botón. */}
+                <button type="button" aria-expanded={isOpen} onClick={() => setExpanded(isOpen ? null : provider.alias)} className="provider-card-open">
+                  <span className="provider-card-logo"><ProviderLogo productId={provider.product_id} alias={provider.alias} endpoint={provider.endpoint} size={24} /></span>
+                  <span className="min-w-0 flex-1">
+                    <span className="provider-card-name">
+                      <span className="truncate">{provider.alias}</span>
+                      {provider.active && <span className="r-chip provider-chip" data-tone="accent">{t('providers.active')}</span>}
+                      <span className="r-chip provider-chip" data-tone={STATUS_TONE[status]}>{status === 'off' ? t('providers.disabled') : t(`providers.status.${status}` as I18nKey)}</span>
+                    </span>
+                    <span className="provider-card-meta">
+                      {provider.product_name ?? provider.type}
+                      {provider.model_count !== undefined && <> · {t(provider.model_count === 1 ? 'providers.savedModelOne' : 'providers.savedModelCount', { n: provider.model_count })}</>}
+                      {test?.connected && <> · {t('providers.lastTest', { s: seconds(test.ms) })}</>}
+                    </span>
+                  </span>
+                  <ChevronDown size={16} aria-hidden="true" className="provider-card-chevron" />
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={() => void testProvider(provider.alias)}
-                disabled={testing !== null}
-                className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-40"
-              >
-                {testing === provider.alias ? t('providers.testing') : t('providers.test')}
-              </button>
-              <button
-                type="button"
-                onClick={() => setExpanded(isOpen ? null : provider.alias)}
-                className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-[var(--bg-hover)]"
-              >
-                {t('providers.details')}
-              </button>
-              <button
-                type="button"
-                onClick={() => openEdit(provider)}
-                className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs transition-colors hover:bg-[var(--bg-hover)]"
-              >
-                {t('providers.edit')}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setDeleting(provider)
-                  setSwitchTo(providers.find((p) => p.alias !== provider.alias)?.alias ?? '')
-                }}
-                className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs text-[var(--danger)] transition-colors hover:bg-[var(--bg-hover)]"
-              >
-                {t('providers.delete')}
-              </button>
-            </div>
-            {isOpen && (engineCapabilities?.provider_catalog_v1
-              ? <ProviderDetails
-                  key={`${provider.id}:${provider.updated_at}:${opened?.alias === provider.alias ? opened.at : 0}`}
-                  provider={provider}
-                  onChanged={onChanged}
-                  initialTab={opened?.alias === provider.alias ? opened.tab : undefined}
+                {!off && engineCapabilities?.provider_usage_v1 && <ProviderUsagePanel key={`${provider.id}:${provider.updated_at}`} providerAlias={provider.alias} ring />}
+                <Switch
+                  data-testid="provider-enabled"
+                  checked={!off}
+                  aria-label={t('providers.enabledToggle', { name: provider.alias })}
+                  onCheckedChange={(checked) => {
+                    if (checked) void enableProvider(provider.alias)
+                    else setDisabling(provider)
+                  }}
                 />
-              : <ModelCatalog providerAlias={provider.alias} onChanged={onChanged} />)}
-          </Section>
-        )
-      })}
+              </h2>
+              {isOpen && (
+                <div className="provider-card-body">
+                  <ProviderDetails
+                        key={`${provider.id}:${provider.updated_at}:${opened?.alias === provider.alias ? opened.at : 0}`}
+                        provider={provider}
+                        onChanged={onChanged}
+                        initialTab={opened?.alias === provider.alias ? opened.tab : undefined}
+                        test={test}
+                        testing={testing === provider.alias}
+                        onTest={() => void testProvider(provider.alias)}
+                        onUse={() => void useProvider(provider.alias)}
+                        onEdit={() => openEdit(provider)}
+                        usage={engineCapabilities?.provider_usage_v1 === true}
+                        onDelete={() => {
+                          setDeleting(provider)
+                          setSwitchTo(providers.find((p) => p.alias !== provider.alias)?.alias ?? '')
+                        }}
+                      />
+                </div>
+              )}
+            </section>
+          )
+        })}
+      </div>
 
+      <ResumeSetting />
       <ExperimentalProvidersSetting />
 
-      <Dialog open={dialog !== null} onOpenChange={(open) => !open && setDialog(null)}>
+      {adding && <ProviderWizard
+        open
+        mode="add"
+        onClose={() => {
+          // Aunque se cierre a medias, lo que ya se guardó tiene que verse.
+          setAdding(false)
+          onChanged()
+        }}
+      />}
+
+      <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {dialog?.mode === 'edit' ? t('providers.edit') : t('providers.add')}
-            </DialogTitle>
+            <DialogTitle>{t('providers.edit')}</DialogTitle>
           </DialogHeader>
-          <ProviderForm
-            form={form}
-            setForm={setForm}
-            allowPresetChange={dialog?.mode === 'add'}
-            isEdit={dialog?.mode === 'edit'}
-          />
-          <div className="mt-4 flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setDialog(null)}
-              className="rounded-xl border border-[var(--border)] px-3 py-1.5 text-sm transition-colors hover:bg-[var(--bg-hover)]"
-            >
-              {t('providers.cancel')}
-            </button>
-            <button
-              type="button"
-              onClick={() => void save()}
-              disabled={saving}
-              className="btn btn-primary btn-sm"
-            >
-              {t('providers.save')}
-            </button>
-          </div>
+          <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void saveEdit() }}>
+            <ProviderForm form={form} setForm={setForm} allowPresetChange={false} isEdit />
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setEditing(null)} className="btn btn-ghost btn-sm">{t('providers.cancel')}</button>
+              <button type="submit" disabled={saving} className="btn btn-primary btn-sm">{t('providers.save')}</button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
+
+      <DisableProviderDialog provider={disabling} onClose={() => setDisabling(null)} onChanged={onChanged} />
 
       <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
         <AlertDialogContent>
@@ -392,35 +334,24 @@ export default function ProvidersView({
             <AlertDialogTitle>{t('providers.delete')}</AlertDialogTitle>
             <AlertDialogDescription>
               {deleting && t('providers.confirmDelete', { name: deleting.alias })}
+              {/* El único proveedor también se puede quitar (plan 0.4.0 #19). */}
+              {deleting && others.length === 0 && <> {t('providers.lastOne')}</>}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {deleting?.active && others.length > 0 && (
             <div className="px-6">
-              <label
-                className="mb-1.5 block text-sm font-medium text-[var(--text)]"
-                htmlFor="provider-switch"
-              >
-                {t('providers.switchTo')}
-              </label>
-              <select
+              <label className="field-label" htmlFor="provider-switch">{t('providers.switchTo')}</label>
+              <Select
                 id="provider-switch"
                 value={switchTo}
-                onChange={(e) => setSwitchTo(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-[var(--bg-subtle)] px-3 py-2 text-sm"
-              >
-                {others.map((p) => (
-                  <option key={p.alias} value={p.alias}>
-                    {p.alias}
-                  </option>
-                ))}
-              </select>
+                onChange={setSwitchTo}
+                options={others.map((p) => ({ value: p.alias, label: p.alias, icon: <ProviderLogo productId={p.product_id ?? undefined} alias={p.alias} endpoint={p.endpoint ?? undefined} size={16} /> }))}
+              />
             </div>
           )}
           <AlertDialogFooter>
             <AlertDialogCancel>{t('providers.cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void removeProvider()}>
-              {t('providers.delete')}
-            </AlertDialogAction>
+            <AlertDialogAction onClick={() => void removeProvider()}>{t('providers.delete')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

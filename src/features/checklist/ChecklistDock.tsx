@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { ChevronUp, X } from 'lucide-react'
+import { CheckCheck, ChevronUp, X } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
 import { engineApi } from '../../services/engine'
@@ -40,6 +40,7 @@ export function ChecklistDock({ sessionId }: { sessionId: string }) {
   const checklist = entry?.checklist ?? null
   const seen = useSeenStatuses(checklist)
   const finishedLive = useFinishedLive(checklist?.state ?? null)
+  const settled = useSettledOpen(expanded)
   if (!checklist) return null
 
   const { counts, state } = checklist
@@ -47,13 +48,23 @@ export function ChecklistDock({ sessionId }: { sessionId: string }) {
   const current = checklist.items.find((item) => item.status === 'in_progress')
     ?? (working ? checklist.items.find((item) => item.status === 'pending') : undefined)
   const left = counts.total - counts.completed
+  // Con su plural: «Queda 1 paso», no «Quedan 1 pasos» (#6).
   const headline = state === 'interrupted'
-    ? t('checklist.interrupted', { n: left })
+    ? t(left === 1 ? 'checklist.interruptedOne' : 'checklist.interrupted', { n: left })
     : state === 'completed'
       ? t('checklist.done')
       : state === 'open'
-        ? t('checklist.open', { n: left })
+        ? t(left === 1 ? 'checklist.openOne' : 'checklist.open', { n: left })
         : current ? (current.active_form || current.content) : t('checklist.working')
+
+  // Una lista que quedó abierta en un turno ya terminado: el dueño la cierra
+  // como hecha sin pedírselo a Rinari (plan 0.4.0 #59).
+  async function completeAll() {
+    try {
+      const result = await engineApi.completeSessionChecklist(sessionId)
+      apply(sessionId, result.checklist ?? null, true)
+    } catch { /* the turn may have started again; the list stays */ }
+  }
 
   async function dismiss() {
     try {
@@ -78,19 +89,25 @@ export function ChecklistDock({ sessionId }: { sessionId: string }) {
           onClick={() => setExpanded(sessionId, !expanded)}
         >
           <ProgressRing done={counts.completed} total={counts.total} working={working} finished={state === 'completed'} />
+          {/* Mientras trabaja cuenta el paso en curso, igual que la cabecera del turno («Paso 2/3»); si no, los hechos. */}
           <span className="checklist-count" aria-label={t('checklist.progress', { done: counts.completed, total: counts.total })}>
-            {counts.completed}/{counts.total}
+            {working && current ? t('turn.status.step', { n: checklist.items.indexOf(current) + 1, total: counts.total }) : `${counts.completed}/${counts.total}`}
           </span>
           <span key={headline} className="checklist-headline" role={working ? 'status' : undefined}>{headline}</span>
           <ChevronUp size={14} aria-hidden="true" className="checklist-chevron" />
         </button>
+        {(state === 'open' || state === 'interrupted') && (
+          <button type="button" className="checklist-dismiss checklist-complete" onClick={() => void completeAll()} aria-label={t('checklist.completeAll')} title={t('checklist.completeAll')}>
+            <CheckCheck size={13} aria-hidden="true" />
+          </button>
+        )}
         {!working && (
           <button type="button" className="checklist-dismiss" onClick={() => void dismiss()} aria-label={t('checklist.dismiss')} title={t('checklist.dismiss')}>
             <X size={13} aria-hidden="true" />
           </button>
         )}
       </div>
-      <div id={bodyId} className="checklist-body" data-open={expanded || undefined} inert={!expanded || undefined}>
+      <div id={bodyId} className="checklist-body" data-open={expanded || undefined} data-settled={settled || undefined} inert={!expanded || undefined}>
         <div className="checklist-body-inner">
           {checklist.explanation && <p className="checklist-note">{checklist.explanation}</p>}
           <ol className="checklist-items">
@@ -191,4 +208,24 @@ function useSeenStatuses(checklist: Checklist | null): { arrived: Set<string>; c
     snapshot.current = new Map(checklist.items.map((item) => [item.id, item.status]))
   }
   return diff.current
+}
+
+/** Lo que dura abrir o cerrar la lista (`--dur-base`), con margen. */
+const BODY_TRANSITION_MS = 260
+
+/**
+ * Abierta y ya quieta (#26): el scroll interno solo se enciende al terminar
+ * de abrirse y se apaga en cuanto empieza a cerrarse, así la barra no aparece
+ * a mitad de la animación ni el contenido salta al cerrar. Termina también
+ * con un temporizador: sin animación (movimiento reducido) no llega
+ * `transitionend`.
+ */
+function useSettledOpen(expanded: boolean): boolean {
+  const [settled, setSettled] = useState(expanded)
+  useEffect(() => {
+    if (!expanded) { setSettled(false); return }
+    const timer = window.setTimeout(() => setSettled(true), BODY_TRANSITION_MS)
+    return () => window.clearTimeout(timer)
+  }, [expanded])
+  return settled
 }

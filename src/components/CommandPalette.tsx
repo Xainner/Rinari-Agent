@@ -155,6 +155,7 @@ export default function CommandPalette({
                 ['collapse-finished-panes', t('cmd.collapseFinishedPanes')],
                 ['toggle-focus-mode', t('cmd.toggleFocusMode')],
                 ['mark-all-board-results-read', t('cmd.markAllBoardResultsRead')],
+                ['mark-all-read', t('cmd.markAllRead')],
               ] as const).map(([action, label]) => <Command.Item key={action} value={label} onSelect={() => run(() => dispatchAction(action))} className={itemClass}><Monitor />{label}</Command.Item>)}
               {([['view-normal', t('nav.normal')], ['view-boards', t('nav.boards')], ['view-flows', t('nav.flows')]] as const).map(([action, label]) => <Command.Item key={action} value={label} onSelect={() => run(() => dispatchAction(action))} className={itemClass}><Monitor />{label}</Command.Item>)}
               {([['open-folder', t('app.openFolder')], ['files', t('app.filesPanel')], ['browser', t('app.browserPanel')], ['workspace-panel', t('app.workspacePanel')], ['terminal', t('app.terminal')], ['schedules', t('app.scheduledTasks')], ['sidebar', t('app.sidebar')], ['updates', t('app.checkUpdates')], ['about', t('app.about')]] as const).map(([action, label]) => <Command.Item key={action} value={label} onSelect={() => run(() => dispatchAction(action))} className={itemClass}><Monitor />{label}</Command.Item>)}

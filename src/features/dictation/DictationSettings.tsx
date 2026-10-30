@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Download, Mic, Trash2, X } from 'lucide-react'
+import { Download, Mic, Trash2, X, Ear } from 'lucide-react'
 import { toast } from 'sonner'
 import { Switch } from '../../components/ui/switch'
 import { useI18n, type I18nKey } from '../../i18n'
-import { commandMessage, engineApi, onEngineEvent, type SpeechStatus } from '../../services/engine'
+import { commandMessage, engineApi, errorText, onEngineEvent, type SpeechStatus } from '../../services/engine'
 import { useDictationPrefs } from './dictationPrefs'
+import { ProgressBar } from '../../components/ui/progress-bar'
 
 export function formatSize(bytes: number): string {
   return bytes >= 1_000_000_000 ? `${(bytes / 1_000_000_000).toFixed(1)} GB` : `${Math.round(bytes / 1_000_000)} MB`
@@ -37,8 +38,8 @@ export function useSpeechModelEvents(onReady: () => void) {
           return next
         })
         if (event === 'speech.model.failed') {
-          const error = (payload.error ?? {}) as { message?: string }
-          toast.error(error.message ?? 'download failed')
+          const error = (payload.error ?? {}) as { code?: string; message?: string }
+          toast.error(errorText(error.code ?? 'UNKNOWN', error.message))
         }
         onReady()
       }
@@ -121,7 +122,13 @@ export default function DictationSettings() {
         <p className="mt-1 text-sm text-[var(--text-muted)]">{t('dictation.desc')}</p>
       </div>
 
-      {!status.binary_found && <p role="status" className="text-sm text-[var(--warning)]">{t('dictation.noBinary')}</p>}
+      {/* #36: el mismo motor es el «oído» de Rinari para revisar audios. */}
+      <p className="dictation-ears" data-testid="dictation-ears">
+        <span className="dictation-ears-icon" aria-hidden="true"><Ear size={14} /></span>
+        <span>{status.model && status.models.some((model) => model.id === status.model && model.installed) ? t('dictation.ears', { model: status.model }) : t('dictation.earsNoModel')}</span>
+      </p>
+
+      {!status.binary_found && <p role="status" className="text-sm text-[var(--warning)]">{t(status.from_source ? 'dictation.noBinarySource' : 'dictation.noBinary')}</p>}
 
       <div className={card}>
         <h3 className="text-sm font-semibold text-[var(--text)]">{t('dictation.model')}</h3>
@@ -152,7 +159,7 @@ export default function DictationSettings() {
                   </>
                 ) : downloading.has(model.id) ? (
                   <span className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-                    <progress value={share ?? 0} max={1} aria-label={t('dictation.downloading', { model: model.id })} className="h-1.5 w-24" />
+                    <ProgressBar value={share} label={t('dictation.downloading', { model: model.id })} className="w-24" />
                     {share !== undefined ? `${Math.round(share * 100)}%` : t('dictation.starting')}
                     <button type="button" aria-label={t('dictation.cancelDownload')} onClick={() => void engineApi.speechModelCancel(model.id)} className="rounded p-0.5 hover:bg-[var(--bg-hover)]">
                       <X size={12} aria-hidden="true" />

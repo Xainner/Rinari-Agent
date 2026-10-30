@@ -8,6 +8,7 @@
 // suerte de un proveedor.
 
 import process from 'node:process'
+import { existsSync, writeFileSync } from 'node:fs'
 
 const scenario = process.env.RINARI_FAKE_SCENARIO ?? 'default'
 
@@ -71,6 +72,15 @@ if (scenario === 'no-hello') {
   setTimeout(() => process.stdout.write(bytes.subarray(cut)), 20)
 } else if (scenario === 'crlf') {
   sendRaw(`${JSON.stringify(HELLO)}\r\n`)
+} else if (scenario === 'slow-hello') {
+  // Un equipo lento (#70): el saludo llega tarde, pero llega.
+  setTimeout(() => send(HELLO), Number(process.env.RINARI_FAKE_HELLO_DELAY_MS ?? 300))
+} else if (scenario === 'hello-on-retry') {
+  // El primer arranque se queda callado; el segundo saluda (#70). La marca
+  // en disco es lo único que los dos procesos comparten.
+  const marker = process.env.RINARI_FAKE_MARKER
+  if (marker && existsSync(marker)) send({ ...HELLO, engine_version: 'fake-retry' })
+  else if (marker) writeFileSync(marker, 'first')
 } else {
   send(HELLO)
 }

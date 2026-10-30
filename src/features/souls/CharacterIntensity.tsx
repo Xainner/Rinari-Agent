@@ -2,13 +2,16 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import { commandMessage, engineApi } from '../../services/engine'
-import { useI18n } from '../../i18n'
+import { useI18n, type I18nKey } from '../../i18n'
 import { instant, spring, useCalmMotion } from '../../lib/motion'
 import { RinariAvatar, type RinariState } from '../rinari/RinariAvatar'
+import { art, type Expression } from '../rinari/art'
 
 type Intensity = 'minimal' | 'balanced' | 'full'
 const LEVELS: Intensity[] = ['minimal', 'balanced', 'full']
 const FACE: Record<Intensity, RinariState> = { minimal: 'idle', balanced: 'streaming', full: 'done' }
+/** La cara de cada ejemplo de «Así suena». */
+const PREVIEW_FACE: Record<'greeting' | 'result' | 'error', Expression> = { greeting: 'laugh', result: 'proud', error: 'pout' }
 
 /**
  * Cuánto personaje pone Rinari en sus respuestas (`soul_character_intensity_v1`).
@@ -63,6 +66,20 @@ export default function CharacterIntensity() {
         ))}
       </div>
       <p className="mt-3 text-[12.5px] text-[var(--accent-2)]">{t(`soul.intensity.${value}Hint`)}</p>
+      {/* Cómo suena cada nivel (#87): ejemplos escritos a mano, sin llamar al modelo. */}
+      <div className="soul-preview" data-testid="soul-preview" data-level={value} aria-live="polite">
+        <p className="soul-preview-title">{t('soul.preview.title')}</p>
+        {(['greeting', 'result', 'error'] as const).map((kind) => (
+          <div key={kind} className="soul-preview-line" data-kind={kind}>
+            <img className="soul-preview-face" src={art.expression(PREVIEW_FACE[kind])} alt="" aria-hidden="true" draggable={false} />
+            <div className="min-w-0">
+              <span className="soul-preview-label">{t(`soul.preview.${kind}` as I18nKey)}</span>
+              {/* La clave cambia con el nivel: el texto nuevo entra como cambio, no de golpe. */}
+              <p key={value} className="soul-preview-text">{t(`soul.preview.${value}.${kind}` as I18nKey)}</p>
+            </div>
+          </div>
+        ))}
+      </div>
     </section>
   )
 }

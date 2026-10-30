@@ -4,15 +4,18 @@ import { useI18n } from '../../i18n'
 import { useUIStore, type ShortcutAction } from '../../stores/ui'
 import { Section } from './parts'
 
-const SHORTCUTS: Array<{ id: ShortcutAction; label: 'settings.shortcuts.new' | 'settings.shortcuts.palette' | 'settings.shortcuts.settings' | 'settings.shortcuts.sidebar' | 'settings.shortcuts.boards' | 'settings.shortcuts.flows' | 'settings.shortcuts.collapsePane' | 'settings.shortcuts.expandPane' }> = [
+const SHORTCUTS: Array<{ id: ShortcutAction; label: 'settings.shortcuts.new' | 'settings.shortcuts.palette' | 'settings.shortcuts.settings' | 'settings.shortcuts.sidebar' | 'settings.shortcuts.sidePanel' | 'settings.shortcuts.boards' | 'settings.shortcuts.flows' | 'settings.shortcuts.collapsePane' | 'settings.shortcuts.expandPane' | 'settings.shortcuts.projectPicker' | 'settings.shortcuts.nextNeedsYou' }> = [
   { id: 'newChat', label: 'settings.shortcuts.new' },
   { id: 'palette', label: 'settings.shortcuts.palette' },
   { id: 'settings', label: 'settings.shortcuts.settings' },
   { id: 'sidebar', label: 'settings.shortcuts.sidebar' },
+  { id: 'sidePanel', label: 'settings.shortcuts.sidePanel' },
   { id: 'boards', label: 'settings.shortcuts.boards' },
   { id: 'flows', label: 'settings.shortcuts.flows' },
   { id: 'collapsePane', label: 'settings.shortcuts.collapsePane' },
   { id: 'expandPane', label: 'settings.shortcuts.expandPane' },
+  { id: 'projectPicker', label: 'settings.shortcuts.projectPicker' },
+  { id: 'nextNeedsYou', label: 'settings.shortcuts.nextNeedsYou' },
 ]
 
 function shortcutFromEvent(event: KeyboardEvent<HTMLButtonElement>): string | null {
@@ -59,6 +62,11 @@ export default function ShortcutsSettings() {
               </button>
             </div>
           ))}
+        </div>
+        {/* Fijo: Ctrl+1…9 va al panel N de Boards (plan-boards B.4.1). */}
+        <div className="mt-2 flex min-h-11 items-center gap-4 rounded-xl border border-[var(--border)] px-3" data-testid="shortcut-go-to-pane">
+          <span className="min-w-0 flex-1 text-sm text-[var(--text)]">{t('settings.shortcuts.goToPane')}</span>
+          <span className="min-w-24 rounded-lg px-2.5 py-1.5 text-center font-mono text-xs text-[var(--text-subtle)]">Ctrl+1…9</span>
         </div>
         <div className="mt-3 flex items-center justify-between gap-3">
           <p className="text-xs text-[var(--text-subtle)]">{t('settings.shortcuts.howTo')} {t('settings.shortcuts.closeContext')}</p>

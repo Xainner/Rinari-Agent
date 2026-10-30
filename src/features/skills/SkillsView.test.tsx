@@ -116,32 +116,48 @@ describe('Ajustes > Skills', () => {
     expect(runSkillJob).toHaveBeenCalledWith({ action: 'inspect', source: 'https://github.com/acme/skills' })
 
     expect(await within(dialog).findByText(/Descarga y ejecuta código/)).toBeTruthy()
-    await user.click(within(dialog).getByRole('button', { name: 'Instalar de todos modos' }))
+    // With findings it does not install by itself: it asks, on its own row.
+    await user.click(within(dialog).getByRole('checkbox', { name: 'Elegir shady' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Instalar seleccionadas (1)' }))
+    expect(runSkillJob).toHaveBeenCalledTimes(1)
+    await user.click(await within(dialog).findByRole('button', { name: 'Instalar de todos modos' }))
     expect(runSkillJob).toHaveBeenLastCalledWith({
       action: 'install',
       source: 'https://github.com/acme/skills',
       name: 'shady',
       expectedHash: 'h-risky',
     })
+    expect(await within(dialog).findByText('Instalada')).toBeTruthy()
   })
 
-  it('importa de Claude o Codex desde su carpeta', async () => {
+  it('importa varias de Claude o Codex: revisa cada una y no cierra el diálogo', async () => {
     vi.mocked(engineApi.skillImportScan).mockResolvedValue({
-      candidates: [candidate({ name: 'notes', kind: 'claude', path: 'C:/Users/x/.claude/skills/notes' })],
+      candidates: [
+        candidate({ name: 'notes', kind: 'claude', kinds: ['claude', 'agents'], path: 'C:/Users/x/.claude/skills/notes', paths: ['C:/Users/x/.claude/skills/notes'], review: null }),
+        candidate({ name: 'promo', kind: 'codex', path: 'C:/Users/x/.codex/skills/promo', paths: ['C:/Users/x/.codex/skills/promo'], review: null }),
+      ],
     })
-    vi.mocked(runSkillJob).mockResolvedValueOnce({ ok: true, result: { skill: { name: 'notes' } } })
+    vi.mocked(runSkillJob)
+      .mockResolvedValueOnce({ ok: true, result: { source: 'notes', candidates: [candidate({ name: 'notes' })] } })
+      .mockResolvedValueOnce({ ok: true, result: { skill: { name: 'notes' } } })
+      .mockResolvedValueOnce({ ok: false, error: { code: 'SKILL_TOO_LARGE', message: 'promo pesa 200 MB', details: {} } })
     renderView()
     const user = userEvent.setup()
     await user.click(await screen.findByRole('button', { name: /Instalar skill/ }))
     await user.click(screen.getByRole('tab', { name: 'Importar de Claude o Codex' }))
     const dialog = screen.getByRole('dialog')
     expect(await within(dialog).findByText('Claude')).toBeTruthy()
-    await user.click(within(dialog).getByRole('button', { name: 'Importar' }))
-    expect(runSkillJob).toHaveBeenCalledWith({
+    await user.click(within(dialog).getByRole('checkbox', { name: 'Seleccionar todas' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Importar seleccionadas (2)' }))
+    expect(runSkillJob).toHaveBeenNthCalledWith(1, { action: 'inspect', source: 'C:/Users/x/.claude/skills/notes', name: undefined })
+    expect(runSkillJob).toHaveBeenNthCalledWith(2, {
       action: 'install',
       source: 'C:/Users/x/.claude/skills/notes',
       name: undefined,
       expectedHash: undefined,
     })
+    expect(await within(dialog).findByText('promo pesa 200 MB')).toBeTruthy()
+    expect(within(dialog).getByRole('button', { name: 'Instalar igual' })).toBeTruthy()
+    expect(within(dialog).getByText('Instalada')).toBeTruthy()
   })
 })

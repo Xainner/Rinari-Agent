@@ -17,8 +17,28 @@ use uuid::Uuid;
 
 include!(concat!(env!("OUT_DIR"), "/embedded_payload.rs"));
 
-const APP_ID: &str = "com.rinari.agent";
-const PRODUCT: &str = "Rinari Agent";
+/// Rinari Agent Nightly (`RINARI_SETUP_NIGHTLY` al compilar) se instala junto a
+/// la normal: otro id, otra carpeta, otro ejecutable, otra entrada de
+/// desinstalación y otro acceso directo, y no adopta instalaciones antiguas.
+const NIGHTLY: bool = option_env!("RINARI_SETUP_NIGHTLY").is_some();
+const APP_ID: &str = if NIGHTLY {
+    "com.rinari.agent.nightly"
+} else {
+    "com.rinari.agent"
+};
+const PRODUCT: &str = if NIGHTLY {
+    "Rinari Agent Nightly"
+} else {
+    "Rinari Agent"
+};
+/// Nombre de los accesos directos (#74). `PRODUCT` no cambia: mueve la
+/// carpeta de datos, el actualizador y la entrada de desinstalación.
+const SHORTCUT: &str = if NIGHTLY { "Rinari Nightly" } else { "Rinari" };
+const EXECUTABLE: &str = if NIGHTLY {
+    "rinari-agent-nightly.exe"
+} else {
+    "rinari-agent.exe"
+};
 const SETUP_VERSION: &str = match option_env!("RINARI_SETUP_VERSION") {
     Some(version) => version,
     None => env!("CARGO_PKG_VERSION"),
@@ -274,6 +294,9 @@ fn installed_record() -> Option<InstallRecord> {
 }
 
 fn legacy_install() -> Option<LegacyInstall> {
+    if NIGHTLY {
+        return None;
+    }
     #[cfg(windows)]
     {
         registry::legacy_install()
@@ -927,12 +950,16 @@ fn verify_file(path: &Path, expected: &ManifestFile) -> Result<()> {
 }
 
 fn ensure_compatibility_alias(root: &Path) -> Result<bool> {
-    let primary = root.join("rinari-agent.exe");
+    let primary = root.join(EXECUTABLE);
     let alias = root.join("rinari-code.exe");
     if !primary.is_file() {
-        return Err(SetupError(
-            "The payload does not contain rinari-agent.exe".into(),
-        ));
+        return Err(SetupError(format!(
+            "The payload does not contain {EXECUTABLE}"
+        )));
+    }
+    // `rinari-code.exe` es el nombre antiguo de la instalación normal.
+    if NIGHTLY {
+        return Ok(false);
     }
     if alias.exists() {
         fs::remove_file(&alias)?;
@@ -1090,7 +1117,7 @@ fn directory_size(root: &Path) -> u64 {
 
 fn apply_integrations(record: &InstallRecord) -> Result<()> {
     let root = PathBuf::from(&record.install_dir);
-    let executable = root.join("rinari-agent.exe");
+    let executable = root.join(EXECUTABLE);
     let setup = root.join("Rinari-Setup.exe");
     if record.cli_path {
         let cli = root.join("cli");
@@ -1115,7 +1142,7 @@ fn apply_integrations(record: &InstallRecord) -> Result<()> {
 
 fn remove_integrations(record: &InstallRecord, remove_shortcuts: bool) -> Result<()> {
     let root = PathBuf::from(&record.install_dir);
-    let executable = root.join("rinari-agent.exe");
+    let executable = root.join(EXECUTABLE);
     if let Some(entry) = &record.cli_entry {
         #[cfg(windows)]
         registry::set_path_entry(record.scope, Path::new(entry), false)?;
@@ -1163,12 +1190,14 @@ fn schedule_self_cleanup(target: &Path, current: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Every number counts: a Nightly is `0.4.0-nightly.<date>.<hour>`, and with only
+/// the first four two builds of the same day were the same version and the newer
+/// one could neither update nor repair (23-oct).
 fn version_cmp(left: &str, right: &str) -> std::cmp::Ordering {
     fn parts(value: &str) -> Vec<u64> {
         value
             .split(|ch: char| !ch.is_ascii_digit())
             .filter(|part| !part.is_empty())
-            .take(4)
             .map(|part| part.parse().unwrap_or(0))
             .collect()
     }
@@ -1183,7 +1212,12 @@ fn version_cmp(left: &str, right: &str) -> std::cmp::Ordering {
 fn ensure_agent_closed() -> Result<()> {
     #[cfg(windows)]
     {
-        for executable in ["rinari-agent.exe", "rinari-code.exe"] {
+        let executables: &[&str] = if NIGHTLY {
+            &[EXECUTABLE]
+        } else {
+            &["rinari-agent.exe", "rinari-code.exe"]
+        };
+        for &executable in executables {
             let output = Command::new("tasklist.exe")
                 .args([
                     "/FI",
@@ -1199,9 +1233,11 @@ fn ensure_agent_closed() -> Result<()> {
                     .to_ascii_lowercase()
                     .contains(executable)
             {
-                return Err(SetupError(
-                    "Close Rinari Agent or Rinari Code before changing the installation".into(),
-                ));
+                return Err(SetupError(if NIGHTLY {
+                    format!("Close {PRODUCT} before changing the installation")
+                } else {
+                    "Close Rinari Agent or Rinari Code before changing the installation".into()
+                }));
             }
         }
         // `rinari update` from the CLI bundled with the app runs on this very
@@ -1299,7 +1335,7 @@ pub fn open_install_log() -> Result<()> {
     open_path(&PathBuf::from(status()?.install_dir).join(LOG_NAME))
 }
 pub fn launch_agent() -> Result<()> {
-    let mut command = Command::new(PathBuf::from(status()?.install_dir).join("rinari-agent.exe"));
+    let mut command = Command::new(PathBuf::from(status()?.install_dir).join(EXECUTABLE));
     // Agent outlives setup. Inherited pipes can close with the launcher and
     // make Electron logging fail with EPIPE after an otherwise successful spawn.
     command
@@ -1472,7 +1508,11 @@ mod registry {
     };
     use winreg::{enums::*, RegKey, RegValue};
 
-    const UNINSTALL_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\rinari-code";
+    const UNINSTALL_KEY: &str = if NIGHTLY {
+        r"Software\Microsoft\Windows\CurrentVersion\Uninstall\rinari-agent-nightly"
+    } else {
+        r"Software\Microsoft\Windows\CurrentVersion\Uninstall\rinari-code"
+    };
 
     fn hive(scope: InstallScope) -> RegKey {
         match scope {
@@ -1549,7 +1589,7 @@ mod registry {
         key.set_value("InstallLocation", &record.install_dir)
             .map_err(|e| SetupError(e.to_string()))?;
         let setup = Path::new(&record.install_dir).join("Rinari-Setup.exe");
-        let agent = Path::new(&record.install_dir).join("rinari-agent.exe");
+        let agent = Path::new(&record.install_dir).join(EXECUTABLE);
         key.set_value("DisplayIcon", &format!("\"{}\",0", agent.display()))
             .map_err(|e| SetupError(e.to_string()))?;
         let estimated_kib = directory_size(Path::new(&record.install_dir))
@@ -1769,7 +1809,10 @@ mod registry {
     ) -> Result<()> {
         let base = shortcut_base(scope, kind);
         fs::create_dir_all(&base)?;
-        update_shortcut(&base.join("Rinari Agent.lnk"), target, create)
+        // El nombre anterior («Rinari Agent») se quita si apunta a nuestro
+        // ejecutable: al actualizar no quedan dos, y desinstalar borra ambos.
+        update_shortcut(&base.join(format!("{PRODUCT}.lnk")), target, false)?;
+        update_shortcut(&base.join(format!("{SHORTCUT}.lnk")), target, create)
     }
 
     fn shortcut_base(scope: InstallScope, kind: &str) -> PathBuf {
@@ -1957,6 +2000,8 @@ mod tests {
         assert!(version_cmp("0.2.1", "0.2.0").is_gt());
         assert!(version_cmp("0.10.0", "0.2.9").is_gt());
         assert!(version_cmp("0.2", "0.2.0").is_eq());
+        assert!(version_cmp("0.4.0-nightly.20261023.1401", "0.4.0-nightly.20261023.1145").is_gt());
+        assert!(version_cmp("0.4.0-nightly.20261024.0900", "0.4.0-nightly.20261023.2359").is_gt());
     }
 
     #[test]

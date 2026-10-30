@@ -63,12 +63,18 @@ export interface AttachmentRef {
   previewUrl?: string
   uri?: string
   sha256?: string
-  kind?: 'image' | 'text' | 'pdf' | 'docx' | 'xlsx' | 'pptx'
+  kind?: 'image' | 'text' | 'pdf' | 'docx' | 'xlsx' | 'pptx' | 'audio' | 'video'
+  /** Duración de un audio o video, si el Engine pudo leerla (#57). */
+  durationS?: number
   derivedUri?: string
   images?: Array<{ uri: string; sha256?: string }>
   ocr?: boolean
   /** «Texto e imagen»: el OCR y los píxeles de la misma imagen van al modelo. */
   keepImage?: boolean
+  /** Texto (OCR) puesto por el composer porque el modelo no ve imágenes (#77). */
+  ocrAuto?: boolean
+  /** El dueño eligió cómo va esta imagen desde su chip: el composer no lo cambia (#77). */
+  readChosen?: boolean
   /** Lo que el Engine leyó de un PDF, página a página. */
   coverage?: ReadingCoverage
   pageRange?: string

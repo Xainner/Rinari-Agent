@@ -1,4 +1,5 @@
 import type { Language } from '../../types'
+import { formatWhen } from '../schedules/scheduleModel'
 import type { ToolTimelineItem } from './types'
 
 /**
@@ -11,6 +12,7 @@ import type { ToolTimelineItem } from './types'
  */
 export type ToolCategory =
   | 'image'
+  | 'create'
   | 'read'
   | 'search'
   | 'list'
@@ -43,6 +45,21 @@ const EXACT: Record<string, ToolCategory> = {
   'fs.diff': 'git',
   'shell.exec': 'command',
   'user.ask': 'ask',
+  // Crear y editar imágenes con un servicio (plan 0.4.0 #28).
+  'image.generate': 'create',
+  'image.edit': 'create',
+  'image.variations': 'create',
+  'image.upscale': 'create',
+  'image.remove_background': 'create',
+}
+
+/** Qué hizo cada herramienta de imágenes: terminado, en curso, fallido. */
+const CREATE: Record<string, [[string, string], [string, string], [string, string]]> = {
+  'image.generate': [['Creó una imagen', 'Created an image'], ['Creando una imagen…', 'Creating an image…'], ['No pudo crear la imagen', 'Could not create the image']],
+  'image.edit': [['Editó una imagen', 'Edited an image'], ['Editando una imagen…', 'Editing an image…'], ['No pudo editar la imagen', 'Could not edit the image']],
+  'image.variations': [['Creó variaciones de una imagen', 'Made variations of an image'], ['Creando variaciones…', 'Making variations…'], ['No pudo crear las variaciones', 'Could not make the variations']],
+  'image.upscale': [['Amplió una imagen', 'Upscaled an image'], ['Ampliando una imagen…', 'Upscaling an image…'], ['No pudo ampliar la imagen', 'Could not upscale the image']],
+  'image.remove_background': [['Quitó el fondo de una imagen', 'Removed an image background'], ['Quitando el fondo…', 'Removing the background…'], ['No pudo quitar el fondo', 'Could not remove the background']],
 }
 
 const FAMILY: Record<string, ToolCategory> = {
@@ -81,6 +98,28 @@ export function agentInstruction(item: ToolTimelineItem): { agentId: string; tex
   const args = details(item)
   const text = typeof args.text === 'string' ? args.text.trim() : ''
   return text ? { agentId: typeof args.agent_id === 'string' ? args.agent_id : '', text } : null
+}
+
+/**
+ * `schedule.propose`: lo que de verdad quedó, del resultado y no de lo que el
+ * modelo diga (programada con su próxima hora, o solo propuesta). El Engine
+ * recorta los datos largos quitando claves, así que sin `status` no se sabe
+ * qué quedó: se dice solo que lo pidió, nunca que quedó programada.
+ */
+function scheduleLabel(item: ToolTimelineItem, args: Record<string, unknown>, es: boolean): string {
+  const name = typeof args.name === 'string' && args.name.trim() ? args.name.trim() : ''
+  const quoted = name ? (es ? ` «${name}»` : ` “${name}”`) : ''
+  if (item.status === 'failed' || item.status === 'cancelled') return es ? `No pudo programar${quoted}` : `Could not schedule${quoted}`
+  if (item.status !== 'completed') return es ? `Programando${quoted}…` : `Scheduling${quoted}…`
+  const data = (item.presentation?.data ?? {}) as { status?: unknown; next_run_at?: unknown; next_run_local?: unknown }
+  if (data.status === 'proposed') return es ? `Propuso programar${quoted}` : `Proposed to schedule${quoted}`
+  if (data.status !== 'created') return es ? `Pidió programar${quoted}` : `Asked to schedule${quoted}`
+  // La próxima vez en el idioma de la app; la hora local del Engine si no llegó el instante.
+  const next = typeof data.next_run_at === 'number' && data.next_run_at > 0
+    ? formatWhen(data.next_run_at, es ? 'es' : 'en')
+    : typeof data.next_run_local === 'string' ? data.next_run_local : ''
+  const when = next ? (es ? ` · próxima ${next}` : ` · next ${next}`) : ''
+  return (es ? `Programó${quoted}` : `Scheduled${quoted}`) + when
 }
 
 /** `wait.for`: qué esperó (un puerto, una URL, un texto en un proceso o un archivo). */
@@ -153,11 +192,26 @@ export function formatTool(item: ToolTimelineItem, lang: Language): string {
     return label ? pick(label) : item.tool
   }
   if (item.tool === 'wait.for') return waitLabel(args, item.status, es)
+  // Child sessions (plan-sesiones-hijas 5): the title of the task names it.
+  if (item.tool === 'session.start' || item.tool === 'session.offer') {
+    const title = typeof args.title === 'string' ? args.title : ''
+    const opened = item.tool === 'session.start'
+    if (!title) return pick(opened ? ['Abrió una sesión hija', 'Opened a child session'] : ['Propuso una sesión nueva', 'Offered a new session'])
+    return opened ? (es ? `Abrió la sesión «${title}»` : `Opened the session “${title}”`) : (es ? `Propuso «${title}» en una sesión nueva` : `Offered “${title}” as a new session`)
+  }
+  if (item.tool === 'session.message') return pick(['Escribió a una sesión hija', 'Wrote to a child session'])
+  if (item.tool === 'session.children') return pick(['Revisó sus sesiones hijas', 'Checked its child sessions'])
+  if (item.tool === 'schedule.propose') return scheduleLabel(item, args, es)
   const target = basename(args.path ?? args.file ?? args.cwd)
   const query = String(args.query ?? args.pattern ?? '').trim()
   const site = host(args.url)
   const category = toolCategory(item.tool)
   switch (category) {
+    case 'create': {
+      const [done, running, failed] = CREATE[item.tool]
+      if (item.status === 'failed' || item.status === 'cancelled') return pick(failed)
+      return item.status === 'completed' ? pick(done) : pick(running)
+    }
     case 'image':
       if (item.status === 'failed' || item.status === 'cancelled') return pick(['No pudo ver la imagen', 'Could not view image'])
       return item.status === 'completed' ? pick(['Cargó una imagen', 'Loaded an image']) : pick(['Cargando una imagen…', 'Loading an image…'])

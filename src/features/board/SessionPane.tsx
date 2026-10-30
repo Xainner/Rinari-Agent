@@ -1,5 +1,6 @@
 import { runUiCommand } from '../engine/slashUi'
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useConfirm } from '../../components/ui/useConfirm'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { LoaderCircle } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import ChatView from '../../components/ChatView'
@@ -8,17 +9,13 @@ import { useEngineCommands, useEngineData } from '../engine/EngineContext'
 import { isDraftPane, useBoardStore, type BoardPane } from '../../stores/board'
 import { useSessionDockStore } from '../../stores/sessionDock'
 import { cn } from '../../lib/utils'
-import CollapsedPaneStrip from './CollapsedPaneStrip'
+import CollapsedPaneStrip, { COLUMN_WIDTH, STRIP_WIDTH } from './CollapsedPaneStrip'
 import PaneHeader from './PaneHeader'
 import SessionWorkspace from '../session/SessionWorkspace'
-import PeerForwardDialog, { type PeerForwardTarget } from './PeerForwardDialog'
-import { toast } from 'sonner'
-import { commandMessage, engineApi } from '../../services/engine'
-import type { PaneMentionTarget } from '../../components/composer/paneMention'
-import { FOCUS_COMPOSER_EVENT } from '../../components/composer/focusComposer'
 import { usePaneSession } from './usePaneSession'
 import { ReadTrackingContext } from './useResultVisibility'
 import DraftPane from './DraftPane'
+import { ZoneBoundary } from '../../components/ZoneBoundary'
 
 export interface SessionPaneProps {
   pane: BoardPane
@@ -29,12 +26,9 @@ export interface SessionPaneProps {
   onFocus: (paneId: string) => void
   onOpenSingle: (sessionId: string) => void
   onRemove: (paneId: string) => void
-  onRemoveAndClose: (paneId: string, sessionId: string) => void
   onOpenProviders: () => void
-  /** `session_peer_messaging_v1` anunciada por el Engine. */
-  peerMessaging: boolean
-  /** Etiqueta de cada sesión del board (para el diálogo de reenvío). */
-  peerLabelFor: (sessionId: string) => string | null
+  /** Cómo se ve plegado: columna con estado (si cabe) o tira de 48 px. */
+  collapsedVariant?: 'column' | 'strip'
 }
 
 /**
@@ -60,14 +54,13 @@ function LiveSessionPane({
   onFocus,
   onOpenSingle,
   onRemove,
-  onRemoveAndClose,
   onOpenProviders,
-  peerMessaging,
-  peerLabelFor,
+  collapsedVariant = 'strip',
 }: SessionPaneProps) {
   const { t } = useI18n()
   const commands = useEngineCommands()
   const data = useEngineData()
+  const { ask: confirm, dialog: confirmDialog } = useConfirm()
   const steering = data.status?.capabilities.turn_steering_v1 === true
   const session = usePaneSession(pane.sessionId)
   const dockVisible = useSessionDockStore((state) => state.layoutFor(pane.sessionId).visible)
@@ -78,9 +71,6 @@ function LiveSessionPane({
   const expandPane = useBoardStore((state) => state.expandPane)
   const panes = useBoardStore((state) => state.panes)
   const paneError = useBoardStore((state) => state.paneErrors[pane.paneId])
-  const messagingEnabled = useBoardStore((state) => state.messagingEnabled)
-  const setPeerFlags = useBoardStore((state) => state.setPeerFlags)
-  const [forwardOpen, setForwardOpen] = useState(false)
   // Plegar y desplegar se animan solo cuando cambian aquí, no al montar el board.
   const [fold, setFold] = useState<{ collapsed: boolean; motion: 'expand' | 'collapse' | null }>({ collapsed: pane.collapsed, motion: null })
   if (fold.collapsed !== pane.collapsed) setFold({ collapsed: pane.collapsed, motion: pane.collapsed ? 'collapse' : 'expand' })
@@ -106,74 +96,14 @@ function LiveSessionPane({
     const timer = window.setTimeout(endFold, 600)
     return () => window.clearTimeout(timer)
   }, [fold.motion, endFold])
-  const forwardTargets = useMemo<PeerForwardTarget[]>(
-    () => panes
-      .filter((item) => item.sessionId !== pane.sessionId && !isDraftPane(item))
-      .map((item) => ({ sessionId: item.sessionId, label: peerLabelFor(item.sessionId) ?? item.sessionId })),
-    [panes, pane.sessionId, peerLabelFor],
-  )
-  const lastTurn = useMemo(() => {
-    let latest: (typeof session.timelines)[string] | null = null
-    for (const turn of Object.values(session.timelines)) {
-      if (turn.sessionId !== pane.sessionId) continue
-      if (!latest || turn.startedAt >= latest.startedAt) latest = turn
-    }
-    return latest
-  }, [session.timelines, pane.sessionId])
-  const lastResponse = useMemo(() => {
-    if (!lastTurn) return null
-    const final = [...lastTurn.items].reverse().find((item) => item.type === 'model' && item.outputKind === 'final')
-    return final && final.type === 'model' && final.content ? final.content : null
-  }, [lastTurn])
   const readTracking = useMemo(() => ({ sessionId: pane.sessionId, visible: !pane.collapsed }), [pane.sessionId, pane.collapsed])
   // «Revisar cambios»: dock de workspace en la pestaña de cambios (rotulada por proyecto).
   const reviewChanges = useCallback(() => {
     revealDock(pane.sessionId, 'workspace', { workspaceTab: 'changes' })
   }, [pane.sessionId, revealDock])
-  // `@Panel mensaje` desde el compositor: reenvío manual (origen `user`, con cita).
-  const mentionTargets = useMemo<PaneMentionTarget[] | undefined>(
-    () => (peerMessaging && forwardTargets.length > 0 ? forwardTargets.map((item) => ({ id: item.sessionId, label: item.label })) : undefined),
-    [peerMessaging, forwardTargets],
-  )
-  const sendToTarget = useCallback(async (targetId: string, text: string) => {
-    const target = forwardTargets.find((item) => item.sessionId === targetId)
-    try {
-      await engineApi.peerMessageForward({
-        target_session_id: targetId,
-        message: text,
-        source_session_id: pane.sessionId,
-        quoted_source: { session_id: pane.sessionId },
-      })
-      toast.success(t('composer.paneMention.sent', { label: target?.label ?? targetId }))
-      return true
-    } catch (error) {
-      toast.error(commandMessage(error))
-      return false
-    }
-  }, [forwardTargets, pane.sessionId, t])
-  const peers = peerMessaging
-    ? {
-        boardEnabled: messagingEnabled,
-        receive: pane.peerReceive,
-        send: pane.peerSend,
-        onReceiveChange: (value: boolean) => setPeerFlags(pane.paneId, { peerReceive: value }),
-        onSendChange: (value: boolean) => setPeerFlags(pane.paneId, { peerSend: value }),
-        onForward: () => setForwardOpen(true),
-        canForward: forwardTargets.length > 0,
-      }
-    : undefined
-
   const focus = useCallback(() => {
     if (!focused) onFocus(pane.paneId)
   }, [focused, onFocus, pane.paneId])
-
-  // «Configurar siguiente mensaje»: enfoca el Composer existente de esta sesión;
-  // no abre otro editor de estado. La petición tipada nombra la sesión, así que
-  // llega aunque el panel aún no acepte foco global en este mismo tick.
-  const configureComposer = useCallback(() => {
-    onFocus(pane.paneId)
-    window.dispatchEvent(new CustomEvent(FOCUS_COMPOSER_EVENT, { detail: { sessionId: pane.sessionId } }))
-  }, [onFocus, pane.paneId, pane.sessionId])
 
   const index = panes.findIndex((item) => item.paneId === pane.paneId)
   const title = session.record?.title || t('sidebar.newChat')
@@ -187,6 +117,7 @@ function LiveSessionPane({
         session={session}
         focused={focused}
         providers={data.providers}
+        variant={collapsedVariant}
         onExpand={() => expandPane(pane.paneId, { focus: true })}
         onOpenSingle={() => onOpenSingle(pane.sessionId)}
         onRemove={() => onRemove(pane.paneId)}
@@ -207,7 +138,7 @@ function LiveSessionPane({
       ref={measure}
       data-motion={fold.motion ?? undefined}
       onAnimationEnd={(event) => { if (event.target === event.currentTarget) endFold() }}
-      style={{ width: pane.width }}
+      style={{ width: pane.width, ...(fold.motion === 'expand' ? { '--unfold-from': `${collapsedVariant === 'column' ? COLUMN_WIDTH : STRIP_WIDTH}px` } : {}) } as CSSProperties}
       onPointerDownCapture={focus}
       onFocusCapture={focus}
     >
@@ -219,25 +150,12 @@ function LiveSessionPane({
         canMoveLeft={canMoveLeft}
         canMoveRight={canMoveRight}
         onToggleWorkspace={() => setDockVisible(pane.sessionId, !dockVisible)}
-        onConfigureComposer={configureComposer}
         onOpenSingle={() => onOpenSingle(pane.sessionId)}
         onMoveLeft={() => movePane(pane.paneId, index - 1)}
         onMoveRight={() => movePane(pane.paneId, index + 1)}
         onRemove={() => onRemove(pane.paneId)}
-        onRemoveAndClose={() => onRemoveAndClose(pane.paneId, pane.sessionId)}
         onCollapse={() => setCollapsed(pane.paneId, true)}
-        peers={peers}
       />
-      {peerMessaging && (
-        <PeerForwardDialog
-          open={forwardOpen}
-          onOpenChange={setForwardOpen}
-          sourceSessionId={pane.sessionId}
-          sourceTurnId={lastTurn?.turnId ?? null}
-          lastResponse={lastResponse}
-          targets={forwardTargets}
-        />
-      )}
       {paneError && (
         <div role="alert" className="pane-notice">
           <span className="min-w-0 flex-1 truncate">{paneError}</span>
@@ -274,6 +192,10 @@ function LiveSessionPane({
         >
           <ReadTrackingContext.Provider value={readTracking}>
           <div className="session-pane-chat">
+            {/* Si el chat del panel falla, el panel sigue con su cabecera (#58).
+                Dentro del panel: un envoltorio alrededor del panel rompía la
+                medición del tablero. */}
+            <ZoneBoundary zone="board-pane">
             <ChatView
               processesInPanel={data.status?.capabilities.desktop_terminal_v1 === true}
               homeContext={{
@@ -291,12 +213,14 @@ function LiveSessionPane({
                 reveal: revealDock,
                 fork: commands.forkSession,
                 rename: commands.renameSession,
+                confirm,
+                hasProject: session.record?.kind === 'PROJECT',
               })}
               onPrepareAttachments={session.prepareAttachments}
               onCancelAttachmentPreparation={session.cancelAttachmentPreparation}
               onImplementPlan={session.implementPlan}
               onStop={session.stop}
-              onSteer={steering ? (text) => commands.steerTo(pane.sessionId, text) : undefined}
+              onSteer={steering ? (text, files, now) => commands.steerTo(pane.sessionId, text, files, now) : undefined}
               onQueue={steering ? (text) => commands.queueTo(pane.sessionId, text) : undefined}
               onOpenProviders={onOpenProviders}
               models={data.models}
@@ -320,17 +244,18 @@ function LiveSessionPane({
               historyNote={data.historyInfo[pane.sessionId] ?? null}
               historyPhase={data.historyPhases?.[pane.sessionId] ?? 'unloaded'}
               onRetryHistory={() => void commands.retryHistoryFor(pane.sessionId)}
+              onLoadEarlier={() => commands.loadEarlierFor(pane.sessionId)}
               composerPrimary={false}
               composerAcceptsGlobalFocus={focused}
               onReviewChanges={reviewChanges}
-              mentionTargets={mentionTargets}
-              onSendToTarget={peerMessaging ? sendToTarget : undefined}
             />
-            <QueueBar sessionId={pane.sessionId} refreshKey={session.busy} peerMessaging={peerMessaging} showInput={!steering} />
+            </ZoneBoundary>
+            <QueueBar sessionId={pane.sessionId} refreshKey={session.busy} showInput={!steering} />
           </div>
           </ReadTrackingContext.Provider>
         </SessionWorkspace>
       </div>
+      {confirmDialog}
     </section>
   )
 }

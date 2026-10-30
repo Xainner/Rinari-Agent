@@ -4,13 +4,13 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import { engineApi } from '../../services/engine'
-import { ActivityImageProvider, ImageActivity } from './ImageActivity'
+import { ActivityImageProvider, ImageActivity, resetActivityThumbsForTests } from './ImageActivity'
 import { createInitialTimelineState, engineEventAction, turnTimelineReducer } from './turnTimelineReducer'
 import TurnTimelineView from './TurnTimelineView'
 import { useActivityDisclosure } from '../../stores/activityDisclosure'
 
 const image = { uri: 'artifact://s1/media/image.png', name: 'imagen ñ.png', path: 'C:\\Mis imágenes\\imagen ñ.png', width: 1800, height: 1000 }
-afterEach(() => { cleanup(); useActivityDisclosure.getState().reset(); vi.restoreAllMocks() })
+afterEach(() => { cleanup(); useActivityDisclosure.getState().reset(); vi.restoreAllMocks(); resetActivityThumbsForTests() })
 
 it('replays a viewed image, enlarges the stored copy and closes with Escape', async () => {
   const preview = vi.spyOn(engineApi, 'attachmentPreview').mockResolvedValue({ data_url: 'data:image/jpeg;base64,aGVsbG8=' })
@@ -20,11 +20,12 @@ it('replays a viewed image, enlarges the stored copy and closes with Escape', as
     presentation: { kind: 'image', image },
   } }, 1000)!)
   render(<I18nProvider lang="es"><TurnTimelineView timeline={state.timelines.t1} now={1000} onResolveApproval={vi.fn()} onContinue={vi.fn()} /></I18nProvider>)
-  expect(preview).not.toHaveBeenCalled()
+  // Cerrada, la fila ya lleva su miniatura (#15): se pide la copia pequeña, no la grande.
+  await waitFor(() => expect(preview).toHaveBeenCalledWith(image.uri, 524288, 512))
+  expect(preview).not.toHaveBeenCalledWith(image.uri, 524288, 2048)
   fireEvent.click(screen.getByText('Cargó una imagen'))
   expect(screen.getByText('Cargó una imagen')).toBeTruthy()
-  await waitFor(() => expect(preview).toHaveBeenCalledWith(image.uri, 524288, 512))
-  await userEvent.click(screen.getByRole('button', { name: 'Ampliar imagen: imagen ñ.png' }))
+  await userEvent.click(screen.getAllByRole('button', { name: 'Ampliar imagen: imagen ñ.png' })[0])
   await waitFor(() => expect(preview).toHaveBeenCalledWith(image.uri, 524288, 2048))
   expect(screen.getByRole('dialog')).toBeTruthy()
   expect(screen.getByRole('img', { name: image.name }).getAttribute('src')).toMatch(/^data:image\/jpeg/)
@@ -34,14 +35,17 @@ it('replays a viewed image, enlarges the stored copy and closes with Escape', as
 
 it('shows preview errors and allows retry without running another model tool', async () => {
   const preview = vi.spyOn(engineApi, 'attachmentPreview').mockRejectedValue(new Error('Archivo ausente'))
-  render(<I18nProvider lang="es"><ImageActivity image={image} /></I18nProvider>)
-  await screen.findByRole('alert')
-  await userEvent.click(screen.getByRole('button', { name: /Ampliar imagen/ }))
-  await screen.findByRole('button', { name: 'Reintentar' })
+  const view = render(<I18nProvider lang="es"><ImageActivity image={image} /></I18nProvider>)
+  // El error, como aviso con su «Reintentar» (#15).
+  expect((await screen.findByRole('alert')).textContent).toContain('Archivo ausente')
   preview.mockResolvedValue({ data_url: 'data:image/jpeg;base64,aGVsbG8=' })
-  await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }))
-  await screen.findByRole('img', { name: image.name })
+  await userEvent.click(screen.getByRole('button', { name: /Reintentar/ }))
   await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
+  expect(view.container.querySelector('.img-activity img')?.getAttribute('src')).toMatch(/^data:image\/jpeg/)
+  // El visor grande pide la copia grande.
+  await userEvent.click(screen.getByRole('button', { name: /Ampliar imagen/ }))
+  await screen.findByRole('img', { name: image.name })
+  expect(preview).toHaveBeenCalledWith(image.uri, 524288, 2048)
 })
 
 
@@ -55,7 +59,7 @@ it('keeps an inspected image open through completion and virtualization', async 
   </ActivityImageProvider></I18nProvider>
   const rendered = render(content('running'))
   fireEvent.click(screen.getByText('Cargó una imagen'))
-  await userEvent.click(screen.getByRole('button', { name: /Ampliar imagen/ }))
+  await userEvent.click(screen.getAllByRole('button', { name: /Ampliar imagen/ })[0])
   expect(screen.getByRole('dialog')).toBeTruthy()
   rendered.rerender(content('completed'))
   expect(screen.getByRole('dialog')).toBeTruthy()

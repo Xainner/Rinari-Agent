@@ -8,6 +8,8 @@ import {
 import { useI18n } from '../../i18n'
 import { Section } from '../../components/settings/parts'
 import SavedGrants from './SavedGrants'
+import NewDestinationsSwitch from './NewDestinationsSwitch'
+import { SearchField } from '../../components/ui/SearchField'
 
 /**
  * Ajustes > Tools: centro de herramientas y permisos. Solo lectura del
@@ -62,13 +64,13 @@ export default function ToolsView() {
         )}
       </Section>
 
+      <NewDestinationsSwitch />
+
       <SavedGrants />
 
       <Section title={t('tools.catalog', { n: String(tools.length) })}>
         <p className="text-xs text-[var(--text-subtle)]">{t('tools.catalogNote')}</p>
-        <input type="search" value={query} onChange={event => setQuery(event.target.value)}
-          aria-label={t('tools.search')} placeholder={t('tools.search')}
-          className="w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm" />
+        <SearchField label={t('tools.search')} value={query} onChange={event => setQuery(event.target.value)} onClear={() => setQuery('')} className="w-full" />
         <div className="max-h-96 space-y-1 overflow-auto">
           {namespaces.map(namespace => <section key={namespace}>
             <h3 className="px-2 py-2 text-xs font-semibold uppercase text-[var(--text-muted)]">{namespace}</h3>

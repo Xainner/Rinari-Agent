@@ -1,20 +1,24 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Eye, EyeOff, LoaderCircle, Pencil, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   commandMessage,
   engineApi,
-  type DiscoveredModel,
+  onEngineEvent,
   type ModelSummary,
 } from '../../services/engine'
 import { useI18n } from '../../i18n'
-import { modelTechnicalId } from '../../lib/modelDisplay'
+import { useConfirm } from '../../components/ui/useConfirm'
+import { inputClass } from '../../components/settings/parts'
 import { registerProviderModels } from './registerModels'
+import { ModelOutputCap } from './ProviderConnectionSettings'
 
 /**
- * Catálogo de modelos de un proveedor: guardados (usar/probar/quitar) y, si
- * quedara alguno descubierto sin guardar, su alta. Al configurar el proveedor
- * el Engine ya guarda todo el catálogo; «Actualizar» añade los nuevos.
- * Compartido entre Ajustes y el wizard.
+ * Los modelos de un proveedor (#92, #93). Lo que el proveedor anuncia ya está
+ * guardado: no hay «Guardar». Cada modelo es una fila de solo lectura con
+ * «Editar» (alias y máximo de salida), «Usar», «Probar» y «Quitar»; quitar lo
+ * oculta y «Ocultos (n)» lo recupera. La lista se recarga sola con
+ * `models.changed`. Compartido entre Ajustes y el wizard.
  *
  * Con `choice`, «Usar» no cambia el modelo activo del Engine: marca la
  * elección, que el wizard aplica al continuar.
@@ -29,53 +33,54 @@ export default function ModelCatalog({
   choice?: { chosen: string | null; onChoose: (alias: string) => void }
 }) {
   const { t, lang } = useI18n()
-  const [discovered, setDiscovered] = useState<DiscoveredModel[]>([])
-  const [saved, setSaved] = useState<ModelSummary[]>([])
-  const [aliases, setAliases] = useState<Record<string, string>>({})
+  const [saved, setSaved] = useState<ModelSummary[] | null>(null)
+  const [hidden, setHidden] = useState<string[]>([])
+  const [showHidden, setShowHidden] = useState(false)
+  const [editing, setEditing] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const confirm = useConfirm()
+  const savingFirst = useRef(false)
 
   const reload = useCallback(async () => {
     try {
-      const [found, listed] = await Promise.all([
-        engineApi.modelDiscover(providerAlias),
-        engineApi.modelList(providerAlias),
+      const [listed, hiddenList] = await Promise.all([
+        engineApi.modelList(providerAlias, true),
+        engineApi.modelHiddenList(providerAlias).catch(() => ({ hidden: [] as string[] })),
       ])
-      const items = found.providers[providerAlias] ?? []
-      setDiscovered(items)
       setSaved(listed.models)
-      setAliases((prev) => {
-        const next = { ...prev }
-        for (const item of items) {
-          if (!(item.provider_model_id in next)) next[item.provider_model_id] = item.provider_model_id
-        }
-        return next
-      })
+      setHidden(Array.isArray(hiddenList?.hidden) ? hiddenList.hidden : [])
     } catch (err) {
+      setSaved((current) => current ?? [])
       toast.error(commandMessage(err))
     }
   }, [providerAlias])
 
+  useEffect(() => { void reload() }, [reload])
+  // Every list reloads on its own when models change (#93).
   useEffect(() => {
-    void reload()
+    let stop: (() => void) | undefined
+    let disposed = false
+    void onEngineEvent((event) => {
+      if (event.event === 'models.changed') void reload()
+    }).then((unlisten) => {
+      if (disposed) unlisten()
+      else stop = unlisten
+    })
+    return () => { disposed = true; stop?.() }
   }, [reload])
+  // A provider just added has nothing yet: its models are being saved.
+  useEffect(() => {
+    if (saved === null || saved.length > 0 || savingFirst.current) return
+    savingFirst.current = true
+    setRefreshing(true)
+    void registerProviderModels(providerAlias).then(() => reload()).finally(() => setRefreshing(false))
+  }, [saved, providerAlias, reload])
 
-  const savedIds = new Set(saved.map((m) => m.provider_model_id))
-  const pending = discovered.filter((d) => !savedIds.has(d.provider_model_id))
-
-  async function saveModel(item: DiscoveredModel) {
-    // The alias is optional: by default the model keeps the name it brings,
-    // which is unique within its provider. Rename it later if you want.
-    const alias = (aliases[item.provider_model_id] ?? '').trim() || item.provider_model_id
-    setBusy(`save:${item.provider_model_id}`)
+  const act = async (key: string, work: () => Promise<unknown>) => {
+    setBusy(key)
     try {
-      await engineApi.modelAdd({
-        provider: providerAlias,
-        provider_model_id: item.provider_model_id,
-        alias,
-        capabilities: item.capabilities,
-      })
-      toast.success(t('wizard.modelSaved', { alias }))
+      await work()
       await reload()
       onChanged()
     } catch (err) {
@@ -84,38 +89,11 @@ export default function ModelCatalog({
       setBusy(null)
     }
   }
-
-  async function useModel(ref: string) {
-    if (choice) {
-      choice.onChoose(ref)
-      return
-    }
-    setBusy(`use:${ref}`)
-    try {
-      await engineApi.modelUse(ref, providerAlias)
-      await reload()
-      onChanged()
-    } catch (err) {
-      toast.error(commandMessage(err))
-    } finally {
-      setBusy(null)
-    }
+  const useModel = (ref: string) => {
+    if (choice) { choice.onChoose(ref); return }
+    void act(`use:${ref}`, () => engineApi.modelUse(ref, providerAlias))
   }
-
-  async function removeModel(ref: string) {
-    setBusy(`rm:${ref}`)
-    try {
-      await engineApi.modelRemove(ref, providerAlias)
-      await reload()
-      onChanged()
-    } catch (err) {
-      toast.error(commandMessage(err))
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  async function testModel(ref: string) {
+  const testModel = async (ref: string) => {
     setBusy(`test:${ref}`)
     try {
       const result = await engineApi.modelTest(ref, providerAlias)
@@ -127,128 +105,134 @@ export default function ModelCatalog({
       setBusy(null)
     }
   }
-
-  async function refresh() {
+  const removeModel = async (model: ModelSummary) => {
+    const sure = await confirm.ask({
+      title: t('models.removeTitle', { alias: model.alias }),
+      body: t('models.removeBody'),
+      confirmLabel: t('providers.modelRemove'),
+      cancelLabel: t('common.cancel'),
+    })
+    if (sure) void act(`rm:${model.alias}`, () => engineApi.modelRemove(model.alias, providerAlias))
+  }
+  const refresh = async () => {
     setRefreshing(true)
     try {
       await registerProviderModels(providerAlias)
       await reload()
       onChanged()
-    } catch (err) {
-      toast.error(commandMessage(err))
     } finally {
       setRefreshing(false)
     }
   }
 
+  if (saved === null) return <div className="h-20 rounded-[var(--r-md)] bg-[var(--bg-active)] motion-safe:animate-pulse" aria-busy="true" />
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-testid="model-catalog">
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs text-[var(--text-subtle)]">{t('providers.modelRefreshNote')}</p>
-        <button
-          type="button"
-          onClick={() => void refresh()}
-          disabled={refreshing}
-          className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-40"
-        >
+        <button type="button" onClick={() => void refresh()} disabled={refreshing} className="btn btn-secondary btn-sm">
+          {refreshing ? <LoaderCircle size={13} className="motion-safe:animate-spin" aria-hidden="true" /> : <RefreshCw size={13} aria-hidden="true" />}
           {refreshing ? t('providers.refreshing') : t('providers.refresh')}
         </button>
       </div>
 
-      {pending.length === 0 && saved.length === 0 && (
-        <p className="text-sm text-[var(--text-subtle)]">{t('providers.noDiscovered')}</p>
+      {saved.length === 0 && (
+        <p className="text-sm text-[var(--text-subtle)]" role="status">{refreshing ? t('models.saving') : t('providers.noDiscovered')}</p>
       )}
 
-      {pending.map((item) => (
-        <div
-          key={item.provider_model_id}
-          className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-[var(--border)] px-3 py-2"
-        >
-          <span className="min-w-0 flex-1 truncate text-[13px] text-[var(--text)]">
-            {typeof item.capabilities?.label === 'string' && item.capabilities.label ? (
-              <>
-                {item.capabilities.label}{' '}
-                <span className="font-mono text-[11px] text-[var(--text-subtle)]">{modelTechnicalId(item)}</span>
-              </>
-            ) : (
-              <span className="font-mono">{item.provider_model_id}</span>
-            )}
-          </span>
-          <input
-            value={aliases[item.provider_model_id] ?? ''}
-            onChange={(e) =>
-              setAliases((prev) => ({ ...prev, [item.provider_model_id]: e.target.value }))
-            }
-            aria-label={t('providers.modelAlias')}
-            placeholder={t('providers.modelAliasOptional')}
-            className="w-36 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2 py-1 text-xs outline-none placeholder:text-[var(--text-subtle)] focus:border-[var(--accent-2)]/60"
-          />
-          <button
-            type="button"
-            onClick={() => void saveModel(item)}
-            disabled={busy !== null || item.capabilities?.route_supported === false}
-            className="btn btn-primary btn-sm"
-          >
-            {t('providers.save')}
-          </button>
-          {item.capabilities?.route_supported === false && <p className="w-full text-xs text-[var(--text-muted)]">{t('providers.routeUnsupported')}</p>}
-        </div>
-      ))}
-
-      {saved.map((model) => (
-        <div
-          key={model.id}
-          className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] px-3 py-2"
-        >
-          <span className="min-w-0 flex-1 basis-44">
-            <span className="block truncate text-sm font-semibold text-[var(--text)]">
-              {model.alias}
-              {(choice ? choice.chosen === model.alias : model.active) && (
-                <span className="ml-2 rounded-md bg-[var(--accent)]/15 px-1.5 py-0.5 text-[10px] font-bold text-[var(--accent-2)]">
-                  {t('providers.active')}
+      {saved.map((model) => {
+        const active = choice ? choice.chosen === model.alias : model.active
+        return (
+          <div key={model.id} className="model-row" data-testid="model-row" data-editing={editing === model.id || undefined}>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="min-w-0 flex-1 basis-44">
+                <span className="block truncate text-sm font-semibold text-[var(--text)]">
+                  {model.alias}
+                  {active && <span className="r-chip ml-2" data-tone="accent">{t('providers.active')}</span>}
                 </span>
-              )}
-            </span>
-            <span className="block truncate font-mono text-[11px] text-[var(--text-subtle)]">
-              {model.provider_model_id}
-            </span>
-            <span className="mt-1 flex flex-wrap gap-2 text-[11px] text-[var(--text-muted)]">
-              {typeof model.capabilities?.max_context_tokens === 'number' && <span>{t('providers.contextTokens', { n: model.capabilities.max_context_tokens.toLocaleString(lang) })}</span>}
-              {model.capabilities?.vision === true && <span>{t('providers.visionCapability')}</span>}
-              {model.capabilities?.reasoning_effort === true && <span>{t('providers.reasoningCapability')}</span>}
-            </span>
-          </span>
-          {!(choice ? choice.chosen === model.alias : model.active) && (
-            <button
-              type="button"
-              onClick={() => void useModel(model.alias)}
-              disabled={busy !== null}
-              className="rounded-lg border border-[var(--border)] px-2 py-1 text-xs font-semibold transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-40"
-            >
-              {t('providers.modelUse')}
-            </button>
+                <span className="block truncate font-mono text-[11px] text-[var(--text-subtle)]">{model.provider_model_id}</span>
+                <span className="mt-1 flex flex-wrap gap-2 text-[11px] text-[var(--text-muted)]">
+                  {typeof model.capabilities?.max_context_tokens === 'number' && <span>{t('providers.contextTokens', { n: model.capabilities.max_context_tokens.toLocaleString(lang) })}</span>}
+                  {model.capabilities?.vision === true && <span>{t('providers.visionCapability')}</span>}
+                  {model.capabilities?.reasoning_effort === true && <span>{t('providers.reasoningCapability')}</span>}
+                </span>
+              </span>
+              <button type="button" className="btn btn-quiet btn-sm" aria-expanded={editing === model.id} onClick={() => setEditing(editing === model.id ? null : model.id)}>
+                <Pencil size={12} aria-hidden="true" /> {t('models.edit')}
+              </button>
+              {!active && <button type="button" onClick={() => useModel(model.alias)} disabled={busy !== null} className="btn btn-secondary btn-sm">{t('providers.modelUse')}</button>}
+              <button type="button" onClick={() => void testModel(model.alias)} disabled={busy !== null} className="btn btn-ghost btn-sm">
+                {busy === `test:${model.alias}` && <LoaderCircle size={12} className="motion-safe:animate-spin" aria-hidden="true" />} {t('providers.modelTest')}
+              </button>
+              <button type="button" onClick={() => void removeModel(model)} disabled={busy !== null} className="btn btn-ghost btn-sm model-row-remove">{t('providers.modelRemove')}</button>
+            </div>
+            {editing === model.id && (
+              <ModelEditor model={model} providerAlias={providerAlias} onDone={() => { setEditing(null); void reload(); onChanged() }} onCancel={() => setEditing(null)} />
+            )}
+          </div>
+        )
+      })}
+
+      {hidden.length > 0 && (
+        <div className="model-hidden">
+          <button type="button" className="btn btn-quiet btn-sm" aria-expanded={showHidden} onClick={() => setShowHidden((value) => !value)}>
+            <EyeOff size={12} aria-hidden="true" /> {t('models.hidden', { n: hidden.length })}
+          </button>
+          {showHidden && (
+            <ul className="mt-2 space-y-1" data-testid="hidden-models">
+              {hidden.map((id) => (
+                <li key={id} className="flex items-center gap-2 text-xs">
+                  <span className="min-w-0 flex-1 truncate font-mono text-[var(--text-muted)]">{id}</span>
+                  <button type="button" className="btn btn-quiet btn-xs" disabled={busy !== null} onClick={() => void act(`show:${id}`, () => engineApi.modelUnhide(providerAlias, id))}>
+                    <Eye size={12} aria-hidden="true" /> {t('models.show')}
+                  </button>
+                </li>
+              ))}
+            </ul>
           )}
-          <button
-            type="button"
-            onClick={() => void testModel(model.alias)}
-            disabled={busy !== null}
-            className="rounded-lg border border-[var(--border)] px-2 py-1 text-xs transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-40"
-          >
-            {t('providers.modelTest')}
-          </button>
-          <button
-            type="button"
-            onClick={() => void removeModel(model.alias)}
-            disabled={busy !== null}
-            className="rounded-lg border border-[var(--border)] px-2 py-1 text-xs text-[var(--danger)] transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-40"
-          >
-            {t('providers.modelRemove')}
-          </button>
         </div>
-      ))}
-      {pending.length > 0 && (
-        <p className="text-xs text-[var(--text-subtle)]">{t('providers.pendingHint', { n: pending.length })}</p>
       )}
+      {confirm.dialog}
+    </div>
+  )
+}
+
+/** «Editar»: el alias (Enter guarda, Esc cancela) y el máximo de salida (#92, #96). */
+function ModelEditor({ model, providerAlias, onDone, onCancel }: { model: ModelSummary; providerAlias: string; onDone: () => void; onCancel: () => void }) {
+  const { t } = useI18n()
+  const [alias, setAlias] = useState(model.alias)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const save = async () => {
+    const next = alias.trim()
+    if (!next || next === model.alias) { onCancel(); return }
+    setBusy(true)
+    setError('')
+    try {
+      await engineApi.modelAlias(model.alias, next, providerAlias)
+      toast.success(t('adv.saved'))
+      onDone()
+    } catch (err) {
+      setError(commandMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="model-editor" data-testid="model-editor">
+      <label className="adv-field" data-invalid={error ? true : undefined}>
+        <span>{t('providers.modelAlias')}</span>
+        <input autoFocus className={inputClass} value={alias} onChange={(event) => setAlias(event.target.value)} onKeyDown={(event) => {
+          if (event.key === 'Enter') void save()
+          if (event.key === 'Escape') onCancel()
+        }} />
+        {error && <small role="alert">{error}</small>}
+      </label>
+      <ModelOutputCap modelId={model.id} />
+      <div className="flex justify-end gap-2">
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onCancel}>{t('common.cancel')}</button>
+        <button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={() => void save()}>{t('providers.save')}</button>
+      </div>
     </div>
   )
 }

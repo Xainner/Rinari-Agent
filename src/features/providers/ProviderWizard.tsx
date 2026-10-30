@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Check, LoaderCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   commandMessage,
@@ -7,15 +8,15 @@ import {
   type ProviderHealth,
 } from '../../services/engine'
 import { useI18n } from '../../i18n'
-import { providerBrand } from '../../lib/providerBrand'
-import ProviderLogo from '../../components/ProviderLogo'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '../../components/ui/dialog'
-import ProviderForm, { initialForm, type ProviderFormData } from './ProviderForm'
+import ProviderForm, { formFor, initialForm, type ProviderFieldErrors, type ProviderFormData } from './ProviderForm'
+import ProviderTypePicker from './ProviderTypePicker'
 import ModelCatalog from './ModelCatalog'
 import { registerProviderModels } from './registerModels'
 import { providerCreateSettings, useProviderPresets } from './presets'
@@ -78,31 +79,57 @@ export function clearWizardDraft(storage: Pick<Storage, 'removeItem'> = localSto
   storage.removeItem(WIZARD_DRAFT_KEY)
 }
 
+/** El campo que causó un fallo al probar, por lo que dijo el proveedor. */
+export function fieldForFailure(detail: string, form: Pick<ProviderFormData, 'auth' | 'credentialSource'>): keyof ProviderFieldErrors | null {
+  if (form.auth === 'api-key' && /\b(401|403)\b|unauthori[sz]ed|forbidden|invalid[^.]*(key|token)|api[ _-]?key|credential|authentication/i.test(detail)) return 'secret'
+  if (/econnrefused|enotfound|getaddrinfo|unreachable|timed? ?out|timeout|connection (refused|reset|error)|could not connect|failed to connect|\b404\b|not found|name resolution/i.test(detail)) return 'endpoint'
+  return null
+}
+
+const seconds = (ms: number) => (ms / 1000).toLocaleString(undefined, { maximumFractionDigits: 1, minimumFractionDigits: 1 })
+
 /**
- * Alta guiada de proveedor (primer arranque y botón Agregar).
- * Crea → prueba → descubre → guarda aliases → termina con modelo activo.
- * El secreto viaja solo en memoria hacia el engine.
+ * Alta de un proveedor: el asistente del primer arranque y «Agregar
+ * proveedor» de Ajustes son este mismo componente (#97 C).
+ * 1. El tipo, en la cuadrícula con logo, grupos y búsqueda.
+ * 2. Solo los campos que ese tipo necesita.
+ * 3. «Probar y guardar»: conecta, cuenta los modelos y mide cuánto tardó; si
+ *    falla, el motivo vuelve junto al campo que lo causa.
+ * 4. Los modelos se guardan solos y se puede usar uno ahora (en el primer
+ *    arranque, elegir uno es obligatorio).
+ * El secreto viaja solo en memoria hacia el Engine; el borrador del primer
+ * arranque nunca lo guarda.
  */
 export default function ProviderWizard({
   open,
   onClose,
+  mode = 'onboarding',
 }: {
   open: boolean
   onClose: (finished: boolean) => void
+  /** `add`: desde Ajustes; sin borrador y sin obligar a cambiar de modelo. */
+  mode?: 'onboarding' | 'add'
 }) {
   const { t } = useI18n()
   const presets = useProviderPresets()
-  const [draft] = useState(() => loadWizardDraft())
+  const onboarding = mode === 'onboarding'
+  const [draft] = useState(() => (onboarding ? loadWizardDraft() : null))
   const [step, setStep] = useState<Step>(draft?.step ?? 'preset')
   const [form, setForm] = useState<ProviderFormData>(() => draft?.form ?? initialForm())
   const [createdAlias, setCreatedAlias] = useState<string | null>(draft?.createdAlias ?? null)
   const [createdType, setCreatedType] = useState<string | null>(draft?.createdType ?? null)
   const [createdAuth, setCreatedAuth] = useState<string | null>(draft?.createdAuth ?? null)
   const [health, setHealth] = useState<ProviderHealth | null>(null)
+  const [took, setTook] = useState<number | null>(null)
+  const [phase, setPhase] = useState<'connecting' | 'saving'>('connecting')
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<ProviderFieldErrors>({})
   const [working, setWorking] = useState(false)
   /** Modelo que eliges en el paso de modelos; se aplica al continuar. */
   const [chosenModel, setChosenModel] = useState<string | null>(null)
+  // Un servidor que pide sesión o un CLI se resuelven en el paso de prueba, no en los campos.
+  const interactive = form.auth === 'oauth' || form.auth === 'external-cli'
+  const name = form.preset.name ?? t(form.preset.nameKey)
 
   function reset() {
     clearWizardDraft()
@@ -112,15 +139,17 @@ export default function ProviderWizard({
     setCreatedType(null)
     setCreatedAuth(null)
     setHealth(null)
+    setTook(null)
     setError('')
+    setFieldErrors({})
     setWorking(false)
     setChosenModel(null)
   }
 
   useEffect(() => {
-    if (step === 'done') return
+    if (!onboarding || step === 'done') return
     saveWizardDraft({ step, form, createdAlias, createdType, createdAuth })
-  }, [step, form, createdAlias, createdType, createdAuth])
+  }, [onboarding, step, form, createdAlias, createdType, createdAuth])
 
   function trackPersisted(alias: string) {
     setCreatedAlias(alias)
@@ -166,7 +195,6 @@ export default function ProviderWizard({
         const list = await engineApi.providerList().catch(() => null)
         if (list?.providers.some((p) => p.alias === alias)) {
           trackPersisted(alias)
-          toast.success(t('wizard.saved'))
           return alias
         }
       }
@@ -174,7 +202,6 @@ export default function ProviderWizard({
       return null
     }
     trackPersisted(alias)
-    toast.success(t('wizard.saved'))
     return alias
   }
 
@@ -233,10 +260,33 @@ export default function ProviderWizard({
     const list = await engineApi.providerList().catch(() => null)
     if (list?.providers.some((p) => p.alias === alias)) {
       trackPersisted(alias)
-      toast.success(t('wizard.saved'))
       return updateProvider(alias)
     }
     return createProvider()
+  }
+
+  /** Prueba lo guardado; si conecta, guarda sus modelos y pasa a elegir. */
+  async function testAndSave(alias: string, isCancelled: () => boolean): Promise<void> {
+    setPhase('connecting')
+    const started = performance.now()
+    const result = await engineApi.providerTest(alias)
+    if (isCancelled()) return
+    setTook(performance.now() - started)
+    setHealth(result)
+    if (!result.connected) {
+      // Con clave o sin autenticación, el motivo vuelve al campo que lo causa.
+      if (!interactive) {
+        const field = fieldForFailure(result.detail, form)
+        setFieldErrors(field ? { [field]: result.detail } : {})
+        setError(field ? '' : t('providers.healthFail', { detail: result.detail }))
+        setStep('fields')
+      }
+      return
+    }
+    setPhase('saving')
+    await registerProviderModels(alias)
+    if (isCancelled()) return
+    setStep('models')
   }
 
   // Secuencia persistir → probar al entrar al paso testing.
@@ -246,25 +296,21 @@ export default function ProviderWizard({
     async function run() {
       setWorking(true)
       setError('')
+      setFieldErrors({})
       try {
         const persisted = await persist()
         if (cancelled) return
-        if (!persisted) return
+        if (!persisted) { if (!interactive) setStep('fields'); return }
         if (form.auth === 'oauth') {
           const account = await engineApi.providerGet(persisted)
           if (!account.provider.has_credential) return
         }
-        const result = await engineApi.providerTest(persisted)
-        if (cancelled) return
-        setHealth(result)
-        if (result.connected) {
-          toast.success(t('providers.healthOk', { n: result.models_discovered }))
-          await registerProviderModels(persisted)
-          if (cancelled) return
-          setStep('models')
-        }
+        await testAndSave(persisted, () => cancelled)
       } catch (err) {
-        if (!cancelled) setError(commandMessage(err))
+        if (!cancelled) {
+          setError(commandMessage(err))
+          if (!interactive) setStep('fields')
+        }
       } finally {
         if (!cancelled) setWorking(false)
       }
@@ -281,13 +327,7 @@ export default function ProviderWizard({
     setWorking(true)
     setError('')
     try {
-      const result = await engineApi.providerTest(createdAlias)
-      setHealth(result)
-      if (result.connected) {
-        toast.success(t('providers.healthOk', { n: result.models_discovered }))
-        await registerProviderModels(createdAlias)
-        setStep('models')
-      }
+      await testAndSave(createdAlias, () => false)
     } catch (err) {
       setError(commandMessage(err))
     } finally {
@@ -306,7 +346,7 @@ export default function ProviderWizard({
     setStep('fields')
   }
 
-  async function finish() {
+  async function useChosen() {
     if (!createdAlias) return
     // El orden del endpoint no decide el modelo en uso: lo eliges tú.
     if (!chosenModel) {
@@ -315,16 +355,31 @@ export default function ProviderWizard({
     }
     try {
       await engineApi.modelUse(chosenModel, createdAlias)
-      setStep('done')
+      if (onboarding) setStep('done')
+      else close(true)
     } catch (err) {
       toast.error(commandMessage(err))
     }
   }
 
   function close(finished: boolean) {
-    if (finished) reset()
+    if (finished || !onboarding) reset()
     onClose(finished)
   }
+
+  function connect() {
+    if (form.alias.trim() === '') return
+    if (form.auth === 'api-key' && form.secret === '' && form.secret_env === '') {
+      setFieldErrors({ secret: t('providers.noCredential') })
+      return
+    }
+    // No se limpia createdAlias: re-entrar a testing actualiza el provider
+    // persistido en vez de duplicarlo.
+    setHealth(null)
+    setStep('testing')
+  }
+
+  const models = health?.models_discovered ?? 0
 
   return (
     <Dialog
@@ -333,91 +388,46 @@ export default function ProviderWizard({
         if (!v) close(false)
       }}
     >
-      <DialogContent className="max-h-[85vh] overflow-y-auto">
+      <DialogContent className="provider-wizard max-h-[85vh] max-w-2xl overflow-y-auto" data-testid="provider-wizard" data-step={step}>
         <DialogHeader>
-          <DialogTitle>{t('wizard.title')}</DialogTitle>
+          <DialogTitle>{onboarding ? t('wizard.title') : t('providers.add')}</DialogTitle>
+          {step === 'preset' && <DialogDescription>{onboarding ? t('wizard.welcome') : t('providers.pick.desc')}</DialogDescription>}
         </DialogHeader>
 
         {step === 'preset' && (
           <div className="space-y-3">
-            <p className="text-sm text-[var(--text-muted)]">{t('wizard.welcome')}</p>
-            <div className="grid gap-2">
-              {presets.map((preset) => (
-                <button
-                  key={preset.id}
-                  type="button"
-                  onClick={() => {
-                    setForm((prev) => ({
-                      ...prev,
-                      preset,
-                      alias: preset.id,
-                      endpoint: preset.endpoint,
-                      auth: preset.auth,
-                    }))
-                    setStep('fields')
-                  }}
-                  className="flex items-center gap-3 rounded-xl border border-[var(--border)] px-3 py-2.5 text-left transition-all hover:border-[var(--accent)]/50 active:scale-[0.99]"
-                >
-                  <span className="flex size-7 shrink-0 items-center justify-center">
-                    <ProviderLogo brand={providerBrand(preset.brand)} size={26} />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold text-[var(--text)]">
-                      {preset.name ?? t(preset.nameKey)}
-                    </span>
-                    <span className="block truncate text-xs text-[var(--text-subtle)]">
-                      {preset.experimental ? t('providers.experimental') : preset.endpoint || t(preset.descKey)}
-                    </span>
-                  </span>
+            <ProviderTypePicker
+              presets={presets}
+              onPick={(preset) => {
+                setForm(formFor(preset))
+                setFieldErrors({})
+                setError('')
+                setStep('fields')
+              }}
+            />
+            {onboarding && (
+              <div className="flex justify-end">
+                <button type="button" onClick={() => close(false)} className="btn btn-quiet btn-sm">
+                  {t('wizard.later')}
                 </button>
-              ))}
-            </div>
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={() => close(false)}
-                className="rounded-xl px-3 py-1.5 text-sm text-[var(--text-muted)] transition-colors hover:text-[var(--text)]"
-              >
-                {t('wizard.later')}
-              </button>
-            </div>
+              </div>
+            )}
           </div>
         )}
 
         {step === 'fields' && (
-          <div className="space-y-4">
-            <ProviderForm form={form} setForm={setForm} allowPresetChange isEdit={false} />
-            <div className="flex justify-between">
-              <button
-                type="button"
-                onClick={() => setStep('preset')}
-                className="rounded-xl border border-[var(--border)] px-3 py-1.5 text-sm transition-colors hover:bg-[var(--bg-hover)]"
-              >
+          <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); connect() }}>
+            <ProviderForm form={form} setForm={setForm} allowPresetChange isEdit={false} onChangePreset={() => setStep('preset')} errors={fieldErrors} />
+            {error !== '' && <p role="alert" className="provider-wizard-error">{error}</p>}
+            <div className="flex justify-between gap-2">
+              <button type="button" onClick={() => setStep('preset')} className="btn btn-ghost btn-sm">
                 {t('wizard.back')}
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (form.alias.trim() === '') return
-                  if (
-                    form.auth === 'api-key' &&
-                    form.secret === '' &&
-                    form.secret_env === ''
-                  ) {
-                    toast.error(t('providers.noCredential'))
-                    return
-                  }
-                  // No se limpia createdAlias: re-entrar a testing actualiza
-                  // el provider persistido en vez de duplicarlo.
-                  setHealth(null)
-                  setStep('testing')
-                }}
-                className="btn btn-primary btn-sm"
-              >
-                {t('wizard.next')}
+              <button type="submit" className="btn btn-primary btn-sm">
+                {interactive ? t('wizard.next') : t('wizard.connect')}
               </button>
             </div>
-          </div>
+          </form>
         )}
 
         {step === 'testing' && (
@@ -435,33 +445,19 @@ export default function ProviderWizard({
                 }}
               />
             )}
-            <p className="text-sm text-[var(--text-muted)]">
-              {working ? t('providers.testing') : (health ? t('providers.healthFail', { detail: health.detail }) : '')}
-            </p>
-            {error !== '' && <p className="text-sm text-[var(--danger)]">{error}</p>}
+            {working && (
+              <p role="status" className="provider-wizard-progress">
+                <LoaderCircle size={14} className="animate-spin" aria-hidden="true" />
+                {phase === 'saving' ? t('wizard.savingModels', { n: models }) : t('wizard.connecting', { name })}
+              </p>
+            )}
+            {!working && health && !health.connected && <p role="alert" className="provider-wizard-error">{t('providers.healthFail', { detail: health.detail })}</p>}
+            {error !== '' && <p role="alert" className="provider-wizard-error">{error}</p>}
             {health && !health.connected && !working && (
               <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => void retryTest()}
-                  className="rounded-xl border border-[var(--border)] px-3 py-1.5 text-sm transition-colors hover:bg-[var(--bg-hover)]"
-                >
-                  {t('providers.retry')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStep('fields')}
-                  className="rounded-xl border border-[var(--border)] px-3 py-1.5 text-sm transition-colors hover:bg-[var(--bg-hover)]"
-                >
-                  {t('providers.edit')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void deleteAndBack()}
-                  className="rounded-xl border border-[var(--border)] px-3 py-1.5 text-sm text-[var(--danger)] transition-colors hover:bg-[var(--bg-hover)]"
-                >
-                  {t('providers.delete')}
-                </button>
+                <button type="button" onClick={() => void retryTest()} className="btn btn-secondary btn-sm">{t('providers.retry')}</button>
+                <button type="button" onClick={() => setStep('fields')} className="btn btn-ghost btn-sm">{t('providers.edit')}</button>
+                <button type="button" onClick={() => void deleteAndBack()} className="btn btn-ghost btn-sm text-[var(--danger)]">{t('providers.delete')}</button>
               </div>
             )}
           </div>
@@ -469,23 +465,25 @@ export default function ProviderWizard({
 
         {step === 'models' && createdAlias && (
           <div className="space-y-4">
-            <p className="text-sm text-[var(--text-muted)]">{t('wizard.chooseModel')}</p>
+            <p className="provider-wizard-ok" data-testid="provider-wizard-connected">
+              <span className="provider-wizard-check" aria-hidden="true"><Check size={13} /></span>
+              <span>
+                <strong>{took !== null ? t('wizard.connected', { n: models, s: seconds(took) }) : t('providers.healthOk', { n: models })}</strong>
+                <span className="block text-[var(--text-subtle)]">{t('wizard.savedModels', { n: models })}</span>
+              </span>
+            </p>
+            <p className="text-sm text-[var(--text-muted)]">{onboarding ? t('wizard.chooseModel') : t('wizard.chooseOptional')}</p>
             <ModelCatalog providerAlias={createdAlias} onChanged={() => {}} choice={{ chosen: chosenModel, onChoose: setChosenModel }} />
-            <div className="flex justify-between">
-              <button
-                type="button"
-                onClick={() => setStep('fields')}
-                className="rounded-xl border border-[var(--border)] px-3 py-1.5 text-sm transition-colors hover:bg-[var(--bg-hover)]"
-              >
+            <div className="flex justify-between gap-2">
+              <button type="button" onClick={() => setStep('fields')} className="btn btn-ghost btn-sm">
                 {t('wizard.back')}
               </button>
-              <button
-                type="button"
-                onClick={() => void finish()}
-                className="btn btn-primary btn-sm"
-              >
-                {t('wizard.next')}
-              </button>
+              <span className="flex gap-2">
+                {!onboarding && <button type="button" onClick={() => close(true)} className="btn btn-secondary btn-sm">{t('wizard.finishAdd')}</button>}
+                <button type="button" onClick={() => void useChosen()} disabled={!onboarding && !chosenModel} className="btn btn-primary btn-sm">
+                  {onboarding ? t('wizard.next') : t('wizard.useNow')}
+                </button>
+              </span>
             </div>
           </div>
         )}
@@ -494,11 +492,7 @@ export default function ProviderWizard({
           <div className="space-y-4">
             <p className="text-sm text-[var(--text-muted)]">{t('wizard.ready')}</p>
             <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={() => close(true)}
-                className="btn btn-primary btn-sm"
-              >
+              <button type="button" onClick={() => close(true)} className="btn btn-primary btn-sm">
                 {t('wizard.finish')}
               </button>
             </div>

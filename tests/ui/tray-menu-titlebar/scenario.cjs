@@ -45,9 +45,10 @@ async function run() {
     await until(() => trayMenu, 'native tray exists')
     await language('es')
     await until(() => labels().includes('Configuración…'), 'Spanish tray refresh')
-    assert.deepEqual(labels(), ['Abrir Rinari', 'Configuración…', 'Buscar actualizaciones', 'Reportar error…', 'Salir'])
+    assert.deepEqual(labels(), ['Abrir Rinari', 'Marcar todo como leído', 'Configuración…', 'Buscar actualizaciones', 'Reportar error…', 'Salir'])
     await activate('Configuración…')
-    await wait(`document.body.innerText.includes('Por defecto solo suena lo que pasa donde no estás mirando.')`)
+    // Abre Ajustes en General (los sonidos están en Notificaciones desde el 0.4.0 #34).
+    await wait(`Boolean(document.querySelector('select[aria-label="Idioma"]'))`)
     await screenshot('settings-from-hidden')
     await activate('Buscar actualizaciones')
     await wait(`document.body.innerText.includes('Notas de la versión')`)
@@ -65,7 +66,7 @@ async function run() {
 
     await language('en')
     await until(() => labels().includes('Report a bug…'), 'English tray refresh')
-    assert.deepEqual(labels(), ['Open Rinari', 'Settings…', 'Check for updates', 'Report a bug…', 'Quit'])
+    assert.deepEqual(labels(), ['Open Rinari', 'Mark all as read', 'Settings…', 'Check for updates', 'Report a bug…', 'Quit'])
     await activate('Report a bug…')
     await until(() => opened.length === 2, 'English bug draft')
     assert(new URL(opened[1]).searchParams.get('body').includes('**What happened**'))

@@ -16,10 +16,12 @@ import type { Language } from '../types'
  * Ambas son presentaciones del mismo Engine: cambiar de una a otra nunca
  * altera turnos, permisos, modelos ni borradores.
  */
-export type View = 'chat' | 'board' | 'flows' | 'settings' | 'engine' | 'workspace' | 'project' | 'schedules'
+export type View = 'chat' | 'board' | 'settings' | 'engine' | 'workspace' | 'project' | 'schedules'
 /** Vistas de trabajo: a una de ellas se vuelve al salir de una vista auxiliar. */
-export type WorkspaceView = Extract<View, 'chat' | 'board' | 'flows'>
-export type ProviderTab = 'connection' | 'models' | 'usage' | 'diagnostics'
+/** Flujos dejó de ser un modo de arriba: vive en el panel lateral (#43). */
+export type WorkspaceView = Extract<View, 'chat' | 'board'>
+/** `connection` es el nombre viejo de «Resumen»: ahí está ahora la conexión (#97). */
+export type ProviderTab = 'summary' | 'connection' | 'models' | 'usage' | 'diagnostics'
 /**
  * Proveedor que Ajustes > Proveedores debe abrir al entrar, y en qué pestaña.
  * Se busca por id: el alias puede haber cambiado desde que se guardó el
@@ -46,6 +48,8 @@ export type SettingsSection =
   | 'models'
   | 'vision'
   | 'dictation'
+  | 'browser'
+  | 'notifications'
   | 'context'
   | 'memory'
   | 'agents'
@@ -59,19 +63,32 @@ export type SettingsSection =
   | 'advanced'
   | 'about'
 
-export type ShortcutAction = 'newChat' | 'palette' | 'settings' | 'sidebar' | 'boards' | 'flows' | 'collapsePane' | 'expandPane'
+export type ShortcutAction = 'newChat' | 'palette' | 'settings' | 'sidebar' | 'sidePanel' | 'boards' | 'flows' | 'collapsePane' | 'expandPane' | 'projectPicker' | 'nextNeedsYou'
 export type ShortcutBindings = Record<ShortcutAction, string>
+
+/**
+ * Ctrl+B oculta y vuelve a mostrar el panel lateral (decisión del dueño, #47);
+ * la barra lateral pasa a Ctrl+Alt+B (Ctrl+Shift+B es Boards). Cambiarlos es
+ * cambiar estas dos líneas (y el acelerador del menú nativo, `native/menu.ts`).
+ */
+export const SIDE_PANEL_SHORTCUT = 'Ctrl+B'
+export const SIDEBAR_SHORTCUT = 'Ctrl+Alt+B'
 
 export const DEFAULT_SHORTCUT_BINDINGS: ShortcutBindings = {
   newChat: 'Ctrl+N',
   palette: 'Ctrl+K',
   settings: 'Ctrl+,',
-  sidebar: 'Ctrl+B',
+  sidebar: SIDEBAR_SHORTCUT,
+  sidePanel: SIDE_PANEL_SHORTCUT,
   boards: 'Ctrl+Shift+B',
   flows: 'Ctrl+Shift+L',
   // Colapso/expansión del panel enfocado en Boards; sin acelerador nativo.
   collapsePane: 'Ctrl+Alt+[',
   expandPane: 'Ctrl+Alt+]',
+  // El proyecto de una conversación nueva, desde el chip del composer (#42).
+  projectPicker: 'Ctrl+Shift+O',
+  // Boards: el siguiente panel que te necesita (plan-boards B.4.1).
+  nextNeedsYou: 'Ctrl+J',
 }
 
 function readBool(key: string, fallback: boolean): boolean {
@@ -102,6 +119,20 @@ function readLang(): Language {
 
 function readCollapsed(): boolean {
   return readBool('rinari.sidebarCollapsed', false)
+}
+
+/** Ancho de la barra lateral izquierda desplegada: se arrastra su borde y se recuerda. */
+export const SIDEBAR_WIDTH = { min: 220, initial: 278, max: 440 } as const
+const SIDEBAR_WIDTH_KEY = 'rinari.sidebarWidth'
+const clampSidebarWidth = (width: number) => Math.round(Math.max(SIDEBAR_WIDTH.min, Math.min(SIDEBAR_WIDTH.max, width)))
+
+function readSidebarWidth(): number {
+  try {
+    const stored = Number(localStorage.getItem(SIDEBAR_WIDTH_KEY))
+    return Number.isFinite(stored) && stored > 0 ? clampSidebarWidth(stored) : SIDEBAR_WIDTH.initial
+  } catch {
+    return SIDEBAR_WIDTH.initial
+  }
 }
 
 const FLOW_SCOPE_KEY = 'rinari.flowScope'
@@ -149,6 +180,9 @@ function writeFlowScopes(scopes: FlowScopeByHome): void {
 function readShortcutBindings(): ShortcutBindings {
   try {
     const stored = JSON.parse(localStorage.getItem('rinari.shortcutBindings') ?? '{}') as Partial<ShortcutBindings>
+    // Guardados antes de que existiera el atajo del panel lateral: la barra
+    // lateral dejó Ctrl+B, así que no se queda con el atajo del panel.
+    if (stored.sidePanel === undefined && stored.sidebar?.toUpperCase() === SIDE_PANEL_SHORTCUT.toUpperCase()) delete stored.sidebar
     return { ...DEFAULT_SHORTCUT_BINDINGS, ...stored }
   } catch {
     return DEFAULT_SHORTCUT_BINDINGS
@@ -184,7 +218,6 @@ interface UIState {
   /** `explicit: false` para el alcance que resuelve la propia vista al abrirse. */
   setFlowScope: (scope: FlowScope | null, explicit?: boolean) => void
   setFlowHomeId: (homeId: string | null) => void
-  goFlows: (scope?: FlowScope) => void
   /** Última vista de trabajo (Normal, Boards o Flujos); en memoria, no persistida. */
   lastWorkspaceView: WorkspaceView
   settingsSection: SettingsSection
@@ -192,6 +225,7 @@ interface UIState {
   sidebarOpen: boolean
   /** Rail colapsado en desktop (solo iconos). Persistido. */
   sidebarCollapsed: boolean
+  sidebarWidth: number
   paletteOpen: boolean
   theme: Theme
   accent: Accent
@@ -202,6 +236,8 @@ interface UIState {
   showSuggestions: boolean
   /** Revela identificadores de protocolo junto a las etiquetas narrativas. */
   showTechnicalActivityNames: boolean
+  /** Buscar actualizaciones al abrir la app (Avanzado → Actualizaciones). */
+  autoCheckUpdates: boolean
   shortcutBindings: ShortcutBindings
   /** Home del proyecto abierto (root). Solo con view 'project'. */
   projectRoot: string | null
@@ -214,6 +250,10 @@ interface UIState {
   providerFocus: ProviderFocus | null
   openProvider: (focus: ProviderFocus) => void
   clearProviderFocus: () => void
+  /** Ajustes > Conectores con el detalle de ese servidor abierto (la tarjeta del Resumen); en memoria. */
+  connectorFocus: string | null
+  openConnector: (name: string) => void
+  clearConnectorFocus: () => void
   /** Abre el selector de modelo del compositor de esa sesión (p. ej. tras un error de créditos); en memoria. */
   modelPickerRequest: { sessionId: string; seq: number } | null
   requestModelPicker: (sessionId: string) => void
@@ -236,6 +276,7 @@ interface UIState {
   setLang: (lang: Language) => void
   setSidebarOpen: (open: boolean) => void
   setSidebarCollapsed: (collapsed: boolean) => void
+  setSidebarWidth: (width: number) => void
   toggleSidebarCollapsed: () => void
   setPaletteOpen: (open: boolean) => void
   togglePalette: () => void
@@ -246,6 +287,7 @@ interface UIState {
   setAutoFollow: (on: boolean) => void
   setShowSuggestions: (on: boolean) => void
   setShowTechnicalActivityNames: (on: boolean) => void
+  setAutoCheckUpdates: (on: boolean) => void
   setShortcutBinding: (action: ShortcutAction, shortcut: string) => void
   resetShortcutBindings: () => void
 }
@@ -266,6 +308,7 @@ export const useUIStore = create<UIState>((set) => ({
   lang: typeof window === 'undefined' ? 'es' : readLang(),
   sidebarOpen: false,
   sidebarCollapsed: typeof window === 'undefined' ? false : readCollapsed(),
+  sidebarWidth: typeof window === 'undefined' ? SIDEBAR_WIDTH.initial : readSidebarWidth(),
   paletteOpen: false,
   theme: typeof window === 'undefined' ? 'system' : getStoredTheme(),
   accent: initialAccent,
@@ -276,6 +319,7 @@ export const useUIStore = create<UIState>((set) => ({
     typeof window === 'undefined' ? true : readBool('rinari.showSuggestions', true),
   showTechnicalActivityNames:
     typeof window === 'undefined' ? false : readBool('rinari.showTechnicalActivityNames', false),
+  autoCheckUpdates: typeof window === 'undefined' ? true : readBool('rinari.autoCheckUpdates', true),
   shortcutBindings: typeof window === 'undefined' ? DEFAULT_SHORTCUT_BINDINGS : readShortcutBindings(),
   goChat: () => set({ view: 'chat', lastWorkspaceView: 'chat', sidebarOpen: false, projectRoot: null }),
   goNormal: () => set({ view: 'chat', lastWorkspaceView: 'chat', sidebarOpen: false, projectRoot: null }),
@@ -306,14 +350,8 @@ export const useUIStore = create<UIState>((set) => ({
     // El alcance del home nuevo viene del disco, no de una elección de ahora.
     return { flowHomeId: next, flowScopes: scopes, flowScope: scopes[next] ?? null, flowScopeExplicit: false }
   }),
-  goFlows: (scope) => set((s) => {
-    if (!scope) return { view: 'flows', lastWorkspaceView: 'flows', sidebarOpen: false, projectRoot: null }
-    const scopes = { ...s.flowScopes, [s.flowHomeId]: scope }
-    writeFlowScopes(scopes)
-    return { view: 'flows', lastWorkspaceView: 'flows', sidebarOpen: false, projectRoot: null, flowScope: scope, flowScopes: scopes, flowScopeExplicit: true }
-  }),
   toggleBoards: () => set((s) => {
-    const current = s.view === 'chat' || s.view === 'board' || s.view === 'flows' ? s.view : s.lastWorkspaceView
+    const current = s.view === 'chat' || s.view === 'board' ? s.view : s.lastWorkspaceView
     const next: WorkspaceView = current === 'board' ? 'chat' : 'board'
     return { view: next, lastWorkspaceView: next, sidebarOpen: false, projectRoot: null }
   }),
@@ -331,6 +369,10 @@ export const useUIStore = create<UIState>((set) => ({
   openProvider: (focus) =>
     set({ view: 'settings', sidebarOpen: false, settingsSection: 'providers', projectRoot: null, providerFocus: focus }),
   clearProviderFocus: () => set({ providerFocus: null }),
+  connectorFocus: null,
+  openConnector: (name) =>
+    set({ view: 'settings', sidebarOpen: false, settingsSection: 'mcp', projectRoot: null, connectorFocus: name }),
+  clearConnectorFocus: () => set({ connectorFocus: null }),
   modelPickerRequest: null,
   requestModelPicker: (sessionId) =>
     set((s) => ({ modelPickerRequest: { sessionId, seq: (s.modelPickerRequest?.seq ?? 0) + 1 } })),
@@ -348,6 +390,11 @@ export const useUIStore = create<UIState>((set) => ({
   setSidebarCollapsed: (collapsed) => {
     writeBool('rinari.sidebarCollapsed', collapsed)
     set({ sidebarCollapsed: collapsed })
+  },
+  setSidebarWidth: (width) => {
+    const next = clampSidebarWidth(width)
+    try { localStorage.setItem(SIDEBAR_WIDTH_KEY, String(next)) } catch { /* sin almacenamiento: solo en memoria */ }
+    set({ sidebarWidth: next })
   },
   toggleSidebarCollapsed: () =>
     set((s) => {
@@ -386,6 +433,10 @@ export const useUIStore = create<UIState>((set) => ({
   setShowTechnicalActivityNames: (on) => {
     writeBool('rinari.showTechnicalActivityNames', on)
     set({ showTechnicalActivityNames: on })
+  },
+  setAutoCheckUpdates: (on) => {
+    writeBool('rinari.autoCheckUpdates', on)
+    set({ autoCheckUpdates: on })
   },
   setShortcutBinding: (action, shortcut) => set((state) => {
     const shortcutBindings = { ...state.shortcutBindings, [action]: shortcut }

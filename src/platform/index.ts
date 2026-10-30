@@ -10,6 +10,9 @@ import type { DesktopBridge } from './contract'
 import { electronBridge } from './electron'
 
 export type {
+  HostSettings,
+  HostSettingsPatch,
+  StartupLimit,
   ContextMenuItem,
   DesktopBridge,
   DesktopCommand,
@@ -19,6 +22,7 @@ export type {
   EngineStatus,
   HostOnlyCommand,
   NotificationSupport,
+  NotificationReply,
   NotificationTarget,
   OpenFilesOptions,
   OpenRequest,

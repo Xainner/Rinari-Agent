@@ -4,7 +4,9 @@ const { join } = require('node:path')
 module.exports = async function afterPack(context) {
   if (context.electronPlatformName !== 'win32') return
   const app = context.appOutDir
-  const primary = join(app, 'rinari-agent.exe')
+  // La Nightly lleva su propio ejecutable (electron-builder.nightly.yml).
+  const executable = context.packager.config.win?.executableName ?? 'rinari-agent'
+  const primary = join(app, `${executable}.exe`)
   const alias = join(app, 'rinari-code.exe')
   const engine = join(app, 'resources', 'engine-dist', 'python.exe')
   await access(primary)

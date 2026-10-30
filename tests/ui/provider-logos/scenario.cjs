@@ -2,7 +2,7 @@ const assert = require('node:assert/strict')
 // Only the scripted server bypasses the dead proxy, including for local presets.
 process.env.NO_PROXY = process.env.no_proxy = new URL(process.env.RINARI_UI_MODEL).host
 delete process.env.RINARI_LOGOS_TEST_UNSET
-const { ui, delay, evaluate, wait, command, reload, seedBoard, panesFor, click, clickText, input, key, menuShortcut, size, screenshot, report, scenario, settleAnimations } = require('../harness.cjs')
+const { ui, delay, evaluate, wait, command, reload, seedBoard, panesFor, click, clickText, input, key, menuShortcut, size, screenshot, report, scenario, settleAnimations, toggleDockView } = require('../harness.cjs')
 const expected = { openai:'openai', anthropic:'anthropic', openrouter:'openrouter', deepseek:'deepseek', groq:'groq', together:'together', mistral:'mistral', xai:'xai', 'opencode-zen':'opencode', 'opencode-go':'opencode', ollama:'ollama', lmstudio:'lmstudio', custom:'custom', gemini:'gemini', deepinfra:'deepinfra', fireworks:'fireworks', zai:'zai', 'zai-coding':'zai', moonshot:'moonshot', 'kimi-coding':'kimi', minimax:'minimax', 'minimax-coding':'minimax', chatgpt:'openai', 'github-copilot':'github-copilot', 'claude-subscription':'anthropic' }
 const logos = '[data-provider-brand]'
 let catalogSize = 0 // Set from the live catalog before any sheet is drawn.
@@ -53,7 +53,8 @@ scenario(async () => {
   ui.win.webContents.reload() // Observe onboarding before the shared ready helper dismisses it.
   await wait(`document.querySelectorAll('[role="dialog"] ${logos}').length===${catalog.length}`)
   const wizard = await healthy('document.querySelector("[role=dialog]")')
-  assert.deepEqual(wizard.map(r=>r.brand),catalog.map(p=>expected[p.id]))
+  // The grid groups the catalog (subscriptions, API, local: #97 C): same logos, not the same order.
+  assert.deepEqual(wizard.map(r=>r.brand).sort(),catalog.map(p=>expected[p.id]).sort())
   await screenshot('wizard-dark')
   await sheet('dark'); await sheet('light')
   await evaluate(`document.documentElement.dataset.theme='dark'`)
@@ -117,10 +118,13 @@ scenario(async () => {
   await wait(`Boolean(document.querySelector('[data-pane-id="pane_1"] [data-provider-brand="lmstudio"]'))`)
   await healthy(); await screenshot('boards')
   await click('[data-pane-id="pane_0"] button[aria-label="Colapsar panel"]')
-  await wait(`Boolean(document.querySelector('.pane-strip [data-provider-brand="ollama"]'))`)
+  // Plegado es columna (si cabe) o tira: el logo va en las dos (plan-boards B.2).
+  await wait(`Boolean(document.querySelector('[data-collapsed] [data-provider-brand="ollama"]'))`)
   await healthy(); await screenshot('collapsed-board')
-  await click('.view-switcher button[aria-label^="Flujos"]')
-  await wait(`Boolean(document.querySelector('.flow-stage [data-provider-brand="ollama"]'))`)
+  // El Flujo vive en el panel lateral de la conversación (#43).
+  await click('.view-switcher button[aria-label="Normal"]')
+  await toggleDockView('flow')
+  await wait(`Boolean(document.querySelector('[data-testid="flow-view"][data-embedded] .flow-stage [data-provider-brand]'))`)
   await healthy(); await screenshot('flows')
   report({ engine: require('../../../engine-manifest.json').engine_git_sha, catalog:catalog.map(p=>p.id), passed:[`${catalog.length} real catalog products`,'all images loaded offline','dark/light at 26/14/12px','900px window at 125%','failed image fallback','wizard and custom alias form','provider cards and models','composer and picker','real local turn','Boards and collapsed strip','Flows'] })
   await command('model_use',{reference:modelIds.custom,provider:'Cuenta custom'})

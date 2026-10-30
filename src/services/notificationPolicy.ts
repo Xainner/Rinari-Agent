@@ -3,11 +3,17 @@
  * de React: decide **qué canal** puede usarse para un suceso dado el estado de
  * atención, las preferencias y el soporte nativo; no envía nada.
  */
-import type { BoardNotificationPrefs } from '../stores/board'
 import { translate } from '../i18n'
 import { useUIStore } from '../stores/ui'
 
-export type BoardEventKind = 'terminal' | 'intervention' | 'peer'
+export type BoardEventKind = 'terminal' | 'intervention'
+
+/** Lo que la política necesita de las preferencias (Ajustes → Notificaciones). */
+export interface ChannelPrefs {
+  toasts: boolean
+  system: boolean
+  needsYou: boolean
+}
 
 export interface NotificationDeliverySupport {
   /** El host puede mostrar una notificación del sistema. */
@@ -25,7 +31,7 @@ export interface ChannelDecision {
 
 export interface ChannelInput {
   kind: BoardEventKind
-  prefs: BoardNotificationPrefs
+  prefs: ChannelPrefs
   /** La ventana está visible y con foco. */
   windowAttended: boolean
   /** El resultado/solicitud está realmente visible (panel expandido y enfocado en Boards, o Normal con esa sesión). */
@@ -38,13 +44,12 @@ export interface ChannelInput {
  * - toast interno: `toasts` y (para intervención) `needsYou`; nunca si el
  *   destino ya está visible con la ventana atendida.
  * - nativo: `system` + permiso concedido + ventana NO atendida; intervención
- *   añade `needsYou`. Los peers no usan canal nativo (tienen su propio toast).
+ *   añade `needsYou`.
  * - si se envía nativo con la app en segundo plano, no se muestra además el
  *   toast individual al volver: el badge y la lista interna siguen.
  */
 export function decideChannels(input: ChannelInput): ChannelDecision {
   const { kind, prefs, windowAttended, targetVisible, support, permission } = input
-  if (kind === 'peer') return { toast: false, system: false }
   const interventionAllowed = kind !== 'intervention' || prefs.needsYou
   const attendedHere = windowAttended && targetVisible
   const system = prefs.system && support.canSend && permission === 'granted' && !windowAttended && interventionAllowed

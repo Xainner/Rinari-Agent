@@ -6,14 +6,15 @@ import { platform } from './platform'
 import { refreshNotificationSupport } from './services/notifications'
 import { toast } from 'sonner'
 import { warnUntrusted } from './features/projects/trustWarning'
-import { X } from 'lucide-react'
+import { ProjectOffersPrompt } from './features/connectors/ProjectOffersPrompt'
+import { listenConnectorEvents } from './features/connectors/connectorStore'
+import { IdCard, X } from 'lucide-react'
 import { useNotificationCenter } from './stores/notificationCenter'
 import { I18nProvider, translate, type I18nKey } from './i18n'
-import { engineApi, type TrustState } from './services/engine'
+import { commandMessage, engineApi, onEngineEvent, type TrustState } from './services/engine'
 import { useConfirm } from './components/ui/useConfirm'
 import { applyUpdate, checkForUpdates, downloadUpdate, onUpdateState, reportsUpdateError } from './services/updates'
 import { useUIStore } from './stores/ui'
-import { version as appVersion } from '../package.json'
 import { useBoardStore } from './stores/board'
 import { useEngineSession } from './features/engine/useEngineSession'
 import { EngineProvider } from './features/engine/EngineContext'
@@ -22,7 +23,7 @@ import SingleSessionView from './features/engine/SingleSessionView'
 import BoardActivityController from './features/board/BoardActivityController'
 import SkillLearnedNotifier from './features/skills/SkillLearnedNotifier'
 import ScheduleForm from './features/schedules/ScheduleForm'
-import ScheduleNotifier from './features/schedules/ScheduleNotifier'
+import ScheduleNotifier, { AGENCY_REVIEW_RULES_EVENT } from './features/schedules/ScheduleNotifier'
 import SoundCoordinator from './features/sounds/SoundCoordinator'
 import UpdateNotifier from './features/updates/UpdateNotifier'
 import NotificationCenter from './features/notifications/NotificationCenter'
@@ -35,44 +36,74 @@ import {
   expandAllPanes,
   expandPaneShortcut,
   markAllBoardResultsRead,
+  requestTurnReveal,
   toggleFocusMode,
 } from './features/board/boardCommands'
+import { markEverythingRead } from './features/notifications/attentionCommands'
+import { signalOf, useSessionPendingStore, type SessionSignal } from './features/notifications/attentionIndicators'
 import AppShell from './components/app-shell/AppShell'
 import AppStatusBar from './components/app-shell/AppStatusBar'
-import { requestDockToggle } from './features/session/SessionWorkspace'
+import DockViewButtons from './components/app-shell/DockViewButtons'
+import SessionWorkspace, { requestDockToggle } from './features/session/SessionWorkspace'
 import { useTerminalStore } from './features/terminal/terminalStore'
 import { AGENT_TAB } from './features/terminal/agentTab'
-import { dockNamespaceKey, nextDockIntent, useSessionDockStore, type DockSurface, type SessionDockState } from './stores/sessionDock'
+import { useSessionDockStore, viewForSurface, type DockSurface } from './stores/sessionDock'
+import { useBoardAttentionStore } from './stores/boardAttention'
 import { ProcessRuntimeProvider } from './features/processes/ProcessRuntimeProvider'
 import { desktopApi } from './services/desktop'
 import AppSidebar from './components/app-shell/AppSidebar'
 import ChatHeader from './components/app-shell/ChatHeader'
 import CommandPalette from './components/CommandPalette'
 import EngineConsole from './features/engine/EngineConsole'
-import SettingsView from './features/settings/SettingsView'
 import WorkspaceView from './features/workspace/WorkspaceView'
 import ProjectHome from './features/projects/ProjectHome'
 import ProviderWizard from './features/providers/ProviderWizard'
+import WelcomeDialog from './features/welcome/WelcomeDialog'
+import ReviewExportDialog from './features/review/ReviewExportDialog'
+import { welcomeSeen, markWelcomeSeen } from './features/welcome/welcomeState'
 import StartupSplash from './components/StartupSplash'
 import DesktopContextMenu from './components/app-shell/DesktopContextMenu'
-import { useProfileWorkspace } from './features/profiles/useProfileWorkspace'
+import { switchToProfileOf, useProfileWorkspace } from './features/profiles/useProfileWorkspace'
 import { useProfileMoves } from './features/profiles/useProfileMoves'
 import { CreateProjectDialog } from './features/projects/CreateProjectDialog'
 import { useCreateProjectStore } from './features/projects/createProjectStore'
+import { PROJECT_PICKER_EVENT } from './components/composer/ProjectChip'
+import { useAgencyStore, agencyTutorialSeen, markAgencyTutorialSeen } from './stores/agency'
+import { useAgency } from './features/agency/useAgency'
+import AgencyCard from './features/agency/AgencyCard'
+import AgencySidebar from './features/agency/AgencySidebar'
+import AgencyHome from './features/agency/AgencyHome'
+import AgentForm from './features/agency/AgentForm'
+import AgencyTutorial from './features/agency/AgencyTutorial'
+import AgencySettings from './features/agency/AgencySettings'
+import TeamForm from './features/agency/TeamForm'
+import OfficeView from './features/agency/OfficeView'
+import type { AgencyAgent, AgencyTeam } from './features/agency/types'
+import { enterAgencySession } from './features/agency/openAgencySession'
+import { AgencyDataContext, officeDockKey } from './features/agency/AgencyData'
+import { APP_VERSION } from './lib/channel'
+import TemplatePicker from './features/agency/TemplatePicker'
+import { AGENCY_OPEN_RUN_EVENT, type AgencyOpenRunDetail } from './features/agency/RulesView'
+import { CHAIN_MAX_HOPS, chainReasonKey } from './features/agency/chainStop'
+import agencyHero from './assets/agency/agency-hero.webp'
+import { useProfileStore } from './features/profiles/profileStore'
+import ReconnectNotifier from './features/connectors/ReconnectNotifier'
 
 const BoardView = lazy(() => import('./features/board/BoardView'))
-const FlowView = lazy(() => import('./features/flow/FlowView'))
 const SchedulesView = lazy(() => import('./features/schedules/SchedulesView'))
+// Ajustes se carga al abrirlo (#91): el bloque principal pesaba 1,8 MB.
+const SettingsView = lazy(() => import('./features/settings/SettingsView'))
 
 // De package.json al compilar: fija en el código se quedó en 0.2.0 tras publicar
 // la 0.2.1. `npm run release:bump` solo toca package.json y sus copias.
-const APP_VERSION = appVersion
 
 function App() {
   const view = useUIStore((s) => s.view)
   const lang = useUIStore((s) => s.lang)
   const setLang = useUIStore((s) => s.setLang)
   const { ask: confirm, dialog: confirmDialog } = useConfirm()
+  // El estado de los conectores llega por eventos: se escucha desde el arranque (C3).
+  useEffect(() => { listenConnectorEvents() }, [])
   const theme = useUIStore((s) => s.theme)
   const setTheme = useUIStore((s) => s.setTheme)
   const paletteOpen = useUIStore((s) => s.paletteOpen)
@@ -81,7 +112,6 @@ function App() {
   const goChat = useUIStore((s) => s.goChat)
   const goNormal = useUIStore((s) => s.goNormal)
   const goBoard = useUIStore((s) => s.goBoard)
-  const goFlows = useUIStore((s) => s.goFlows)
   const toggleBoards = useUIStore((s) => s.toggleBoards)
   const goEngine = useUIStore((s) => s.goEngine)
   const goSchedules = useUIStore((s) => s.goSchedules)
@@ -113,9 +143,16 @@ function App() {
     [session.approvals],
   )
   const activeTitle = activeRecord?.title ?? null
-  const activeProject = activeRecord?.project_id
-    ? session.projects.find((project) => project.id === activeRecord.project_id) ?? null
-    : session.projects.find((project) => project.root === activeRecord?.project_root) ?? null
+  // La madre de una conversación hija (#40), para la miga de la cabecera.
+  const motherRecord = activeRecord?.parent_session_id ? session.sessionsById[activeRecord.parent_session_id] ?? null : null
+  const activeMother = motherRecord
+    ? {
+        id: motherRecord.id,
+        title: motherRecord.title || translate(lang, 'sidebar.newChat'),
+        brief: typeof activeRecord?.brief?.title === 'string' && activeRecord.brief.title !== activeTitle ? activeRecord.brief.title : null,
+        onOpen: (id: string) => { void session.selectSession(id) },
+      }
+    : null
 
   // Handoff `rinari code [path] [--session]`: misma sesión/proyecto.
   // Con path: project.open registra/deduplica y devuelve la sesión
@@ -280,7 +317,7 @@ function App() {
         confirmLabel: tr('update.restartAction'),
         cancelLabel: tr('common.cancel'),
       }).then((ok) => {
-        if (ok) void applyUpdate().catch((error) => toast.error(String(error)))
+        if (ok) void applyUpdate().catch((error) => toast.error(commandMessage(error)))
       })
     void onUpdateState((state) => {
       const before = previous
@@ -317,7 +354,8 @@ function App() {
       // App vive fuera del I18nProvider: se usa translate() con el idioma actual.
       const tr = (key: I18nKey, vars?: Record<string, string | number>) =>
         translate(lang, key, vars)
-      void checkForUpdates()
+      // Avanzado → Actualizaciones puede apagar la búsqueda al abrir.
+      void (useUIStore.getState().autoCheckUpdates ? checkForUpdates() : Promise.resolve(null))
         .then((found) => {
           if (!found) return
           toast(tr('update.available', { v: found.version }), {
@@ -361,6 +399,8 @@ function App() {
       target: session.sessionsError !== null ? undefined : { kind: 'providers' },
     })
   }, [bannerError, session.sessionsError, lang])
+  // Primer uso (#71): la bienvenida va antes de conectar el proveedor.
+  const [welcomeOpen, setWelcomeOpen] = useState(false)
   useEffect(() => {
     if (
       session.ready &&
@@ -369,7 +409,8 @@ function App() {
       session.providers.length === 0 &&
       !wizardSnoozed
     ) {
-      setWizardOpen(true)
+      if (!welcomeSeen()) setWelcomeOpen(true)
+      else setWizardOpen(true)
     }
   }, [session.ready, session.catalogLoaded, session.catalogError, session.providers.length, wizardSnoozed])
 
@@ -377,12 +418,17 @@ function App() {
     if (action === 'palette') togglePalette()
     if (action === 'settings') goSettings()
     if (action === 'sidebar') toggleSidebarCollapsed()
+    if (action === 'sidePanel') toggleDock()
     if (action === 'boards') toggleBoards()
-    if (action === 'flows') goFlows()
+    if (action === 'flows') openFlow()
     if (action === 'newChat') dispatchAction('new-chat')
     // Colapso/expansión solo actúan en Boards; en otras vistas no hacen nada.
     if (action === 'collapsePane') dispatchAction('collapse-pane')
     if (action === 'expandPane') dispatchAction('expand-pane')
+    // Abre el chip de proyecto del composer enfocado, si es una conversación nueva (#42).
+    if (action === 'projectPicker') window.dispatchEvent(new Event(PROJECT_PICKER_EVENT))
+    // Boards: el siguiente panel que te necesita; fuera de Boards no hace nada.
+    if (action === 'nextNeedsYou' && view === 'board') dispatchAction('board-next-needs-you')
   })
 
   const desktopActionRef = useRef<(action: DesktopAction) => void>(() => {})
@@ -394,20 +440,24 @@ function App() {
   const boardFocusPane = useBoardStore((s) => s.focusPane)
   const boardSessionIds = useMemo(() => new Set(boardPanes.map((pane) => pane.sessionId)), [boardPanes])
   const boardCounts = useBoardStatusStore(selectAttentionCounts)
-  const boardStatusByPane = useBoardStatusStore((s) => s.byPane)
-  /** Señal por sesión para el sidebar: categorías distinguibles, no un punto genérico. */
-  const boardSignalBySession = useMemo(() => {
-    const out: Record<string, 'needs_you' | 'failed' | 'unread'> = {}
-    for (const status of Object.values(boardStatusByPane)) {
-      const current = out[status.sessionId]
-      if (status.kind === 'needs_you') out[status.sessionId] = 'needs_you'
-      else if (status.kind === 'failed' && current !== 'needs_you') out[status.sessionId] = 'failed'
-      else if (status.unreadResultCount > 0 && !current) out[status.sessionId] = 'unread'
+  /**
+   * Señal por sesión para el sidebar, de **todas** las conversaciones (#33):
+   * te necesita, falló o resultado sin leer. Sale de la misma cuenta que el
+   * número de la barra de tareas.
+   */
+  const pendingBySession = useSessionPendingStore((state) => state.bySession)
+  const signalBySession = useMemo(() => {
+    const out: Record<string, SessionSignal> = {}
+    for (const [id, pending] of Object.entries(pendingBySession)) {
+      const signal = signalOf(pending)
+      if (signal) out[id] = signal
     }
     return out
-  }, [boardStatusByPane])
+  }, [pendingBySession])
   const boardLabelFor = (id: string) => {
     const record = session.sessionsById[id]
+    // Las conversaciones de la Agency no están en la lista de Rinari.
+    if (!record && useAgencyStore.getState().sessionLabels[id]) return useAgencyStore.getState().sessionLabels[id]
     return record?.title || (record?.project_root ? projectDisplayName(record.project_root) : null) || translate(lang, 'sidebar.newChat')
   }
   const focusedBoardPane = boardPanes.find((pane) => pane.paneId === boardFocusedPaneId) ?? null
@@ -416,44 +466,39 @@ function App() {
   // paleta. En Boards es el panel enfocado y **nunca** todos los docks
   // montados; en Normal, la sesión activa.
   const dockTargetSessionId = (view === 'board' ? focusedBoardPane?.sessionId : session.activeSession) || null
-  // Se selecciona la superficie, no el layout. `layoutFor` devuelve un objeto
-  // **nuevo** cuando la sesión todavía no tiene layout guardado, y un selector
-  // que devuelve una referencia nueva en cada llamada hace que el store
-  // entregue un snapshot distinto cada render: la aplicación entra en un bucle
-  // y la ventana se queda en blanco. Una cadena o `null` no tiene ese problema.
-  const dockSurface = useSessionDockStore(
-    useCallback(
-      (state: SessionDockState) => {
-        if (!dockTargetSessionId) return null
-        const layout = state.layouts[dockNamespaceKey(state.homeId, dockTargetSessionId)]
-        return layout?.visible ? layout.activeSurface : null
-      },
-      [dockTargetSessionId],
-    ),
-  )
-
+  // Los botones de las vistas solo aparecen con una conversación de verdad:
+  // no en la pantalla de inicio, en una conversación nueva sin enviar, en
+  // Ajustes ni en las demás pantallas sin sesión (#47).
+  // Rinari Agency: en el chat directo de un agente los botones están desde el
+  // principio, aunque esté vacío («Reglas» importa antes del primer mensaje).
+  const activeIsAgentChat = useAgencyStore((s) => Boolean(session.activeSession && (s.agentSessions[session.activeSession] || s.postSessions[session.activeSession])))
+  const dockButtonsSessionId = view === 'board' ? focusedBoardPane?.sessionId || null : view === 'chat' && (activeHasContent || activeIsAgentChat) ? session.activeSession || null : null
   /**
-   * Abre, cambia o cierra el dock de la sesión destino.
-   *
-   * Una sola semántica para los cuatro caminos que llegan aquí: cerrado abre
-   * en esa superficie, abierto en otra cambia de pestaña sin cerrar, y abierto
-   * en la misma cierra. Se envía por la acción tipada existente —que nombra su
-   * destinatario— en vez de tocar el store de cada sesión montada.
+   * Botón de una vista del panel lateral (barra de título, atajo, menú o
+   * paleta): la abre o la cierra en la sesión destino. Desde un atajo, con el
+   * mosaico lleno, ocupa el sitio de la última (la barra pregunta cuál).
    */
   const toggleDockSurface = useCallback(
     (surface: DockSurface) => {
       if (!dockTargetSessionId) return
-      const layout = useSessionDockStore.getState().layoutFor(dockTargetSessionId)
-      if (nextDockIntent(layout, surface) === 'close') {
-        // Sin superficie, la acción alterna la visibilidad: la cierra.
-        requestDockToggle({ sessionId: dockTargetSessionId })
-        return
-      }
-      requestDockToggle({ sessionId: dockTargetSessionId, surface })
+      const store = useSessionDockStore.getState()
+      const { view } = viewForSurface(surface)
+      if (store.toggleView(dockTargetSessionId, view) === 'full') store.openView(dockTargetSessionId, view)
     },
     [dockTargetSessionId],
   )
-  /** El botón de la barra: abre el panel en su última pestaña, o lo cierra. */
+  /**
+   * El Flujo es una vista del panel lateral (#43): el atajo, el menú y «Ver
+   * flujo» la abren en la sesión destino (o en la que se indica), sin cerrarla
+   * si ya está abierta. Desde una pantalla sin sesión se vuelve a Normal.
+   */
+  const openFlow = useCallback((sessionId?: string) => {
+    const target = sessionId ?? dockTargetSessionId
+    if (!target) return
+    if (view !== 'chat' && view !== 'board') goNormal()
+    useSessionDockStore.getState().openView(target, 'flow')
+  }, [dockTargetSessionId, goNormal, view])
+  /** Ctrl+B: oculta o vuelve a mostrar el panel lateral sin cerrar sus vistas. */
   const toggleDock = useCallback(() => {
     if (dockTargetSessionId) requestDockToggle({ sessionId: dockTargetSessionId })
   }, [dockTargetSessionId])
@@ -462,6 +507,8 @@ function App() {
   const homeId = session.status?.home_id ?? null
   useEffect(() => {
     useSessionDockStore.getState().setHomeId(homeId)
+    // Los recibos de lectura también son de ese home (plan-boards C12).
+    useBoardAttentionStore.getState().setHomeId(homeId)
     // El alcance de Flujos es un id del Engine (proyecto o sesión) y se guarda
     // por el mismo motivo: en otro home ese id no existe o es otra cosa.
     useUIStore.getState().setFlowHomeId(homeId)
@@ -478,6 +525,194 @@ function App() {
     void session.selectSession(id)
     goChat()
   }
+  // -- Rinari Agency (A1) ---------------------------------------------------------
+  // Un espacio aparte: con la Agency abierta cambia la barra lateral entera y
+  // la vista Normal muestra sus páginas. Sin `agency_agents_v1` no se ofrece.
+  const agencyEnabled = session.status?.capabilities.agency_agents_v1 === true
+  const agencySpace = useAgencyStore((s) => s.space)
+  const agencyPage = useAgencyStore((s) => s.page)
+  // A2: equipos, oficinas y pizarra (agency_teams_v1).
+  const teamsEnabled = agencyEnabled && session.status?.capabilities.agency_teams_v1 === true
+  const agency = useAgency(agencyEnabled, teamsEnabled, agencyEnabled && session.status?.capabilities.agency_board_v2 === true)
+  // The teams as they are now, for listeners that subscribe once (a cut chain names its team).
+  const agencyTeamsRef = useRef(agency.teams)
+  agencyTeamsRef.current = agency.teams
+  const activeProfileId = useProfileStore((s) => s.activeId)
+  const [agencyTutorialOpen, setAgencyTutorialOpen] = useState(false)
+  // agency_audit_v1: templates, Souls for agents, archived agents, rule destinations.
+  const agencyAuditEnabled = agencyEnabled && session.status?.capabilities.agency_audit_v1 === true
+  const [templatesOpen, setTemplatesOpen] = useState(false)
+  const inAgency = agencyEnabled && agencySpace === 'agency'
+  const enterAgency = () => {
+    // La conversación de Rinari que estaba abierta al entrar: se recupera al salir.
+    useAgencyStore.getState().rememberRinari(session.activeSession || null)
+    useAgencyStore.getState().enter()
+    goChat()
+    if (!agencyTutorialSeen(activeProfileId)) setAgencyTutorialOpen(true)
+  }
+  const leaveAgency = () => {
+    useAgencyStore.getState().leave()
+    const previous = useAgencyStore.getState().returnTo
+    if (previous && session.sessionsById[previous]) void session.selectSession(previous)
+    else session.openDraft()
+    goChat()
+  }
+  // Las conversaciones de agentes vistas eran del perfil anterior.
+  useEffect(() => {
+    // The conversation already open in the new profile keeps its mark: its
+    // session.open may have answered before this effect ran.
+    useAgencyStore.getState().clearAgentRows([session.activeSession])
+  }, [activeProfileId])
+  const openAgentChat = (agent: AgencyAgent) => {
+    useAgencyStore.getState().openAgent(agent.id)
+    if (agent.session_id) void session.selectSession(agent.session_id)
+    goChat()
+  }
+  const openOffice = (team: AgencyTeam) => {
+    useAgencyStore.getState().openOffice(team.id)
+    goChat()
+  }
+  const openPost = (team: AgencyTeam, agentId: string) => {
+    const post = team.posts.find((item) => item.agent_id === agentId)
+    useAgencyStore.getState().openPost(team.id, agentId)
+    if (post) void session.selectSession(post.session_id)
+    goChat()
+  }
+  const activeAgentId = agencyPage.kind === 'agent' || agencyPage.kind === 'edit-agent' ? agencyPage.agentId : null
+  const editingAgent = agencyPage.kind === 'edit-agent' ? agency.agents.find((item) => item.id === agencyPage.agentId) ?? null : null
+  const activeTeamId = agencyPage.kind === 'office' || agencyPage.kind === 'post' || agencyPage.kind === 'edit-team' ? agencyPage.teamId : null
+  const activeTeam = activeTeamId ? agency.teams.find((item) => item.id === activeTeamId) ?? null : null
+  const agencyData = useMemo(
+    () => ({ agents: agency.agents, teams: agency.teams, status: agency.status, halted: agency.halted, reload: agency.reload }),
+    [agency.agents, agency.teams, agency.status, agency.halted, agency.reload],
+  )
+  // El chat de un agente (directo o su puesto en un equipo): la barra de título
+  // dice de quién es desde el primer momento, y el chat vacío lo saluda él, no Rinari.
+  const chatAgentId = inAgency && (agencyPage.kind === 'agent' || agencyPage.kind === 'post') ? agencyPage.agentId : null
+  const chatAgent = chatAgentId ? agency.agents.find((item) => item.id === chatAgentId) ?? null : null
+  const chatTeam = agencyPage.kind === 'post' ? activeTeam : null
+  const chatAgentLabel = chatAgent ? (chatTeam ? `${chatAgent.name} · ${chatTeam.name}` : chatAgent.name) : null
+  const agencyPersona = chatAgent && session.activeSession
+    ? {
+        sessionId: session.activeSession,
+        art: agencyHero,
+        title: translate(lang, 'agency.chat.emptyTitle', { name: chatAgent.name }),
+        subtitle: chatTeam
+          ? translate(lang, 'agency.chat.emptyPost', { team: chatTeam.name })
+          : chatAgent.role?.trim() || translate(lang, 'agency.chat.emptyCopy'),
+        // The composer names the agent and shows its effort and model (A9).
+        agentName: chatAgent.name,
+        agentEffort: chatAgent.reasoning_effort ?? null,
+        agentModel: chatAgent.model ?? null,
+        // D-32: stopped, only what the owner writes runs; the chat says so.
+        halted: agency.halted,
+      }
+    : undefined
+  // Un puesto es una conversación como el chat directo; la oficina y las fichas no.
+  const agencyMain = inAgency && view === 'chat' && agencyPage.kind !== 'agent' && agencyPage.kind !== 'post'
+  const stopAllAgents = async () => {
+    const ok = await confirm({
+      title: translate(lang, 'agency.stopAll.title'),
+      body: translate(lang, 'agency.stopAll.body'),
+      confirmLabel: translate(lang, 'agency.stopAll.confirm'),
+      cancelLabel: translate(lang, 'agency.settings.cancel'),
+    })
+    if (!ok) return
+    try {
+      const result = await engineApi.agencyStopAll()
+      toast.success(translate(lang, 'agency.stopAll.done', { turns: result.cancelled_turns, rules: result.paused_rules }), {
+        description: translate(lang, 'agency.stopAll.board', { errands: result.blocked_errands ?? 0 }),
+      })
+      void agency.reload()
+    } catch (error) {
+      toast.error(commandMessage(error))
+    }
+  }
+  // D-2: una cadena de la oficina que el Engine paró se dice, con el porqué.
+  useEffect(() => {
+    let stop: (() => void) | undefined
+    let disposed = false
+    void onEngineEvent((event) => {
+      if (event.event !== 'agency.chain.stopped') return
+      const payload = event.payload as { reason?: string; detail?: string; team_id?: string; chain_id?: string } | undefined
+      const why = [translate(lang, chainReasonKey(payload?.reason), { max: CHAIN_MAX_HOPS }), payload?.detail].filter(Boolean).join(' · ')
+      const teamId = typeof payload?.team_id === 'string' ? payload.team_id : null
+      const team = teamId ? agencyTeamsRef.current.find((item) => item.id === teamId) ?? null : null
+      const open = teamId ? () => { useAgencyStore.getState().openOffice(teamId); goChat() } : undefined
+      const title = team ? translate(lang, 'agency.chain.stoppedIn', { team: team.name }) : translate(lang, 'agency.chain.stopped')
+      toast.warning(title, {
+        description: why,
+        duration: 15_000,
+        action: open ? { label: translate(lang, 'agency.chain.see'), onClick: open } : undefined,
+      })
+      // The bell keeps it (the toast goes away): in the profile of that team.
+      void (team
+        ? Promise.resolve(team.rinari_profile_id)
+        : teamId ? engineApi.agencyTeam(teamId).then((result) => result.team.rinari_profile_id).catch(() => null) : Promise.resolve(null)
+      ).then((profileId) => useNotificationCenter.getState().push({
+        id: payload?.chain_id ? `chain:${payload.chain_id}` : undefined,
+        module: 'agency',
+        title,
+        body: why,
+        tone: 'warning',
+        target: teamId ? { kind: 'agency-office', teamId } : undefined,
+        profileId,
+      }))
+    }).then((unlisten) => {
+      if (disposed) unlisten()
+      else stop = unlisten
+    })
+    return () => {
+      disposed = true
+      stop?.()
+    }
+  }, [lang])
+  // D-11: una clave pegada en el chat de un agente ya salió; se dice y se recomienda cambiarla.
+  useEffect(() => {
+    let stop: (() => void) | undefined
+    let disposed = false
+    void onEngineEvent((event) => {
+      if (event.event !== 'agency.secret_pasted') return
+      toast.warning(translate(lang, 'agency.secretPasted.title'), { description: translate(lang, 'agency.secretPasted.body'), duration: 20_000 })
+    }).then((unlisten) => {
+      if (disposed) unlisten()
+      else stop = unlisten
+    })
+    return () => {
+      disposed = true
+      stop?.()
+    }
+  }, [lang])
+  const agentSessions = useAgencyStore((s) => s.agentSessions)
+  const postSessions = useAgencyStore((s) => s.postSessions)
+  // A rule's run opens its conversation inside the Agency, as that agent's (A1).
+  useEffect(() => {
+    const openRun = (event: Event) => {
+      const detail = (event as CustomEvent<AgencyOpenRunDetail>).detail
+      if (!detail?.sessionId) return
+      if (useAgencyStore.getState().space !== 'agency') useAgencyStore.getState().rememberRinari(session.activeSession || null)
+      useAgencyStore.getState().markAgentRows([detail.sessionId])
+      useAgencyStore.getState().openAgent(detail.agentId)
+      void session.selectSession(detail.sessionId)
+      goChat()
+    }
+    window.addEventListener(AGENCY_OPEN_RUN_EVENT, openRun)
+    return () => window.removeEventListener(AGENCY_OPEN_RUN_EVENT, openRun)
+  })
+  // «Revisar» en el aviso de una regla propuesta: el chat del agente con «Reglas» abierta.
+  useEffect(() => {
+    const review = (event: Event) => {
+      const agentId = (event as CustomEvent<{ agentId: string }>).detail?.agentId
+      const agent = agency.agents.find((item) => item.id === agentId)
+      if (!agent?.session_id) return
+      if (useAgencyStore.getState().space !== 'agency') useAgencyStore.getState().rememberRinari(session.activeSession || null)
+      openAgentChat(agent)
+      useSessionDockStore.getState().openView(agent.session_id, 'rules')
+    }
+    window.addEventListener(AGENCY_REVIEW_RULES_EVENT, review)
+    return () => window.removeEventListener(AGENCY_REVIEW_RULES_EVENT, review)
+  })
+
   const openInBoard = (id: string) => {
     const existing = useBoardStore.getState().paneForSession(id)
     if (existing) boardFocusPane(existing.paneId)
@@ -496,7 +731,7 @@ function App() {
         }
         case 'view-normal': goNormal(); break
         case 'view-boards': goBoard(); break
-        case 'view-flows': goFlows(); break
+        case 'view-flows': openFlow(); break
         case 'toggle-boards': toggleBoards(); break
         case 'collapse-pane': if (view === 'board') collapseFocusedPane(); break
         case 'expand-pane': if (view === 'board') expandPaneShortcut(); break
@@ -511,6 +746,7 @@ function App() {
         }
         case 'toggle-focus-mode': goBoard(); toggleFocusMode(); break
         case 'mark-all-board-results-read': markAllBoardResultsRead(); break
+        case 'mark-all-read': markEverythingRead(); break
         case 'open-folder': useCreateProjectStore.getState().openWith(); break
         case 'close-session': {
           // Contextual: en Boards quita el panel enfocado sin cerrar su sesión.
@@ -522,7 +758,7 @@ function App() {
         case 'about': goSettings('about'); break
         case 'report-bug':
           void platform().opener.openUrl(bugReportUrl(APP_VERSION, session.status, translate(lang, 'settings.about.issueTemplate')))
-            .catch(error => toast.error(String(error)))
+            .catch(error => toast.error(commandMessage(error)))
           break
         case 'engine': goEngine(); break
         case 'schedules': if (schedulesEnabled) goSchedules(); break
@@ -534,7 +770,8 @@ function App() {
         // dock, no la vista global.
         case 'files': toggleDockSurface('files'); break
         case 'browser': toggleDockSurface('browser'); break
-        case 'workspace-panel': toggleDockSurface('workspace'); break
+        case 'workspace-panel': toggleDockSurface('changes'); break
+        case 'side-panel': toggleDock(); break
         case 'terminal': toggleDockSurface('terminal'); break
         case 'commands': setPaletteOpen(true); break
         case 'processes':
@@ -554,9 +791,9 @@ function App() {
           if (!found) { toast.success(translate(lang, 'update.upToDate')); return }
           toast(translate(lang, 'update.available', { v: found.version }), {
             description: found.unsigned ? translate(lang, 'update.unsigned') : undefined,
-            action: { label: translate(lang, 'update.download'), onClick: () => void downloadUpdate().catch(error => toast.error(String(error))) },
+            action: { label: translate(lang, 'update.download'), onClick: () => void downloadUpdate().catch(error => toast.error(commandMessage(error))) },
           })
-        }).catch(error => toast.error(String(error))); break
+        }).catch(error => toast.error(commandMessage(error))); break
       }
     }
     desktopActionRef.current = handle
@@ -596,10 +833,17 @@ function App() {
       {confirmDialog}
       {profileMoves.dialog}
       <CreateProjectDialog
-        onCreated={(_project, created) => {
+        onCreated={(project, created) => {
           void session.refreshProjects()
+          // A conversation of the new project, not created until the first
+          // message (#60): leaving without writing leaves nothing behind.
+          if (!created) {
+            session.openDraft(project.id)
+            goChat()
+            return
+          }
           void session.refreshSessions().then(() => {
-            if (created) void session.selectSession(created.id).then(() => goChat())
+            void session.selectSession(created.id).then(() => goChat())
           })
         }}
       />
@@ -608,6 +852,7 @@ function App() {
       <UpdateNotifier lang={lang} />
       <SkillLearnedNotifier />
       {schedulesEnabled && <ScheduleNotifier onOpenSession={chooseSession} />}
+      {session.status?.capabilities.mcp_background_connect_v1 === true && <ReconnectNotifier />}
       <ScheduleForm />
       <DesktopContextMenu />
       <ProcessRuntimeProvider
@@ -646,9 +891,48 @@ function App() {
             </button>
           </div>
         )}
-        sidebar={
+        sidebar={inAgency ? (
+          <AgencySidebar
+            collapsed={sidebarCollapsed}
+            agents={agency.agents}
+            status={agency.status}
+            activeAgentId={activeAgentId}
+            creating={agencyPage.kind === 'new-agent'}
+            onOpenAgent={openAgentChat}
+            onNewAgent={() => { useAgencyStore.getState().newAgent(); goChat() }}
+            onTutorial={() => setAgencyTutorialOpen(true)}
+            onLeave={leaveAgency}
+            onSettings={() => { useAgencyStore.getState().openSettings(activeAgentId, activeTeamId); goChat() }}
+            settingsOpen={agencyPage.kind === 'settings'}
+            onStopAll={session.status?.capabilities.agency_stop_all_v1 === true ? () => void stopAllAgents() : undefined}
+            halted={agency.halted}
+            onResume={() => void engineApi.agencyResume().then((result) => {
+              toast.success(translate(lang, 'agency.resume.done', { rules: result.resumed_rules ?? 0, errands: result.restored_errands ?? 0 }))
+              void agency.reload()
+            }).catch((error) => toast.error(commandMessage(error)))}
+            teams={agency.teams}
+            activeTeam={agencyPage.kind === 'office' ? { teamId: agencyPage.teamId, agentId: null } : agencyPage.kind === 'post' ? { teamId: agencyPage.teamId, agentId: agencyPage.agentId } : null}
+            onOpenOffice={openOffice}
+            onOpenPost={openPost}
+            onNewTeam={teamsEnabled ? () => { useAgencyStore.getState().newTeam(); goChat() } : undefined}
+            onUseTemplate={teamsEnabled && agencyAuditEnabled ? () => setTemplatesOpen(true) : undefined}
+            onAgentCard={(agentId) => { useAgencyStore.getState().editAgent(agentId); goChat() }}
+            onOpenSettings={(agentId, teamId) => { useAgencyStore.getState().openSettings(agentId, teamId); goChat() }}
+            onTeamCard={(team) => {
+              useAgencyStore.getState().openOffice(team.id)
+              useSessionDockStore.getState().openView(officeDockKey(team.id), 'team')
+              goChat()
+            }}
+            onEditTeam={(team) => { useAgencyStore.getState().editTeam(team.id); goChat() }}
+            onChanged={agencyAuditEnabled ? () => void agency.reload() : undefined}
+            onArchived={agencyAuditEnabled ? () => { useAgencyStore.getState().openSettings(null, null, 'archived'); goChat() } : undefined}
+          />
+        ) : (
           <AppSidebar
             collapsed={sidebarCollapsed}
+            agencyCard={agencyEnabled
+              ? (compact) => <AgencyCard mode="enter" status={agency.status} onClick={enterAgency} compact={compact} />
+              : undefined}
             onSearch={() => setPaletteOpen(true)}
             onOpenSettings={() => goSettings()}
             onOpenEngine={goEngine}
@@ -657,7 +941,7 @@ function App() {
               session.activeProjectRoot ? () => goProject(session.activeProjectRoot as string) : null
             }
             onNewProjectChat={(id) => { session.openDraft(id); goChat() }}
-            onMoveSession={(id, projectId) => void desktopApi.moveSession(id, projectId).then(() => session.refreshSessions()).catch(error => toast.error(String(error)))}
+            onMoveSession={(id, projectId) => void desktopApi.moveSession(id, projectId).then(() => session.refreshSessions()).catch(error => toast.error(commandMessage(error)))}
             onMoveSessionProfile={profileMoves.moveSession}
             onMoveProjectProfile={profileMoves.moveProject}
             onNewChat={() => dispatchAction('new-chat')}
@@ -670,12 +954,13 @@ function App() {
             activeId={view === 'board' ? (focusedBoardPane?.sessionId ?? '') : session.activeSession}
             busySessionIds={session.busySessionIds}
             boardSessionIds={boardSessionIds}
-            boardSignalBySession={boardSignalBySession}
+            signalBySession={signalBySession}
             onOpenInBoard={openInBoard}
             onViewFlow={(scope) => {
-              // Flujos muestra la conversación activa: se abre esa y se va allí.
+              // El Flujo vive en el panel lateral de la conversación (#43): se
+              // abre esa conversación y su vista Flujo.
               void session.selectSession(scope.id)
-              goFlows()
+              openFlow(scope.id)
             }}
             onSelectSession={chooseSession}
             onOpenProject={(root) => goProject(root)}
@@ -697,53 +982,78 @@ function App() {
               : undefined}
             approvals={session.approvals}
           />
-        }
+        )}
         topbar={
           <AppStatusBar
             context={
-              view === 'chat' && activeHasContent ? (
-                <ChatHeader
-                  title={activeTitle}
-                  sessionId={activeRecord?.id ?? null}
-                  kind={activeRecord?.kind ?? null}
-                  mode={activeRecord?.mode ?? null}
-                  projectRoot={session.activeProjectRoot}
-                  projectName={activeProject?.name ?? session.activeProjectRoot}
-                  git={
-                    session.activeGitStatus?.status.available
-                      ? {
-                          branch: session.activeGitStatus.status.branch,
-                          dirty: session.activeGitStatus.status.dirty,
-                          changed: session.activeGitStatus.status.files.length,
-                        }
-                      : null
-                  }
-                  gitMissing={session.activeGitError !== null}
-                  onOpenProject={
-                    session.activeProjectRoot
-                      ? () => goProject(session.activeProjectRoot as string)
-                      : null
-                  }
-                />
-              ) : view !== 'chat' && view !== 'board' && view !== 'flows' ? (
+              // Las páginas propias de la Agency (inicio, ficha) no son una conversación.
+              agencyMain && agencyPage.kind === 'office' && activeTeam ? (
+                <span className="truncate text-sm font-semibold text-[var(--text)]" data-testid="agency-office-title">{activeTeam.name}</span>
+              ) : agencyMain ? (
+                <span className="truncate text-sm font-semibold text-[var(--text)]">{translate(lang, 'agency.name')}</span>
+              ) : view === 'chat' && chatAgent && inAgency ? (
+                <span className="agency-chat-head">
+                  {activeHasContent
+                    ? <ChatHeader title={activeTitle || chatAgentLabel} sessionId={activeRecord?.id ?? null} mother={activeMother} />
+                    : <span className="truncate text-sm font-semibold text-[var(--text)]" data-testid="agency-chat-title">{chatAgentLabel}</span>}
+                  <button
+                    type="button"
+                    className="btn btn-quiet btn-xs agency-chat-card"
+                    onClick={() => useAgencyStore.getState().editAgent(chatAgent.id)}
+                    title={translate(lang, 'agency.menu.cardOf', { name: chatAgent.name })}
+                    aria-label={translate(lang, 'agency.menu.cardOf', { name: chatAgent.name })}
+                    data-testid="agency-chat-card"
+                  >
+                    <IdCard size={13} aria-hidden="true" /> {translate(lang, 'agency.menu.card')}
+                  </button>
+                </span>
+              ) : view === 'chat' && activeHasContent ? (
+                <ChatHeader title={activeTitle || chatAgentLabel} sessionId={activeRecord?.id ?? null} mother={activeMother} />
+              ) : view === 'chat' && chatAgentLabel ? (
+                <span className="truncate text-sm font-semibold text-[var(--text)]" data-testid="agency-chat-title">{chatAgentLabel}</span>
+              ) : view !== 'chat' && view !== 'board' ? (
                 <span className="truncate text-sm font-semibold text-[var(--text)]">{translate(lang, `topbar.view.${view}` as I18nKey)}</span>
               ) : null
             }
-            selectedView={view === 'chat' || view === 'board' || view === 'flows' ? view : null}
-            onSelectView={(next) => (next === 'board' ? goBoard() : next === 'flows' ? goFlows() : goNormal())}
+            selectedView={view === 'chat' || view === 'board' ? view : null}
+            onSelectView={(next) => (next === 'board' ? goBoard() : goNormal())}
+            hideViewSwitcher={inAgency}
             toggleShortcut={shortcutBindings.boards}
             attentionCount={attentionSessionCount}
             boardAttentionCount={boardCounts.attentionPaneCount}
             attentionMenu={
               <NotificationCenter
                 labelFor={boardLabelFor}
+                projectFor={(id) => {
+                  const root = session.sessionsById[id]?.project_root
+                  return root ? projectDisplayName(root) : null
+                }}
                 goBoard={goBoard}
                 disabled={!session.ready}
                 onOpenTarget={(target) => {
-                  if (target.kind === 'session') chooseSession(target.sessionId)
+                  if (target.kind === 'session') {
+                    // De otro perfil: primero ese perfil (#34).
+                    void switchToProfileOf(session.sessionsById[target.sessionId]?.rinari_profile_id).then(() => {
+                      // Una conversación de la Agency se abre dentro de la Agency.
+                      if (enterAgencySession(target.sessionId, session.activeSession || null)) {
+                        void session.selectSession(target.sessionId)
+                        goChat()
+                      } else chooseSession(target.sessionId)
+                      if (target.turnId) requestTurnReveal({ sessionId: target.sessionId, turnId: target.turnId })
+                    }).catch((error) => toast.error(commandMessage(error)))
+                  }
+                  else if (target.kind === 'agency-rules') {
+                    window.dispatchEvent(new CustomEvent(AGENCY_REVIEW_RULES_EVENT, { detail: { agentId: target.agentId } }))
+                  }
+                  else if (target.kind === 'agency-office') {
+                    if (useAgencyStore.getState().space !== 'agency') useAgencyStore.getState().rememberRinari(session.activeSession || null)
+                    useAgencyStore.getState().openOffice(target.teamId)
+                    goChat()
+                  }
                   else if (target.kind === 'schedules') goSchedules()
                   else if (target.kind === 'providers') goSettings('providers')
                   else if (target.kind === 'update') goSettings('about')
+                  else if (target.kind === 'connector') useUIStore.getState().openConnector(target.name)
                   else if (target.skill) useUIStore.getState().openSkill(target.skill)
                   else goSettings('skills')
                 }}
@@ -752,24 +1062,97 @@ function App() {
             onOpenMobileSidebar={() => setSidebarOpen(true)}
             onToggleSidebar={toggleSidebarCollapsed}
             sidebarCollapsed={sidebarCollapsed}
-            dockOpen={dockSurface !== null}
-            dockTargetAvailable={Boolean(dockTargetSessionId)}
-            onToggleDock={toggleDock}
+            dockViews={agencyMain && agencyPage.kind === 'office' && activeTeam ? (
+              // La oficina usa el panel lateral de una conversación, con solo sus vistas.
+              <DockViewButtons key={officeDockKey(activeTeam.id)} sessionId={officeDockKey(activeTeam.id)} terminalEnabled={false} onlyViews={['errand', 'board', 'work', 'team']} />
+            ) : dockButtonsSessionId && !agencyMain ? (
+              <DockViewButtons
+                key={dockButtonsSessionId}
+                sessionId={dockButtonsSessionId}
+                terminalEnabled={session.status?.capabilities.desktop_terminal_v1 === true}
+                extraViews={agentSessions[dockButtonsSessionId] ? ['rules'] : postSessions[dockButtonsSessionId] ? ['board'] : []}
+              />
+            ) : null}
           />
         }
       >
         {/* Cada vista entra con un fundido corto (solo opacidad: un transform
             movería el rectángulo del navegador nativo durante la entrada). */}
+        <AgencyDataContext.Provider value={agencyData}>
         <div key={view} className="view-stage">
-        {view === 'chat' && <SingleSessionView onOpenProviders={() => goSettings('providers')} processesOpenSignal={processesSignal} />}
+        {view === 'chat' && !agencyMain && <SingleSessionView onOpenProviders={() => goSettings('providers')} processesOpenSignal={processesSignal} persona={agencyPersona} />}
+        {agencyMain && agencyPage.kind === 'home' && (
+          <AgencyHome
+            agents={agency.agents}
+            teams={agency.teams}
+            status={agency.status}
+            loaded={agency.loaded}
+            onOpenAgent={openAgentChat}
+            onEditAgent={(agent) => useAgencyStore.getState().editAgent(agent.id)}
+            onNewAgent={() => useAgencyStore.getState().newAgent()}
+            onOpenOffice={teamsEnabled ? openOffice : undefined}
+            onOpenPost={teamsEnabled ? openPost : undefined}
+            onEditTeam={teamsEnabled ? (team) => useAgencyStore.getState().editTeam(team.id) : undefined}
+            onNewTeam={teamsEnabled ? () => useAgencyStore.getState().newTeam() : undefined}
+            onUseTemplate={teamsEnabled && agencyAuditEnabled ? () => setTemplatesOpen(true) : undefined}
+          />
+        )}
+        {agencyMain && agencyPage.kind === 'settings' && (
+          <AgencySettings
+            // Abrir «Archivados» con los ajustes ya abiertos cambia la sección.
+            key={agencyPage.scope ?? 'settings'}
+            agents={agency.agents}
+            teams={agency.teams}
+            teamsEnabled={teamsEnabled}
+            memoryEnabled={session.status?.capabilities.agency_agent_memory_v1 === true}
+            auditEnabled={agencyAuditEnabled}
+            initialAgentId={agencyPage.agentId}
+            initialTeamId={agencyPage.teamId ?? null}
+            initialScope={agencyPage.scope}
+          />
+        )}
+        {agencyMain && agencyPage.kind === 'office' && activeTeam && (
+          <SessionWorkspace key={activeTeam.id} sessionId={officeDockKey(activeTeam.id)} record={null} density="normal" focused browserEnabled={false}>
+            <OfficeView team={activeTeam} agents={agency.agents} />
+          </SessionWorkspace>
+        )}
+        {agencyMain && (agencyPage.kind === 'new-team' || agencyPage.kind === 'edit-team') && (
+          <TeamForm
+            key={agencyPage.kind === 'edit-team' ? agencyPage.teamId : 'new-team'}
+            agents={agency.agents}
+            team={agencyPage.kind === 'edit-team' ? activeTeam : null}
+            onSaved={(team) => {
+              void agency.reload()
+              useAgencyStore.getState().openOffice(team.id)
+            }}
+            onArchived={() => {
+              void agency.reload()
+              useAgencyStore.getState().goHome()
+            }}
+            onCancel={() => (activeTeam ? useAgencyStore.getState().openOffice(activeTeam.id) : useAgencyStore.getState().goHome())}
+          />
+        )}
+        {agencyMain && (agencyPage.kind === 'new-agent' || agencyPage.kind === 'edit-agent') && (
+          <AgentForm
+            key={agencyPage.kind === 'edit-agent' ? agencyPage.agentId : 'new'}
+            agent={editingAgent}
+            draftEnabled={session.status?.capabilities.agency_draft_v1 === true}
+            soulEnabled={agencyAuditEnabled}
+            onSaved={(agent, created) => {
+              void agency.reload()
+              if (created) openAgentChat(agent)
+              else useAgencyStore.getState().goHome()
+            }}
+            onArchived={() => {
+              void agency.reload()
+              useAgencyStore.getState().goHome()
+            }}
+            onCancel={() => useAgencyStore.getState().goHome()}
+          />
+        )}
         {view === 'board' && (
           <Suspense fallback={<div className="board-canvas" aria-busy="true" />}>
             <BoardView actionsRef={boardActionsRef} />
-          </Suspense>
-        )}
-        {view === 'flows' && (
-          <Suspense fallback={<div className="flow-view" aria-busy="true" />}>
-            <FlowView />
           </Suspense>
         )}
         {view === 'engine' && <EngineConsole session={session} />}
@@ -824,17 +1207,63 @@ function App() {
           />
         )}
         {view === 'settings' && (
-          <SettingsView
-            appVersion={APP_VERSION}
-            providers={session.providers}
-            models={session.models}
-            activeSessionId={session.activeSession || null}
-            engineCapabilities={session.status?.capabilities}
-            onCatalogChanged={() => void session.refreshCatalog()}
-          />
+          <Suspense fallback={<div className="settings-loading" aria-busy="true" />}>
+            <SettingsView
+              appVersion={APP_VERSION}
+              providers={session.providers}
+              models={session.models}
+              activeSessionId={session.activeSession || null}
+              engineCapabilities={session.status?.capabilities}
+              onCatalogChanged={() => void session.refreshCatalog()}
+              onOpenSession={chooseSession}
+            />
+          </Suspense>
         )}
         </div>
+        </AgencyDataContext.Provider>
       </AppShell>
+
+      <ReviewExportDialog />
+
+      <AgencyTutorial
+        open={agencyTutorialOpen}
+        draftAvailable={session.status?.capabilities.agency_draft_v1 === true}
+        templatesAvailable={teamsEnabled && agencyAuditEnabled}
+        onClose={(next) => {
+          // Visto o saltado, no vuelve solo en este perfil (D-20).
+          markAgencyTutorialSeen(activeProfileId)
+          setAgencyTutorialOpen(false)
+          if (next === 'create') {
+            useAgencyStore.getState().newAgent()
+            goChat()
+            // «Créalo con Rinari»: la ficha nueva abre con su frase lista para escribir.
+            requestAnimationFrame(() => requestAnimationFrame(() => document.querySelector<HTMLInputElement>('[data-testid="agency-draft-input"]')?.focus()))
+          }
+          if (next === 'template') setTemplatesOpen(true)
+        }}
+      />
+
+      {agencyAuditEnabled && (
+        <TemplatePicker
+          open={templatesOpen}
+          onClose={() => setTemplatesOpen(false)}
+          onCreated={(team) => {
+            void agency.reload()
+            useAgencyStore.getState().openOffice(team.id)
+            goChat()
+          }}
+        />
+      )}
+
+      <WelcomeDialog
+        open={welcomeOpen}
+        onClose={() => {
+          // Respondida o saltada, no vuelve sola; se repite desde Ajustes → Memoria.
+          markWelcomeSeen()
+          setWelcomeOpen(false)
+          setWizardOpen(true)
+        }}
+      />
 
       <ProviderWizard
         open={wizardOpen}
@@ -846,6 +1275,12 @@ function App() {
             setWizardSnoozed(true)
           }
         }}
+      />
+
+      {/* Los servidores que trae el .mcp.json de un proyecto de confianza: se pregunta una vez por cada uno (C4). */}
+      <ProjectOffersPrompt
+        root={view === 'project' ? projectRoot : activeRecord?.project_root ?? null}
+        enabled={session.status?.capabilities.mcp_catalog_v1 === true}
       />
 
       <CommandPalette

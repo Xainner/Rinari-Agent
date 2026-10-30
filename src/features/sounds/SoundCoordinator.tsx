@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { useRuntimeStore } from '../engine/EngineContext'
 import { getWindowAttention, useWindowAttention } from '../../hooks/useWindowAttention'
+import { runNotifies } from '../schedules/NotifyField'
+import type { ScheduleNotify } from '../../services/engine'
 import { requestSound } from '../../services/notificationSounds'
 import { useBoardStore } from '../../stores/board'
 import { useSoundPrefs } from '../../stores/soundPrefs'
@@ -32,6 +34,12 @@ export function sessionAttended(sessionId: string, activeSession: string): boole
  * que ocurre en la conversación que estás mirando no suena (salvo que lo
  * pidas en Ajustes).
  */
+/** Una vuelta de una tarea programada suena solo si su ajuste «Avisos» lo permite. */
+function scheduledAllows(timeline: TurnTimeline, problem: boolean): boolean {
+  const origin = timeline.origin as { kind?: string; notify?: ScheduleNotify } | null | undefined
+  return origin?.kind !== 'schedule' || runNotifies(origin.notify, problem)
+}
+
 export default function SoundCoordinator({ activeSession }: { activeSession: string }) {
   const store = useRuntimeStore()
   // Mantiene viva la escucha de foco y visibilidad que lee `sessionAttended`.
@@ -59,7 +67,7 @@ export default function SoundCoordinator({ activeSession }: { activeSession: str
           live.add(timeline.turnId)
         } else if (wasLive) {
           live.delete(timeline.turnId)
-          if (!quiet(timeline.sessionId)) {
+          if (!quiet(timeline.sessionId) && scheduledAllows(timeline, timeline.status !== 'completed')) {
             if (timeline.status === 'completed') requestSound('success')
             else if (timeline.status === 'failed' || timeline.status === 'stopped') requestSound('error')
             // `cancelled` lo pidió el usuario: silencio.
@@ -70,7 +78,7 @@ export default function SoundCoordinator({ activeSession }: { activeSession: str
           const id = item.request.request_id
           if (asked.has(id)) continue
           asked.add(id)
-          if (wasLive && !quiet(timeline.sessionId)) requestSound('attention')
+          if (wasLive && !quiet(timeline.sessionId) && scheduledAllows(timeline, true)) requestSound('attention')
         }
       }
       for (const approval of state.approvals) {

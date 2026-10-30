@@ -2,6 +2,7 @@ import { ExternalLink } from 'lucide-react'
 import { useState } from 'react'
 import { useI18n } from '../../i18n'
 import type { WorkspaceMedia } from '../../platform'
+import { AudioPlayer } from './AudioPlayer'
 
 /** Audio y video que el chat puede intentar reproducir (el Engine confirma el tipo por sus bytes). */
 const AUDIO = new Set(['mp3', 'wav', 'ogg', 'oga', 'opus', 'm4a', 'aac', 'flac', 'weba'])
@@ -25,9 +26,16 @@ function takeTurn(element: HTMLMediaElement) {
  * Reproductor de un medio aprobado por el Engine y servido por el host por
  * tramos (`app://rinari/__media/…`). Sin autoplay salvo que se pida
  * (`autoPlay` tras un clic). Si Chromium no puede decodificarlo lo dice y
- * ofrece abrirlo con la aplicación del sistema.
+ * ofrece abrirlo con la aplicación del sistema. El audio usa el reproductor
+ * propio de Rinari (con su onda); el vídeo, los controles de Chromium.
  */
-export function MediaPlayer({ media, autoPlay = false, onOpenExternal }: { media: WorkspaceMedia; autoPlay?: boolean; onOpenExternal?: () => void }) {
+export function MediaPlayer({ media, autoPlay = false, onOpenExternal, audio }: {
+  media: WorkspaceMedia
+  autoPlay?: boolean
+  onOpenExternal?: () => void
+  /** Solo audio: la onda al primer ▶ y una duración mientras llegan los metadatos. */
+  audio?: { lazyWave?: boolean; durationHint?: number | null }
+}) {
   const { t } = useI18n()
   const [failed, setFailed] = useState(false)
   const playable = media.url && (media.kind === 'audio' || media.kind === 'video') && !failed
@@ -53,6 +61,6 @@ export function MediaPlayer({ media, autoPlay = false, onOpenExternal }: { media
     onError: () => setFailed(true),
   }
   return media.kind === 'audio'
-    ? <audio {...common} className="media-player-audio block w-full max-w-md" />
+    ? <AudioPlayer media={media} autoPlay={autoPlay} lazyWave={audio?.lazyWave} durationHint={audio?.durationHint} onPlay={takeTurn} onError={() => setFailed(true)} />
     : <video {...common} className="media-player-video block max-h-80 w-full max-w-xl rounded-lg bg-black" />
 }

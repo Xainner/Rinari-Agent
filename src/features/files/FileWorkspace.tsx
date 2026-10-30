@@ -20,19 +20,22 @@ import Markdown, { CodeBlock } from '../../components/Markdown'
 import HtmlPreview from './HtmlPreview'
 import { artifactImageUrl, isArtifactImage, rememberArtifactImageSize, useArtifactImage } from './artifactImage'
 import { MediaPlayer, mediaCandidate } from './MediaPlayer'
+import ImageViewer, { useImageViewer, type ViewerImage } from '../../components/image-viewer/ImageViewer'
 
 import { platform, type ContextMenuItem, type WorkspaceMedia } from '../../platform'
 import { translate, useI18n } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
+import { teamIdOfDockKey } from '../agency/AgencyData'
 
-type OpenFile = (path: string, turnId?: string) => void
+/** `from`: the conversation the link was written in, when it is not this one. */
+type OpenFile = (path: string, turnId?: string, from?: string) => void
 /**
  * Lo que se puede hacer con un enlace a archivo, ya con su sesión y su base:
  * dentro de un documento abierto, los relativos parten de su carpeta.
  */
 interface FileActions {
   /** Qué es el archivo y, si es imagen, audio o video, su URL servida por el host. */
-  media: (path: string, turnId?: string) => Promise<WorkspaceMedia>
+  media: (path: string, turnId?: string, from?: string) => Promise<WorkspaceMedia>
   open: OpenFile
   reveal: OpenFile
   openExternal: OpenFile
@@ -41,9 +44,25 @@ const FileContext = createContext<FileActions | null>(null)
 /** La vista de texto del Engine: más grande, se ofrece abrir fuera. */
 const TEXT_PREVIEW_LIMIT = 512 * 1024
 export const FileTurnContext = createContext<string | undefined>(undefined)
+/**
+ * La conversación en la que se escribió un enlace, si no es la del panel: en la
+ * oficina de un equipo, un agente enlaza archivos de su puesto (una ruta
+ * relativa a su carpeta decía «Session not found: office:…»).
+ */
+export const FileFromContext = createContext<string | undefined>(undefined)
 
 export function localFileTarget(href: string): string | null {
+  // Vacío o solo espacios no es un archivo (#67): antes salía `''` y el
+  // Engine respondía «A file path is required».
+  if (!href || !href.trim()) return null
   if (/^(https?:|mailto:|#)/i.test(href)) return null
+  // `sandbox:/mnt/data/x.csv` (lo escriben algunos modelos): el archivo
+  // está en la carpeta del turno con ese nombre.
+  const sandbox = /^sandbox:(?:\/mnt\/data\/)?(.+)$/i.exec(href.trim())
+  if (sandbox) {
+    const name = sandbox[1].split('/').pop() ?? ''
+    return name.trim() ? name : null
+  }
   if (
     /^[a-z][a-z0-9+.-]*:/i.test(href) &&
     !/^(artifact:|file:|[a-z]:[\\/])/i.test(href)
@@ -59,7 +78,15 @@ export function localFileTarget(href: string): string | null {
     path = path.replace(/^file:\/\//i, '')
     if (/^\/[a-z]:[\\/]/i.test(path)) path = path.slice(1)
   }
-  return path.replace(/:(\d+)(?::\d+)?$/, '')
+  const clean = path.replace(/:(\d+)(?::\d+)?$/, '')
+  return clean.trim() ? clean : null
+}
+
+/** `false` (y lo dice) si el enlace no lleva a ningún archivo (#67). */
+function pointsAtFile(path: string): boolean {
+  if (path && path.trim()) return true
+  toast.error(translate(useUIStore.getState().lang, 'files.notAFile'))
+  return false
 }
 
 export function fileUrlTransform(url: string): string {
@@ -77,7 +104,11 @@ export function FileLink({
 }) {
   const actions = useContext(FileContext)
   const turnId = useContext(FileTurnContext)
+  const from = useContext(FileFromContext)
   const target = localFileTarget(href)
+  // Un enlace que no apunta a nada que se pueda abrir se lee como texto,
+  // nunca como un archivo con la ruta vacía (#67).
+  if (target === null && !/^(https?:|mailto:|#)/i.test(href)) return <span>{children}</span>
   return (
     <a
       href={href}
@@ -91,17 +122,17 @@ export function FileLink({
         const selection = window.getSelection()?.toString() ?? ''
         const items: ContextMenuItem[] = []
         if (selection) items.push({ kind: 'action', text: translate(lang, 'edit.copy'), run: () => void copyText(selection) })
-        items.push({ kind: 'action', text: translate(lang, 'app.openFile'), run: () => actions.open(target, turnId) })
+        items.push({ kind: 'action', text: translate(lang, 'app.openFile'), run: () => actions.open(target, turnId, from) })
         if (!target.startsWith('artifact:')) {
-          items.push({ kind: 'action', text: translate(lang, 'files.revealInFolder'), run: () => actions.reveal(target, turnId) })
+          items.push({ kind: 'action', text: translate(lang, 'files.revealInFolder'), run: () => actions.reveal(target, turnId, from) })
         }
         items.push({ kind: 'action', text: translate(lang, 'app.copyAddress'), run: () => void copyText(target) })
-        void platform().contextMenu.show(items, { x: e.clientX, y: e.clientY }).catch((error) => toast.error(String(error)))
+        void platform().contextMenu.show(items, { x: e.clientX, y: e.clientY }).catch((error) => toast.error(commandMessage(error)))
       }}
       onClick={(e) => {
         if (target !== null && actions) {
           e.preventDefault()
-          actions.open(target, turnId)
+          actions.open(target, turnId, from)
         } else if (/^(https?:|mailto:)/i.test(href)) {
           e.preventDefault()
           void platform().opener.openUrl(href).catch((error) =>
@@ -113,6 +144,55 @@ export function FileLink({
       {children}
     </a>
   )
+}
+
+/**
+ * Una ruta local absoluta con extensión, como la escriben los modelos entre
+ * comillas invertidas (`C:\…\cancion.mp3`, `/home/…/informe.pdf`).
+ */
+export function looksLikeLocalPath(text: string): boolean {
+  if (text !== text.trim() || text.length < 4 || text.length > 1024 || text.includes('\n')) return false
+  return /^[A-Za-z]:[\\/][^<>|"*?]*\.[A-Za-z0-9]{1,8}$/.test(text) || /^\/(?:[^/<>|"*?]+\/)+[^/<>|"*?]+\.[A-Za-z0-9]{1,8}$/.test(text)
+}
+
+/** Comprobaciones de existencia ya hechas, por sesión y ruta: una sola llamada por ruta. */
+const pathChecks = new Map<string, Promise<boolean>>()
+
+/**
+ * Red de seguridad del #35: una ruta local escrita como código que **existe**
+ * se vuelve enlace al archivo (con su reproductor si es audio o video). La
+ * comprueba el Engine con la misma autorización que al abrirlo; si no existe
+ * o no se puede abrir, queda como código.
+ */
+export function PathCode({ text, className }: { text: string; className?: string }) {
+  const actions = useContext(FileContext)
+  const turnId = useContext(FileTurnContext)
+  const [exists, setExists] = useState(false)
+  useEffect(() => {
+    if (!actions || !looksLikeLocalPath(text)) return
+    let live = true
+    const key = `${turnId ?? ''}|${text}`
+    let check = pathChecks.get(key)
+    if (!check) {
+      check = actions.media(text, turnId).then(() => true, () => false)
+      pathChecks.set(key, check)
+    }
+    void check.then((ok) => { if (live) setExists(ok) })
+    return () => { live = false }
+  }, [actions, text, turnId])
+  const code = <code className={className}>{text}</code>
+  if (!exists) return code
+  return (
+    <>
+      <FileLink href={text}>{code}</FileLink>
+      <InlineMedia href={text} />
+    </>
+  )
+}
+
+/** Solo para pruebas: olvida las comprobaciones hechas. */
+export function resetPathChecksForTests() {
+  pathChecks.clear()
 }
 
 /**
@@ -195,6 +275,8 @@ export function ArtifactImage({ uri, alt = '' }: { uri: string; alt?: string }) 
 export type FileTab = {
   key: string
   sessionId: string
+  /** The conversation the file is read with, when it is not the panel's. */
+  readAs?: string
   turnId?: string
   target: string
   file?: FilePreview
@@ -247,6 +329,24 @@ export function useFileWorkspace(): FileWorkspaceController | null {
  * (`SessionWorkspace`, compartido por Normal y Boards); `onOpen` revela esa
  * superficie. Las lecturas siguen pasando por el Engine.
  */
+/**
+ * La conversación con la que se lee un archivo. La oficina de un equipo no es
+ * una conversación: lo que un puesto presentó ahí se lee con la del puesto,
+ * que va en su URI (abrir un PDF desde la oficina decía «Session not found»).
+ */
+function artifactOwner(sessionId: string, target: string): string {
+  if (!teamIdOfDockKey(sessionId) || !target.startsWith('artifact://')) return sessionId
+  return target.slice('artifact://'.length).split('/')[0] || sessionId
+}
+
+/**
+ * El nombre de un archivo guardado, sin el sha256 con que el Engine nombra lo
+ * que importa (`<64 hex>-registro.md`): la pestaña decía el hash entero.
+ */
+function shownName(name: string): string {
+  return name.replace(/^[0-9a-f]{64}-(?=.)/, '')
+}
+
 export function FileWorkspaceProvider({
   sessionId,
   children,
@@ -296,7 +396,7 @@ export function FileWorkspaceProvider({
       // Sin watch: refrescar pide otra URL, que vuelve a leer el archivo.
       const sequence = ++owner.sequence
       try {
-        const media = await platform().files.media({ session_id: tab.sessionId, path: tab.target, turn_id: tab.turnId })
+        const media = await platform().files.media({ session_id: tab.readAs ?? tab.sessionId, path: tab.target, turn_id: tab.turnId })
         if (owners.current.get(key) !== owner || owner.sequence !== sequence) return
         updateTabs((current) => current.map((candidate) => candidate.key === key ? { ...candidate, media, error: undefined, syncError: undefined, stale: false } : candidate))
       } catch (error) {
@@ -320,7 +420,7 @@ export function FileWorkspaceProvider({
       return
     }
     try {
-      const file = await desktopApi.readFile(tab.sessionId, tab.target, tab.turnId)
+      const file = await desktopApi.readFile(tab.readAs ?? tab.sessionId, tab.target, tab.turnId)
       if (!isCurrent()) return
       updateTabs((current) => current.map((candidate) => candidate.key === key
         ? revision !== undefined && candidate.revision !== revision
@@ -337,8 +437,10 @@ export function FileWorkspaceProvider({
     }
   }, [updateTabs])
 
-  const open = useCallback(async (target: string, turnId?: string) => {
-    const key = JSON.stringify([sessionId, turnId, target])
+  const open = useCallback(async (target: string, turnId?: string, from?: string) => {
+    const readAs = from && from !== sessionId ? from : undefined
+    const reader = readAs ?? sessionId
+    const key = JSON.stringify([sessionId, turnId, target, readAs ?? null])
     onOpenRef.current?.()
     setActive(key)
     const existing = tabsRef.current.find((tab) => tab.key === key)
@@ -349,7 +451,7 @@ export function FileWorkspaceProvider({
     const owner = { sequence: 0 }
     owners.current.set(key, owner)
     const isCurrent = () => owners.current.get(key) === owner
-    updateTabs((current) => [...current, { key, sessionId, turnId, target }])
+    updateTabs((current) => [...current, { key, sessionId, readAs, turnId, target }])
     try {
       let file: FilePreview
       let watchId: string | undefined
@@ -362,18 +464,18 @@ export function FileWorkspaceProvider({
         // Un PPTX, DOCX, XLSX o PDF no se lee como texto: se ve su render.
         if (!isCurrent()) return
         document = target.startsWith('artifact://') || target.startsWith('rev_')
-          ? { sessionId, ref: target, turnId }
-          : { sessionId, path: target, turnId }
-        file = { path: target, name: target.split(/[\\/]/).at(-1) || target, content: '', language: kind, size: 0 } as FilePreview
+          ? { sessionId: artifactOwner(reader, target), ref: target, turnId }
+          : { sessionId: reader, path: target, turnId }
+        file = { path: target, name: shownName(target.split(/[\\/]/).at(-1) || target), content: '', language: kind, size: 0 } as FilePreview
       } else if (isArtifactImage(target)) {
         image = await artifactImageUrl(target)
-        file = { path: target, name: target.split('/').at(-1) || 'Artifact', content: '', language: '', size: 0 } as FilePreview
+        file = { path: target, name: shownName(target.split('/').at(-1) || 'Artifact'), content: '', language: '', size: 0 } as FilePreview
       } else if (target.startsWith('artifact://') && (await platform().engine.status()).capabilities?.artifact_resolve_v1
-        && (media = await platform().files.media({ session_id: sessionId, path: target, turn_id: turnId })).kind !== 'text') {
+        && (media = await platform().files.media({ session_id: reader, path: target, turn_id: turnId })).kind !== 'text') {
         // Un audio o video guardado como artefacto se reproduce; leerlo como
         // texto mostraba bytes ilegibles.
         if (!isCurrent()) return
-        file = { path: target, name: media.name, content: '', language: '', size: media.size } as FilePreview
+        file = { path: target, name: shownName(media.name), content: '', language: '', size: media.size } as FilePreview
       } else if (target.startsWith('artifact://')) {
         media = undefined
         const result = await engineApi.artifactRead(target, 512 * 1024)
@@ -381,7 +483,7 @@ export function FileWorkspaceProvider({
         truncated = result.truncated === true
         file = {
           path: target,
-          name: target.split('/').at(-1) || 'Artifact',
+          name: shownName(target.split('/').at(-1) || 'Artifact'),
           content: result.text,
           language: target.split('.').at(-1) || '',
           size: result.text.length,
@@ -392,7 +494,7 @@ export function FileWorkspaceProvider({
         if (status.capabilities?.workspace_file_resolve_v1) {
           // Qué es antes de leerlo: un video o un PNG grande no pasan por la
           // vista de texto (512 KiB, UTF-8).
-          const described = await platform().files.media({ session_id: sessionId, path: target, turn_id: turnId })
+          const described = await platform().files.media({ session_id: reader, path: target, turn_id: turnId })
           if (!isCurrent()) return
           if (described.kind !== 'text' || described.size > TEXT_PREVIEW_LIMIT) media = described
         }
@@ -403,17 +505,17 @@ export function FileWorkspaceProvider({
             if (!status.capabilities?.workspace_file_watch_v1) {
               throw Object.assign(new Error('legacy engine'), { code: 'UNKNOWN_METHOD' })
             }
-            const watched = await desktopApi.watchFile(sessionId, target, turnId)
+            const watched = await desktopApi.watchFile(reader, target, turnId)
             file = watched.preview
             watchId = watched.watch_id
           } catch (error) {
             if (!isCommandError(error) || !['UNKNOWN_METHOD', 'UNKNOWN_COMMAND'].includes(error.code)) throw error
-            file = await desktopApi.readFile(sessionId, target, turnId)
+            file = await desktopApi.readFile(reader, target, turnId)
           }
         }
       }
       if (!isCurrent()) {
-        if (watchId && typeof desktopApi.unwatchFile === 'function') void desktopApi.unwatchFile(sessionId, watchId).catch(() => {})
+        if (watchId && typeof desktopApi.unwatchFile === 'function') void desktopApi.unwatchFile(reader, watchId).catch(() => {})
         return
       }
       updateTabs((current) =>
@@ -439,9 +541,9 @@ export function FileWorkspaceProvider({
     void platform().events.onEngineEvent((message) => {
       if (message.event !== 'workspace.file.changed') return
       const payload = message.payload
-      if (payload.session_id !== sessionId || typeof payload.watch_id !== 'string') return
-      const tab = tabsRef.current.find((candidate) => candidate.watchId === payload.watch_id)
-      if (!tab) return
+      if (typeof payload.watch_id !== 'string') return
+      const tab = tabsRef.current.find((candidate) => candidate.sessionId === sessionId && candidate.watchId === payload.watch_id)
+      if (!tab || payload.session_id !== (tab.readAs ?? tab.sessionId)) return
       if (!Number.isSafeInteger(payload.revision) || (payload.revision as number) <= 0) return
       const state = payload.state
       if (state !== 'changed' && state !== 'deleted' && state !== 'recreated') return
@@ -465,9 +567,9 @@ export function FileWorkspaceProvider({
     const sequence = ++owner.sequence
     const isCurrent = () => owners.current.get(key) === owner && owner.sequence === sequence
     try {
-      const watched = await desktopApi.watchFile(tab.sessionId, tab.target, tab.turnId)
+      const watched = await desktopApi.watchFile(tab.readAs ?? tab.sessionId, tab.target, tab.turnId)
       if (!isCurrent()) {
-        void desktopApi.unwatchFile(tab.sessionId, watched.watch_id).catch(() => {})
+        void desktopApi.unwatchFile(tab.readAs ?? tab.sessionId, watched.watch_id).catch(() => {})
         return
       }
       updateTabs((current) => current.map((candidate) => candidate.key === key
@@ -497,7 +599,7 @@ export function FileWorkspaceProvider({
     for (const tab of owned) owners.current.delete(tab.key)
     updateTabs((current) => current.filter((tab) => tab.sessionId !== sessionId))
     for (const tab of owned) {
-      if (tab.watchId && typeof desktopApi.unwatchFile === 'function') void desktopApi.unwatchFile(tab.sessionId, tab.watchId).catch(() => {})
+      if (tab.watchId && typeof desktopApi.unwatchFile === 'function') void desktopApi.unwatchFile(tab.readAs ?? tab.sessionId, tab.watchId).catch(() => {})
     }
   }, [sessionId, updateTabs])
 
@@ -505,7 +607,7 @@ export function FileWorkspaceProvider({
     const closing = tabsRef.current.find((tab) => tab.key === key)
     owners.current.delete(key)
     updateTabs((current) => current.filter((tab) => tab.key !== key))
-    if (closing?.watchId && typeof desktopApi.unwatchFile === 'function') void desktopApi.unwatchFile(closing.sessionId, closing.watchId).catch(() => {})
+    if (closing?.watchId && typeof desktopApi.unwatchFile === 'function') void desktopApi.unwatchFile(closing.readAs ?? closing.sessionId, closing.watchId).catch(() => {})
   }, [updateTabs])
 
   const controller = useMemo<FileWorkspaceController>(() => ({
@@ -515,12 +617,18 @@ export function FileWorkspaceProvider({
     select: setActive,
     close,
     refresh: (key) => void readCurrent(key),
-    open: (path, turnId) => void open(path, turnId),
-    media: (path, turnId) => platform().files.media({ session_id: sessionId, path, turn_id: turnId }),
-    reveal: (path, turnId) => void platform().files.revealInFolder({ session_id: sessionId, path, turn_id: turnId })
-      .catch((error) => toast.error(commandMessage(error))),
-    openExternal: (path, turnId) => void platform().files.openExternal({ session_id: sessionId, path, turn_id: turnId })
-      .catch((error) => toast.error(commandMessage(error))),
+    open: (path, turnId, from) => { if (pointsAtFile(path)) void open(path, turnId, from) },
+    media: (path, turnId, from) => platform().files.media({ session_id: from ?? sessionId, path, turn_id: turnId }),
+    reveal: (path, turnId, from) => {
+      if (!pointsAtFile(path)) return
+      void platform().files.revealInFolder({ session_id: from ?? artifactOwner(sessionId, path), path, turn_id: turnId })
+        .catch((error) => toast.error(commandMessage(error)))
+    },
+    openExternal: (path, turnId, from) => {
+      if (!pointsAtFile(path)) return
+      void platform().files.openExternal({ session_id: from ?? artifactOwner(sessionId, path), path, turn_id: turnId })
+        .catch((error) => toast.error(commandMessage(error)))
+    },
     source,
     setSource,
   }), [sessionId, currentTabs, selected, close, open, readCurrent, source])
@@ -650,20 +758,20 @@ export function FileViewer({ onClose, className = '' }: { onClose?: () => void; 
                 source={selected.document}
                 name={selected.file?.name ?? selected.target}
                 headerActions={false}
-                onOpenExternally={() => openExternal(selected.target, selected.turnId)}
-                onReveal={selected.target.startsWith('artifact:') || selected.target.startsWith('rev_') ? undefined : () => reveal(selected.target, selected.turnId)}
+                onOpenExternally={() => openExternal(selected.target, selected.turnId, selected.readAs)}
+                onReveal={selected.target.startsWith('artifact:') || selected.target.startsWith('rev_') ? undefined : () => reveal(selected.target, selected.turnId, selected.readAs)}
               />
             ) : selected.media ? (
-              <MediaView media={selected.media} onOpenExternally={() => openExternal(selected.target.startsWith('artifact:') ? selected.target : selected.media!.path, selected.turnId)} onReveal={selected.target.startsWith('artifact:') ? undefined : () => reveal(selected.media!.path, selected.turnId)} />
+              <MediaView media={selected.media} file={{ session_id: selected.readAs ?? selected.sessionId, path: selected.target, turn_id: selected.turnId }} onOpenExternally={() => openExternal(selected.target.startsWith('artifact:') ? selected.target : selected.media!.path, selected.turnId, selected.readAs)} onReveal={selected.target.startsWith('artifact:') ? undefined : () => reveal(selected.media!.path, selected.turnId, selected.readAs)} />
             ) : selected.image ? (
-              <img src={selected.image} alt={selected.file?.name ?? ''} className="artifact-image mx-auto" />
+              <ZoomableImage src={selected.image} name={selected.file?.name ?? ''} file={{ session_id: selected.readAs ?? selected.sessionId, path: selected.target, turn_id: selected.turnId }} onOpenExternal={() => openExternal(selected.target, selected.turnId, selected.readAs)} />
             ) : selected.file &&
               ['html', 'htm'].includes(selected.file.language) &&
               selected.file.provenance !== 'turn_changeset' &&
               !selected.target.startsWith('artifact:') ? (
               <HtmlPreview
                 key={selected.key}
-                sessionId={selected.sessionId}
+                sessionId={selected.readAs ?? selected.sessionId}
                 turnId={selected.turnId}
                 file={selected.file}
               />
@@ -671,10 +779,10 @@ export function FileViewer({ onClose, className = '' }: { onClose?: () => void; 
               <FileTurnContext.Provider value={selected.turnId}>
                 <FileContext.Provider
                   value={{
-                    open: (path) => open(nested(path), selected.turnId),
-                    media: (path) => controller.media(nested(path), selected.turnId),
-                    reveal: (path) => reveal(nested(path), selected.turnId),
-                    openExternal: (path) => openExternal(nested(path), selected.turnId),
+                    open: (path) => open(nested(path), selected.turnId, selected.readAs),
+                    media: (path) => controller.media(nested(path), selected.turnId, selected.readAs),
+                    reveal: (path) => reveal(nested(path), selected.turnId, selected.readAs),
+                    openExternal: (path) => openExternal(nested(path), selected.turnId, selected.readAs),
                   }}
                 >
                   {selected.file.language === 'md' && !source ? (
@@ -713,17 +821,29 @@ function formatBytes(size: number, lang: string): string {
   return `${value.toLocaleString(lang, { maximumFractionDigits: unit === 0 ? 0 : 1 })} ${units[unit]}`
 }
 
+/** Una imagen en «Archivos»: pulsarla la abre en el visor grande (#77). */
+function ZoomableImage({ src, name, detail, file, onReveal, onOpenExternal, onError }: { src: string; name: string; detail?: string; file?: ViewerImage['file']; onReveal?: () => void; onOpenExternal?: () => void; onError?: () => void }) {
+  const { t } = useI18n()
+  const viewer = useImageViewer()
+  return <>
+    <button type="button" className="artifact-image-open mx-auto block" title={t('activity.enlargeImage', { name })} aria-label={t('activity.enlargeImage', { name })} onClick={(event) => viewer.show([{ key: src, name, src, detail, file, onReveal, onOpenExternal }], 0, event.currentTarget)}>
+      <img src={src} alt={name} className="artifact-image mx-auto" onError={onError} />
+    </button>
+    <ImageViewer {...viewer.props} />
+  </>
+}
+
 /**
  * Imagen, video o audio del workspace, servidos por la app a partir de la ruta
  * que aprobó el Engine. El resto (PDF, binarios, textos enormes) no se lee: se
  * dice qué es y se ofrece abrirlo fuera o en su carpeta.
  */
-function MediaView({ media, onOpenExternally, onReveal }: { media: WorkspaceMedia; onOpenExternally: () => void; onReveal?: () => void }) {
+function MediaView({ media, file, onOpenExternally, onReveal }: { media: WorkspaceMedia; file?: ViewerImage['file']; onOpenExternally: () => void; onReveal?: () => void }) {
   const { t, lang } = useI18n()
   const [failed, setFailed] = useState(false)
   useEffect(() => setFailed(false), [media.url])
   if (media.url && !failed) {
-    if (media.kind === 'image') return <img src={media.url} alt={media.name} className="artifact-image mx-auto" onError={() => setFailed(true)} />
+    if (media.kind === 'image') return <ZoomableImage src={media.url} name={media.name} detail={media.mime} file={file} onReveal={onReveal} onOpenExternal={onOpenExternally} onError={() => setFailed(true)} />
     if (media.kind === 'video') {
       return <video key={media.url} src={media.url} controls preload="metadata" className="mx-auto max-h-full max-w-full" aria-label={media.name} onError={() => setFailed(true)} />
     }

@@ -83,31 +83,24 @@ describe('qué presentación se elige', () => {
     )
   })
 
-  it('con el agente al mando muestra la captura del mismo target', async () => {
-    bridge.browserContext = nativeContext()
-    bridge.browserPreview = {
-      target_id: 't1',
-      url: 'https://example.com/a',
-      image: 'data:image/png;base64,AAAA',
-      width: 760,
-      height: 560,
+  it('mande quien mande, deja el hueco para la vista en vivo (#46)', async () => {
+    for (const control of ['agent', 'user'] as const) {
+      bridge.browserContext = nativeContext({ control, control_state: control })
+      bridge.browserPreview = {
+        target_id: 't1',
+        url: 'https://example.com/a',
+        image: 'data:image/png;base64,AAAA',
+        width: 760,
+        height: 560,
+      }
+      paint({ busy: true })
+      await waitFor(() => expect(screen.getByTestId('browser-view-slot').getAttribute('data-state')).toBe('ready'))
+      const slot = screen.getByTestId('browser-view-slot')
+      // Ni la captura de antes ni «Preparando…»: la página se ve en vivo.
+      expect(screen.queryByTestId('browser-agent-preview')).toBeNull()
+      expect(slot.textContent).toBe('')
+      cleanup()
     }
-    paint()
-    expect(await screen.findByTestId('browser-agent-preview')).toBeTruthy()
-  })
-
-  it('con el usuario al mando deja el hueco para la vista viva', async () => {
-    bridge.browserContext = nativeContext({ control: 'user', control_state: 'user' })
-    bridge.browserPreview = {
-      target_id: 't1',
-      url: 'https://example.com/a',
-      image: 'data:image/png;base64,AAAA',
-      width: 760,
-      height: 560,
-    }
-    paint()
-    await screen.findByTestId('browser-view-slot')
-    expect(screen.queryByTestId('browser-agent-preview')).toBeNull()
   })
 
   it('soporte sin contexto todavía no es «nativo listo»', async () => {
@@ -125,16 +118,17 @@ describe('qué presentación se elige', () => {
     await waitFor(() =>
       expect(screen.getByTestId('browser-view-slot').getAttribute('data-state')).toBe('absent'),
     )
-    expect(screen.getByRole('button', { name: /abrir navegador|open browser/i })).toBeTruthy()
+    // Plan 0.4.0 #46: en su lugar, la página de inicio.
+    expect(screen.getByTestId('browser-home')).toBeTruthy()
   })
 
   it('crear el contexto es una acción explícita del usuario', async () => {
     bridge.browserContext = nativeContext({ context_state: 'absent', available: false, targets: [] })
     paint()
-    const button = await screen.findByRole('button', { name: /abrir navegador|open browser/i })
+    const address = await screen.findByTestId('browser-home-address')
     // Montar el panel no debe haber creado nada: consultar no tiene efectos.
     expect(bridge.browserCalls.some((call) => call.kind === 'prepare')).toBe(false)
-    await userEvent.click(button)
+    await userEvent.type(address, 'ejemplo.com{Enter}')
     await waitFor(() =>
       expect(bridge.browserCalls.some((call) => call.kind === 'prepare')).toBe(true),
     )
@@ -203,95 +197,222 @@ describe('el slot reserva el hueco y lo reporta', () => {
   })
 })
 
-describe('control desde la toolbar (§7)', () => {
-  it('pide tomar el control con la revisión que conoce', async () => {
-    bridge.browserContext = nativeContext({ control_revision: 4 })
-    bridge.browserControlResult = {
-      control: 'agent',
-      control_state: 'taking-user-control',
-      control_revision: 5,
-    }
-    paint()
-    await userEvent.click(await screen.findByRole('button', { name: /tomar control|take control/i }))
-    await waitFor(() => {
-      const call = bridge.browserCalls.find((entry) => entry.kind === 'setControl')
-      expect(call).toMatchObject({ owner: 'user', expectedRevision: 4 })
-    })
-    // La respuesta inmediata se refleja sin esperar el evento final.
-    expect(
-      await screen.findByRole('button', { name: /tomando el control|taking control/i }),
-    ).toBeTruthy()
+// Plan 0.4.0 #46: sin «Tomar control» ni «Devolver al agente». Usar la barra
+// es tomar el navegador (main lo pide al Engine y espera); cuando Rinari
+// necesita la página y tú la usas, espera, y la barra lo dice.
+describe('el control sin botones (#46)', () => {
+  it('no hay botones de control', async () => {
+    bridge.browserContext = nativeContext()
+    paint({ busy: true })
+    await screen.findByTestId('browser-view-slot')
+    expect(screen.queryByRole('button', { name: /tomar control|take control/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /devolver al agente|return to the agent/i })).toBeNull()
+    expect(await screen.findByText('Rinari está usando esta página')).toBeTruthy()
   })
 
-  it('durante la transición no se puede volver a pulsar', async () => {
-    bridge.browserContext = nativeContext({ control_state: 'taking-user-control' })
-    paint()
-    const button = await screen.findByRole('button', { name: /tomando el control|taking control/i })
-    expect(button.hasAttribute('disabled')).toBe(true)
+  it('la dirección y las pestañas se pueden usar aunque Rinari esté al mando', async () => {
+    bridge.browserContext = nativeContext({
+      targets: [
+        { target_id: 't1', url: 'https://example.com/a', title: 'A', active: true },
+        { target_id: 't2', url: 'https://example.com/b', title: 'B', active: false },
+      ],
+    })
+    paint({ busy: true })
+    const url = await screen.findByLabelText('Dirección')
+    expect((url as HTMLInputElement).disabled).toBe(false)
+    expect((screen.getByRole('button', { name: 'B' }) as HTMLButtonElement).disabled).toBe(false)
+    await userEvent.clear(url)
+    await userEvent.type(url, 'https://example.org{Enter}')
+    await waitFor(() =>
+      expect(bridge.browserCalls.find((call) => call.kind === 'navigate')).toMatchObject({
+        url: 'https://example.org',
+      }),
+    )
+  })
+
+  it('Rinari espera a que termines, y se dice', async () => {
+    bridge.browserContext = nativeContext({ control: 'user', control_state: 'user' })
+    paint({ busy: true })
+    await screen.findByTestId('browser-view-slot')
+    bridge.emitBrowserContext(nativeContext({ control: 'user', control_state: 'user', agent_waiting: true }))
+    expect(await screen.findByText('Rinari espera a que termines')).toBeTruthy()
   })
 
   it('si no se pudo garantizar exclusión, se dice', async () => {
     bridge.browserContext = nativeContext({ control_state: 'uncertain' })
     paint()
-    // No se anuncia que el usuario tenga el control: no lo tiene.
     expect(await screen.findByText(/no se pudo tomar el control|control could not be taken/i)).toBeTruthy()
-  })
-
-  it('un cambio de contexto llega por evento, sin sondear', async () => {
-    bridge.browserContext = nativeContext()
-    paint()
-    await screen.findByRole('button', { name: /tomar control|take control/i })
-    bridge.emitBrowserContext(nativeContext({ control: 'user', control_state: 'user' }))
-    expect(
-      await screen.findByRole('button', { name: /devolver al agente|return to the agent/i }),
-    ).toBeTruthy()
   })
 
   it('un cambio de otra sesión no toca este panel', async () => {
     bridge.browserContext = nativeContext()
-    paint()
-    await screen.findByRole('button', { name: /tomar control|take control/i })
+    paint({ busy: true })
+    await screen.findByText('Rinari está usando esta página')
     bridge.emitBrowserContext(
-      nativeContext({ session_id: 'otra', control: 'user', control_state: 'user' }),
+      nativeContext({ session_id: 'otra', control: 'user', control_state: 'user', agent_waiting: true }),
     )
-    // Sigue siendo del agente: el evento era de otra sesión.
-    expect(await screen.findByRole('button', { name: /tomar control|take control/i })).toBeTruthy()
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(screen.queryByText('Rinari espera a que termines')).toBeNull()
   })
 })
 
-// Documento 03 §7: acciones manuales sobre la página del agente.
-//
-// El guard de verdad está en main —la autoridad no puede vivir en el lado que
-// se puede modificar—, pero ofrecer un control que va a fallar es peor que no
-// ofrecerlo.
-describe('la toolbar no muta la página del agente sin control', () => {
-  it('con el agente al mando, la URL y las pestañas están deshabilitadas', async () => {
-    bridge.browserContext = nativeContext({
-      control: 'agent',
-      control_state: 'agent',
+// Planka Ideas-2: pestañas que se abren y cierran, la carga a la vista y
+// los atajos de cualquier navegador.
+describe('pestañas como en un navegador', () => {
+  const twoTabs = (overrides: Partial<NativeBrowserContext> = {}) =>
+    nativeContext({
       targets: [
         { target_id: 't1', url: 'https://example.com/a', title: 'A', active: true },
         { target_id: 't2', url: 'https://example.com/b', title: 'B', active: false },
       ],
+      ...overrides,
     })
+
+  it('cada pestaña se ve, se elige y se cierra; «+» abre otra', async () => {
+    bridge.browserContext = twoTabs()
     paint()
-    const url = await screen.findByLabelText('Dirección')
-    expect((url as HTMLInputElement).disabled).toBe(true)
-    expect((screen.getByLabelText('Pestaña del navegador') as HTMLSelectElement).disabled).toBe(true)
+    const tabs = await screen.findByTestId('browser-tabs')
+    expect(screen.getAllByTestId('browser-tab')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'A' }).getAttribute('aria-current')).toBe('page')
+    await userEvent.click(screen.getByRole('button', { name: 'B' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Cerrar B' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Nueva pestaña' }))
+    expect(tabs).toBeTruthy()
+    expect(bridge.browserCalls.filter((call) => ['selectTarget', 'closeTab', 'newTab'].includes(String(call.kind)))).toEqual([
+      { kind: 'selectTarget', sessionId: 'ses-1', targetId: 't2' },
+      { kind: 'closeTab', sessionId: 'ses-1', targetId: 't2' },
+      { kind: 'newTab', sessionId: 'ses-1' },
+    ])
   })
 
-  it('con el usuario al mando, vuelven a estar disponibles', async () => {
+  it('una pestaña en blanco se llama «Nueva pestaña» y una sin título, por su dominio', async () => {
     bridge.browserContext = nativeContext({
-      control: 'user',
-      control_state: 'user',
       targets: [
-        { target_id: 't1', url: 'https://example.com/a', title: 'A', active: true },
-        { target_id: 't2', url: 'https://example.com/b', title: 'B', active: false },
+        { target_id: 't1', url: 'https://example.com/a', title: '', active: true },
+        { target_id: 't2', url: 'about:blank', title: '', active: false },
       ],
     })
     paint()
-    const url = await screen.findByLabelText('Dirección')
-    expect((url as HTMLInputElement).disabled).toBe(false)
-    expect((screen.getByLabelText('Pestaña del navegador') as HTMLSelectElement).disabled).toBe(false)
+    expect(await screen.findByRole('button', { name: 'example.com' })).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: 'Nueva pestaña' })).toHaveLength(2)
+  })
+
+  it('mientras carga: barra de progreso, la pestaña lo dice y recargar pasa a detener', async () => {
+    bridge.browserContext = nativeContext({
+      targets: [{ target_id: 't1', url: 'https://example.com/a', title: 'A', active: true, loading: true }],
+    })
+    const view = paint()
+    await userEvent.click(await screen.findByTestId('browser-stop'))
+    expect(bridge.browserCalls.find((call) => call.kind === 'history')).toMatchObject({ action: 'stop' })
+    expect(screen.getByRole('img', { name: 'Cargando' })).toBeTruthy()
+    expect(view.container.querySelector('.browser-progress')).not.toBeNull()
+
+    bridge.emitBrowserContext(nativeContext())
+    expect(await screen.findByTestId('browser-reload')).toBeTruthy()
+    expect(screen.queryByRole('img', { name: 'Cargando' })).toBeNull()
+  })
+
+  it('sin historial, atrás y adelante no se ofrecen', async () => {
+    bridge.browserContext = nativeContext({
+      targets: [{ target_id: 't1', url: 'https://example.com/a', title: 'A', active: true, can_go_back: false, can_go_forward: true }],
+    })
+    paint()
+    await waitFor(() => expect((screen.getByRole('button', { name: 'Atrás' }) as HTMLButtonElement).disabled).toBe(true))
+    expect((screen.getByRole('button', { name: 'Adelante' }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('Ctrl+T, Ctrl+Tab y Ctrl+W con el foco en la barra', async () => {
+    bridge.browserContext = twoTabs()
+    paint()
+    const address = await screen.findByLabelText('Dirección')
+    address.focus()
+    await userEvent.keyboard('{Control>}t{/Control}')
+    await userEvent.keyboard('{Control>}{Tab}{/Control}')
+    await userEvent.keyboard('{Control>}w{/Control}')
+    expect(bridge.browserCalls.filter((call) => ['selectTarget', 'closeTab', 'newTab'].includes(String(call.kind)))).toEqual([
+      { kind: 'newTab', sessionId: 'ses-1' },
+      { kind: 'selectTarget', sessionId: 'ses-1', targetId: 't2' },
+      { kind: 'closeTab', sessionId: 'ses-1', targetId: 't1' },
+    ])
+  })
+
+  it('Ctrl+L pulsado en la página lleva a la dirección', async () => {
+    bridge.browserContext = nativeContext()
+    paint()
+    const address = await screen.findByLabelText('Dirección')
+    expect(document.activeElement).not.toBe(address)
+    bridge.emitBrowserShortcut({ session_id: 'otra', action: 'focus-address' })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(document.activeElement).not.toBe(address)
+    bridge.emitBrowserShortcut({ session_id: 'ses-1', action: 'focus-address' })
+    await waitFor(() => expect(document.activeElement).toBe(address))
+  })
+
+  it('el visor de capturas con una sola página no enseña pestañas', async () => {
+    paint({ frame: { state: 'connected', session_id: 'ses-1', url: 'https://example.com', pages: [{ target_id: 'p1', url: 'https://example.com', title: 'E' }] } as never })
+    await screen.findByTestId('browser-view-slot')
+    expect(screen.queryByTestId('browser-tabs')).toBeNull()
+  })
+})
+
+describe('página de inicio (#46)', () => {
+  it('sin navegador todavía, la página de inicio abre lo que escribes', async () => {
+    bridge.browserContext = nativeContext({ context_state: 'absent', available: false, targets: [], active_target_id: null })
+    paint()
+    const address = await screen.findByTestId('browser-home-address')
+    await userEvent.type(address, 'ejemplo.com{Enter}')
+    await waitFor(() => {
+      const kinds = bridge.browserCalls.map((call) => call.kind)
+      expect(kinds).toContain('prepare')
+      expect(bridge.browserCalls.find((call) => call.kind === 'navigate')).toMatchObject({ url: 'https://ejemplo.com' })
+    })
+  })
+
+  it('una pestaña en blanco enseña la página de inicio y no presenta la vista', async () => {
+    bridge.browserContext = nativeContext({ targets: [{ target_id: 't1', url: 'about:blank', title: '', active: true }] })
+    paint()
+    expect(await screen.findByTestId('browser-home')).toBeTruthy()
+    await waitFor(() => expect(bridge.browserLayouts.at(-1)?.shown).toBe(false))
+  })
+
+  it('«Borrar datos del navegador» pregunta antes y dice que se borró', async () => {
+    bridge.browserContext = nativeContext({ targets: [{ target_id: 't1', url: 'about:blank', title: '', active: true }] })
+    paint()
+    await userEvent.click(await screen.findByTestId('browser-clear-data'))
+    expect(bridge.browserCalls.some((call) => call.kind === 'clearData')).toBe(false)
+    await userEvent.click(await screen.findByRole('button', { name: 'Borrar datos' }))
+    await waitFor(() => expect(bridge.browserCalls.some((call) => call.kind === 'clearData')).toBe(true))
+    expect(await screen.findByText('Datos del navegador borrados.')).toBeTruthy()
+  })
+
+  it('con una página abierta no hay página de inicio', async () => {
+    bridge.browserContext = nativeContext()
+    paint()
+    await waitFor(() => expect(screen.getByTestId('browser-view-slot').getAttribute('data-state')).toBe('ready'))
+    expect(screen.queryByTestId('browser-home')).toBeNull()
+  })
+})
+
+describe('tamaño de la página (#44b)', () => {
+  it('un ancho fijo hace el hueco de ese ancho dentro de un contenedor que se desplaza', async () => {
+    bridge.browserContext = nativeContext()
+    paint()
+    const size = await screen.findByTestId('browser-size')
+    await userEvent.click(size)
+    await userEvent.click(await screen.findByRole('menuitem', { name: /Escritorio 1280/ }))
+    const slot = screen.getByTestId('browser-view-slot')
+    expect(slot.getAttribute('data-page-width')).toBe('1280')
+    // El ancho llega por variable; el CSS lo aplica al hueco.
+    expect(slot.style.getPropertyValue('--page-width')).toBe('1280px')
+    expect(screen.getByTestId('browser-view-scroll')).toBeTruthy()
+    await userEvent.click(size)
+    await userEvent.click(await screen.findByRole('menuitem', { name: /Ajustar al panel/ }))
+    expect(screen.queryByTestId('browser-view-scroll')).toBeNull()
+  })
+
+  it('el selector enseña el ancho que pidió el agente', async () => {
+    bridge.browserContext = nativeContext({ viewport_width: 390 })
+    paint()
+    await waitFor(() => expect(screen.getByTestId('browser-size').getAttribute('data-value')).toBe('390'))
   })
 })

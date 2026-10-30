@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronsUpDown, Plus, Settings2 } from 'lucide-react'
+import { Check, ChevronsUpDown, LoaderCircle, Plus, Settings2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
 import { commandMessage, type ProfileBundle } from '../../services/engine'
 import { useUIStore } from '../../stores/ui'
 import { RinariAvatar, rinariStateLabel, type RinariState } from '../../features/rinari/RinariAvatar'
 import { useProfileStore } from '../../features/profiles/profileStore'
+import { useProfilePending, useProfileWorking } from '../../features/profiles/profilePending'
 import { useTitleMotionStore } from '../../stores/titleMotion'
 import { TitleSwap } from '../TitleSwap'
 import {
@@ -37,6 +38,10 @@ export default function SidebarIdentity({ busy, waiting }: { busy: number; waiti
   const load = useProfileStore((state) => state.load)
   const activate = useProfileStore((state) => state.activate)
   const nameOf = useProfileName()
+  // Lo que espera en los otros perfiles (#34); el activo ya lo dicen la barra y la campana.
+  const pending = useProfilePending()
+  // Cuáles trabajan, cada uno con sus conversaciones (la cabecera cuenta todas las que están en curso).
+  const working = useProfileWorking()
   const active = profiles.find((profile) => profile.id === activeId) ?? null
   const state: RinariState = waiting > 0 ? 'waiting' : busy > 0 ? 'working' : 'idle'
   const detail = waiting > 0 ? t('sidebar.identityWaiting', { n: waiting }) : busy > 0 ? t('sidebar.identityBusy', { n: busy }) : t('sidebar.identityIdle')
@@ -68,7 +73,21 @@ export default function SidebarIdentity({ busy, waiting }: { busy: number; waiti
       <DropdownMenuTrigger asChild>
         <button type="button" className="sidebar-identity" aria-label={t('profiles.switcher', { name: title })} data-testid="profile-switcher">
           {switched > 0 && <span key={switched} className="sidebar-identity-sweep" aria-hidden="true" />}
-          <RinariAvatar state={state} size={34} />
+          <span className="relative shrink-0">
+            <RinariAvatar state={state} size={34} />
+            {pending.others.count > 0 && (
+              <span
+                className="profile-pending-badge"
+                data-needs-you={pending.others.needsYou || undefined}
+                data-testid="profile-pending-badge"
+                role="status"
+                aria-label={t(pending.others.needsYou ? 'profiles.pendingNeedsYou' : 'profiles.pendingOther', { n: pending.others.count })}
+                title={t(pending.others.needsYou ? 'profiles.pendingNeedsYou' : 'profiles.pendingOther', { n: pending.others.count })}
+              >
+                {pending.others.count > 9 ? '9+' : pending.others.count}
+              </span>
+            )}
+          </span>
           <span className="min-w-0 flex-1 text-left">
             <TitleSwap sessionId="profile-switcher" text={title} className="font-display text-[14px] font-bold leading-tight text-[var(--text)]" />
             <span className="block truncate text-[11.5px] text-[var(--text-muted)]">{detail}</span>
@@ -76,7 +95,7 @@ export default function SidebarIdentity({ busy, waiting }: { busy: number; waiti
           <ChevronsUpDown size={15} aria-hidden="true" className="shrink-0 text-[var(--text-subtle)]" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="profile-menu w-[18rem]">
+      <DropdownMenuContent align="start" className="profile-menu w-[var(--radix-dropdown-menu-trigger-width)] min-w-0">
         <DropdownMenuLabel className="text-[11px] text-[var(--text-subtle)]">{t(rinariStateLabel(state))}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="text-[11px] font-semibold tracking-wider text-[var(--text-subtle)] uppercase">{t('profiles.label')}</DropdownMenuLabel>
@@ -84,6 +103,8 @@ export default function SidebarIdentity({ busy, waiting }: { busy: number; waiti
         {profiles.map((profile) => {
           const current = profile.id === activeId
           const counts = profile.counts
+          const busyHere = working[profile.id] ?? 0
+          const busyLabel = t(busyHere === 1 ? 'profiles.workingOne' : 'profiles.working', { n: busyHere })
           return (
             <DropdownMenuItem key={profile.id} onSelect={() => void choose(profile)} aria-current={current || undefined} data-profile-id={profile.id} className="profile-menu-item">
               <span className="profile-menu-monogram" data-hue={profileHue(profile.id)} aria-hidden="true">{monogram(nameOf(profile))}</span>
@@ -91,6 +112,22 @@ export default function SidebarIdentity({ busy, waiting }: { busy: number; waiti
                 <span className="block truncate font-medium">{nameOf(profile)}</span>
                 {counts && <span className="block truncate text-[11px] text-[var(--text-subtle)]">{t('profiles.counts', { projects: counts.projects, sessions: counts.sessions })}</span>}
               </span>
+              {busyHere > 0 && (
+                <span className="r-chip profile-working-count" data-tone="accent" data-testid="profile-working" title={busyLabel} aria-label={busyLabel}>
+                  <LoaderCircle size={11} className="motion-safe:animate-spin" aria-hidden="true" />{busyHere}
+                </span>
+              )}
+              {!current && (pending.byProfile[profile.id]?.count ?? 0) > 0 && (
+                <span
+                  className="r-chip profile-pending-count"
+                  data-tone={pending.byProfile[profile.id].needsYou ? 'warning' : 'accent'}
+                  data-needs-you={pending.byProfile[profile.id].needsYou || undefined}
+                  data-testid="profile-pending-count"
+                  title={t(pending.byProfile[profile.id].needsYou ? 'profiles.pendingNeedsYou' : 'profiles.pendingOther', { n: pending.byProfile[profile.id].count })}
+                >
+                  {pending.byProfile[profile.id].count}
+                </span>
+              )}
               <span className="profile-menu-mark" data-active={current || undefined} aria-hidden="true">{current && <Check size={12} strokeWidth={3} />}</span>
             </DropdownMenuItem>
           )

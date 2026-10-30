@@ -21,6 +21,18 @@ scenario(async () => {
   assert.match(alert, /You exceeded your current quota/, 'the provider message stays')
   await screenshot('quota-failure')
 
+  // #24: armed, the card says so and «Reanuda …» shows in the title bar and on the sidebar row.
+  await clickText('Continuar automáticamente cuando se restablezca', 'button', { includes: true })
+  await wait(`Boolean(document.querySelector('[data-testid="auto-resume"][data-state="waiting"]'))`)
+  await wait(`document.querySelectorAll('[data-testid="resume-chip"]').length === 2`)
+  const chips = await evaluate(`[...document.querySelectorAll('[data-testid="resume-chip"]')].map(c => ({ label: c.getAttribute('aria-label'), compact: c.classList.contains('is-compact'), inAside: Boolean(c.closest('aside')) }))`)
+  assert.ok(chips.every(c => /^Reanuda /.test(c.label)), JSON.stringify(chips))
+  assert.ok(chips.some(c => c.compact && c.inAside), 'compact chip on the sidebar row')
+  assert.ok(chips.some(c => !c.compact && !c.inAside), 'full chip in the title bar')
+  await screenshot('resume-armed')
+  await clickText('Cancelar', '[data-testid="auto-resume"] button')
+  await wait(`document.querySelectorAll('[data-testid="resume-chip"]').length === 0`)
+
   // Another provider becomes active: the action still points at the one that failed.
   await command('provider_use', { reference: 'otra-cuenta' })
   await clickText('Revisar uso y límites', 'button')
@@ -33,5 +45,5 @@ scenario(async () => {
 
   await click('button[aria-label="Volver"]')
   await wait(`Boolean(document.querySelector('[data-failure="quota"]'))`)
-  report({ passed: ['quota failure explained with the provider message', 'action opens the failing provider usage tab while another is active', 'back returns to the conversation'] })
+  report({ passed: ['quota failure explained with the provider message', 'armed resume shows in the title bar and the sidebar, and goes on cancel', 'action opens the failing provider usage tab while another is active', 'back returns to the conversation'] })
 }, { width: 1400, height: 900 })

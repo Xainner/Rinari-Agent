@@ -9,6 +9,415 @@
   },
   "commands": [
     {
+      "command": "advanced_settings_get",
+      "kind": "engine",
+      "method": "advanced.settings.get",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "advanced_settings_set",
+      "kind": "engine",
+      "method": "advanced.settings.set",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_agent_archive",
+      "kind": "engine",
+      "method": "agency.agent.archive",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_agent_create",
+      "kind": "engine",
+      "method": "agency.agent.create",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_agent_delete",
+      "kind": "engine",
+      "method": "agency.agent.delete",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "agency_agent_draft",
+      "kind": "engine",
+      "method": "agency.agent.draft",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "agency_agent_get",
+      "kind": "engine",
+      "method": "agency.agent.get",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "agency_agent_list",
+      "kind": "engine",
+      "method": "agency.agent.list",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_agent_memory_add",
+      "kind": "engine",
+      "method": "agency.agent.memory.add",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_agent_memory_list",
+      "kind": "engine",
+      "method": "agency.agent.memory.list",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "agency_agent_unarchive",
+      "kind": "engine",
+      "method": "agency.agent.unarchive",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_agent_update",
+      "kind": "engine",
+      "method": "agency.agent.update",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_errand_cancel",
+      "kind": "engine",
+      "method": "agency.errand.cancel",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_errand_create",
+      "kind": "engine",
+      "method": "agency.errand.create",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_errand_list",
+      "kind": "engine",
+      "method": "agency.errand.list",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_errand_retry",
+      "kind": "engine",
+      "method": "agency.errand.retry",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_errand_review",
+      "kind": "engine",
+      "method": "agency.errand.review",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_flow_delete",
+      "kind": "engine",
+      "method": "agency.flow.delete",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_flow_list",
+      "kind": "engine",
+      "method": "agency.flow.list",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "agency_flow_run_cancel",
+      "kind": "engine",
+      "method": "agency.flow.run.cancel",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_flow_save",
+      "kind": "engine",
+      "method": "agency.flow.save",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_flow_start",
+      "kind": "engine",
+      "method": "agency.flow.start",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_office_list",
+      "kind": "engine",
+      "method": "agency.office.list",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_office_post",
+      "kind": "engine",
+      "method": "agency.office.post",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_resume",
+      "kind": "engine",
+      "method": "agency.resume",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "agency_routine_create",
+      "kind": "engine",
+      "method": "agency.routine.create",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_routine_list",
+      "kind": "engine",
+      "method": "agency.routine.list",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_settings_get",
+      "kind": "engine",
+      "method": "agency.settings.get",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_settings_set",
+      "kind": "engine",
+      "method": "agency.settings.set",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_status",
+      "kind": "engine",
+      "method": "agency.status",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_stop_all",
+      "kind": "engine",
+      "method": "agency.stop_all",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "agency_team_archive",
+      "kind": "engine",
+      "method": "agency.team.archive",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "agency_team_create",
+      "kind": "engine",
+      "method": "agency.team.create",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_team_delete",
+      "kind": "engine",
+      "method": "agency.team.delete",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "agency_team_duplicate",
+      "kind": "engine",
+      "method": "agency.team.duplicate",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_team_from_template",
+      "kind": "engine",
+      "method": "agency.team.from_template",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "agency_team_get",
+      "kind": "engine",
+      "method": "agency.team.get",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "agency_team_join",
+      "kind": "engine",
+      "method": "agency.team.join",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_team_leave",
+      "kind": "engine",
+      "method": "agency.team.leave",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_team_list",
+      "kind": "engine",
+      "method": "agency.team.list",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_team_memory_add",
+      "kind": "engine",
+      "method": "agency.team.memory.add",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_team_memory_list",
+      "kind": "engine",
+      "method": "agency.team.memory.list",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "agency_team_overview",
+      "kind": "engine",
+      "method": "agency.team.overview",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_team_resume",
+      "kind": "engine",
+      "method": "agency.team.resume",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "agency_team_stop",
+      "kind": "engine",
+      "method": "agency.team.stop",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "agency_team_template",
+      "kind": "engine",
+      "method": "agency.team.template",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_team_unarchive",
+      "kind": "engine",
+      "method": "agency.team.unarchive",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "agency_team_update",
+      "kind": "engine",
+      "method": "agency.team.update",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "agency_templates_list",
+      "kind": "engine",
+      "method": "agency.templates.list",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "agent_config_get",
       "kind": "engine",
       "method": "agent.config.get",
@@ -109,6 +518,13 @@
       "callers": [
         "src/services/engine.ts"
       ]
+    },
+    {
+      "command": "browser_external_open",
+      "kind": "engine",
+      "method": "browser.external.open",
+      "manual": false,
+      "callers": []
     },
     {
       "command": "browser_view_get",
@@ -377,6 +793,24 @@
       "callers": []
     },
     {
+      "command": "execution_settings_get",
+      "kind": "engine",
+      "method": "execution.settings.get",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "execution_settings_set",
+      "kind": "engine",
+      "method": "execution.settings.set",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "followup_accept",
       "kind": "engine",
       "method": "followup.accept",
@@ -402,11 +836,90 @@
       ]
     },
     {
+      "command": "images_connector_test",
+      "kind": "engine",
+      "method": "images.connector.test",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "images_settings_get",
+      "kind": "engine",
+      "method": "images.settings.get",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "images_settings_set",
+      "kind": "engine",
+      "method": "images.settings.set",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "initial_open_request",
       "kind": "host",
       "method": null,
       "manual": false,
       "callers": []
+    },
+    {
+      "command": "mcp_auth_cancel",
+      "kind": "engine",
+      "method": "mcp.auth.cancel",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_auth_signout",
+      "kind": "engine",
+      "method": "mcp.auth.signout",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_auth_start",
+      "kind": "engine",
+      "method": "mcp.auth.start",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_auth_status",
+      "kind": "engine",
+      "method": "mcp.auth.status",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_catalog_add",
+      "kind": "engine",
+      "method": "mcp.catalog.add",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_catalog_list",
+      "kind": "engine",
+      "method": "mcp.catalog.list",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "mcp_create",
@@ -425,6 +938,24 @@
       "callers": []
     },
     {
+      "command": "mcp_import_apply",
+      "kind": "engine",
+      "method": "mcp.import.apply",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_import_scan",
+      "kind": "engine",
+      "method": "mcp.import.scan",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "mcp_list",
       "kind": "engine",
       "method": "mcp.list",
@@ -437,6 +968,33 @@
       "command": "mcp_probe",
       "kind": "engine",
       "method": "mcp.probe",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_project_offers_decide",
+      "kind": "engine",
+      "method": "mcp.project_offers.decide",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_project_offers_list",
+      "kind": "engine",
+      "method": "mcp.project_offers.list",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_reconnect",
+      "kind": "engine",
+      "method": "mcp.reconnect",
       "manual": false,
       "callers": [
         "src/services/engine.ts"
@@ -470,9 +1028,54 @@
       ]
     },
     {
+      "command": "mcp_tools_list",
+      "kind": "engine",
+      "method": "mcp.tools.list",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_tools_set",
+      "kind": "engine",
+      "method": "mcp.tools.set",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "mcp_tools_set_default",
+      "kind": "engine",
+      "method": "mcp.tools.set_default",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "mcp_update",
       "kind": "engine",
       "method": "mcp.update",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "memory_about_get",
+      "kind": "engine",
+      "method": "memory.about.get",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "memory_about_set",
+      "kind": "engine",
+      "method": "memory.about.set",
       "manual": false,
       "callers": [
         "src/services/engine.ts"
@@ -534,6 +1137,15 @@
       "command": "memory_list",
       "kind": "engine",
       "method": "memory.list",
+      "manual": false,
+      "callers": [
+        "src/services/memory.ts"
+      ]
+    },
+    {
+      "command": "memory_move",
+      "kind": "engine",
+      "method": "memory.move",
       "manual": false,
       "callers": [
         "src/services/memory.ts"
@@ -619,6 +1231,15 @@
       ]
     },
     {
+      "command": "model_hidden_list",
+      "kind": "engine",
+      "method": "model.hidden.list",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "model_list",
       "kind": "engine",
       "method": "model.list",
@@ -651,6 +1272,15 @@
       "callers": []
     },
     {
+      "command": "model_unhide",
+      "kind": "engine",
+      "method": "model.unhide",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "model_use",
       "kind": "engine",
       "method": "model.use",
@@ -658,56 +1288,49 @@
       "callers": []
     },
     {
-      "command": "peer_group_get",
+      "command": "models_roles_get",
       "kind": "engine",
-      "method": "session.peer_group.get",
-      "manual": true,
-      "callers": [
-        "src/services/engine.ts"
-      ]
-    },
-    {
-      "command": "peer_group_revoke",
-      "kind": "engine",
-      "method": "session.peer_group.revoke",
+      "method": "models.roles.get",
       "manual": false,
       "callers": [
         "src/services/engine.ts"
       ]
     },
     {
-      "command": "peer_group_set",
+      "command": "models_roles_set",
       "kind": "engine",
-      "method": "session.peer_group.set",
+      "method": "models.roles.set",
       "manual": false,
       "callers": [
         "src/services/engine.ts"
       ]
     },
     {
-      "command": "peer_message_cancel",
+      "command": "network_settings_get",
       "kind": "engine",
-      "method": "session.peer_message.cancel",
+      "method": "network.settings.get",
       "manual": false,
       "callers": [
         "src/services/engine.ts"
       ]
     },
     {
-      "command": "peer_message_forward",
+      "command": "network_settings_set",
       "kind": "engine",
-      "method": "session.peer_message.forward",
-      "manual": true,
+      "method": "network.settings.set",
+      "manual": false,
       "callers": [
         "src/services/engine.ts"
       ]
     },
     {
-      "command": "peer_message_list",
+      "command": "network_test",
       "kind": "engine",
-      "method": "session.peer_message.list",
+      "method": "network.test",
       "manual": false,
-      "callers": []
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "permission_grants_list",
@@ -754,6 +1377,38 @@
       "command": "policy_get",
       "kind": "engine",
       "method": "policy.get",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "process_orphan_stop",
+      "kind": "engine",
+      "method": "process.orphan.stop",
+      "manual": false,
+      "callers": [
+        "src/services/processes.ts"
+      ]
+    },
+    {
+      "command": "process_orphans_list",
+      "kind": "engine",
+      "method": "process.orphans.list",
+      "manual": false,
+      "callers": [
+        "src/services/processes.ts"
+      ]
+    },
+    {
+      "command": "process_persistent_list",
+      "kind": "engine",
+      "method": "process.persistent.list",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "process_persistent_stop",
+      "kind": "engine",
+      "method": "process.persistent.stop",
       "manual": false,
       "callers": []
     },
@@ -829,6 +1484,20 @@
       "callers": [
         "src/services/engine.ts"
       ]
+    },
+    {
+      "command": "project_init_start",
+      "kind": "engine",
+      "method": "project.init.start",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "project_instructions_resolve",
+      "kind": "engine",
+      "method": "project.instructions.resolve",
+      "manual": false,
+      "callers": []
     },
     {
       "command": "project_intelligence",
@@ -1155,6 +1824,40 @@
       "callers": []
     },
     {
+      "command": "repo_pr_create",
+      "kind": "engine",
+      "method": "repo.pr.create",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "repo_status",
+      "kind": "engine",
+      "method": "repo.status",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "resume_settings_get",
+      "kind": "engine",
+      "method": "resume.settings.get",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "resume_settings_set",
+      "kind": "engine",
+      "method": "resume.settings.set",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "schedule_create",
       "kind": "engine",
       "method": "schedule.create",
@@ -1196,6 +1899,13 @@
       "callers": []
     },
     {
+      "command": "schedule_rehearse",
+      "kind": "engine",
+      "method": "schedule.rehearse",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "schedule_run_now",
       "kind": "engine",
       "method": "schedule.run_now",
@@ -1209,7 +1919,9 @@
       "kind": "engine",
       "method": "schedule.runs",
       "manual": false,
-      "callers": []
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "schedule_update",
@@ -1239,6 +1951,15 @@
       ]
     },
     {
+      "command": "session_checklist_complete",
+      "kind": "engine",
+      "method": "session.checklist.complete",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "session_checklist_get",
       "kind": "engine",
       "method": "session.checklist.get",
@@ -1246,6 +1967,43 @@
       "callers": [
         "src/services/engine.ts"
       ]
+    },
+    {
+      "command": "session_child_discard",
+      "kind": "engine",
+      "method": "session.child.discard",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "session_child_integrate",
+      "kind": "engine",
+      "method": "session.child.integrate",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_child_start",
+      "kind": "engine",
+      "method": "session.child.start",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "session_children_isolation",
+      "kind": "engine",
+      "method": "session.children.isolation",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "session_children_list",
+      "kind": "engine",
+      "method": "session.children.list",
+      "manual": false,
+      "callers": []
     },
     {
       "command": "session_close",
@@ -1296,6 +2054,56 @@
       "callers": [
         "src/services/engine.ts"
       ]
+    },
+    {
+      "command": "session_goal_budget",
+      "kind": "engine",
+      "method": "session.goal.budget",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_goal_clear",
+      "kind": "engine",
+      "method": "session.goal.clear",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_goal_get",
+      "kind": "engine",
+      "method": "session.goal.get",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_goal_pause",
+      "kind": "engine",
+      "method": "session.goal.pause",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_goal_resume",
+      "kind": "engine",
+      "method": "session.goal.resume",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "session_goal_set",
+      "kind": "engine",
+      "method": "session.goal.set",
+      "manual": false,
+      "callers": []
     },
     {
       "command": "session_history",
@@ -1407,10 +2215,76 @@
       ]
     },
     {
+      "command": "session_resume_arm",
+      "kind": "engine",
+      "method": "session.resume.arm",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_resume_cancel",
+      "kind": "engine",
+      "method": "session.resume.cancel",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_resume_get",
+      "kind": "engine",
+      "method": "session.resume.get",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "session_resume_now",
+      "kind": "engine",
+      "method": "session.resume.now",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "session_review_export",
+      "kind": "engine",
+      "method": "session.review.export",
+      "manual": false,
+      "callers": [
+        "src/features/review/ReviewExportDialog.tsx"
+      ]
+    },
+    {
+      "command": "session_summary",
+      "kind": "engine",
+      "method": "session.summary",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "session_timeline",
       "kind": "engine",
       "method": "session.timeline",
       "manual": true,
+      "callers": []
+    },
+    {
+      "command": "session_tool_background",
+      "kind": "engine",
+      "method": "session.tool.background",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "session_tool_output",
+      "kind": "engine",
+      "method": "session.tool.output",
+      "manual": false,
       "callers": []
     },
     {
@@ -1591,9 +2465,25 @@
       ]
     },
     {
+      "command": "soul_export",
+      "kind": "engine",
+      "method": "soul.export",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "soul_get",
       "kind": "engine",
       "method": "soul.get",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "soul_import",
+      "kind": "engine",
+      "method": "soul.import",
       "manual": false,
       "callers": [
         "src/services/engine.ts"
@@ -1689,6 +2579,22 @@
       "callers": []
     },
     {
+      "command": "storage_clean",
+      "kind": "engine",
+      "method": "storage.clean",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "storage_usage",
+      "kind": "engine",
+      "method": "storage.usage",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "task_get",
       "kind": "engine",
       "method": "task.get",
@@ -1771,12 +2677,60 @@
       ]
     },
     {
+      "command": "turn_steer_cancel",
+      "kind": "engine",
+      "method": "session.turn.steer.cancel",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "turn_steer_now",
+      "kind": "engine",
+      "method": "session.turn.steer_now",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "turn_steer_promote",
+      "kind": "engine",
+      "method": "session.turn.steer.promote",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "turn_steer_update",
+      "kind": "engine",
+      "method": "session.turn.steer.update",
+      "manual": false,
+      "callers": []
+    },
+    {
       "command": "usage_get",
       "kind": "engine",
       "method": "usage.get",
       "manual": false,
       "callers": [
         "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "usage_report",
+      "kind": "engine",
+      "method": "usage.report",
+      "manual": false,
+      "callers": [
+        "src/features/usage/usageReport.ts"
+      ]
+    },
+    {
+      "command": "usage_report_list",
+      "kind": "engine",
+      "method": "usage.report.list",
+      "manual": false,
+      "callers": [
+        "src/features/usage/usageReport.ts"
       ]
     },
     {
@@ -1798,6 +2752,15 @@
       ]
     },
     {
+      "command": "vision_model_reset",
+      "kind": "engine",
+      "method": "vision.model.reset",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "vision_settings_get",
       "kind": "engine",
       "method": "vision.settings.get",
@@ -1810,6 +2773,15 @@
       "command": "vision_settings_set",
       "kind": "engine",
       "method": "vision.settings.set",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "workspace_dir_list",
+      "kind": "engine",
+      "method": "workspace.dir.list",
       "manual": false,
       "callers": [
         "src/services/engine.ts"
@@ -1862,6 +2834,13 @@
       "callers": [
         "src/services/desktop.ts"
       ]
+    },
+    {
+      "command": "workspace_preview_list",
+      "kind": "engine",
+      "method": "workspace.preview.list",
+      "manual": false,
+      "callers": []
     },
     {
       "command": "workspace_preview_start",
@@ -1919,10 +2898,10 @@
     }
   ],
   "summary": {
-    "commands": 229,
-    "engine_backed": 223,
+    "commands": 346,
+    "engine_backed": 340,
     "host_only": 6,
-    "manual_adapters": 10,
-    "without_callers": 76
+    "manual_adapters": 8,
+    "without_callers": 113
   }
 }

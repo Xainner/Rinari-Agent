@@ -1,10 +1,12 @@
 import { useId, useState } from 'react'
-import { Brain, Check, LoaderCircle, ShieldAlert, X } from 'lucide-react'
+import { Brain, Check, LoaderCircle, MapPin, ShieldAlert, X } from 'lucide-react'
 import { toast } from 'sonner'
-import { useI18n } from '../../i18n'
+import { useI18n, type I18nKey } from '../../i18n'
+import { Select } from '../../components/ui/select'
 import { inputClass } from '../../lib/ui'
 import { Button } from '../../components/ui/button'
 import { resolveCandidate } from './memoryStore'
+import { PlaceIcon } from './placeIcon'
 import { candidateReason, kindLabel, memoryErrorMessage } from './memoryCopy'
 import type { CandidateDecision, CandidateStatus } from './types'
 
@@ -15,6 +17,18 @@ export interface CandidateView {
   kind?: string
   reason?: string | null
   sensitive?: boolean
+  /** Store and place the model chose (#75); the owner can change the place. */
+  scope?: string
+  place?: string | null
+  project_root?: string | null
+}
+
+type Place = 'general' | 'profile' | 'project' | 'chat'
+
+function initialPlace(candidate: CandidateView): Place {
+  if (candidate.scope === 'project') return 'project'
+  const place = candidate.place
+  return place === 'profile' || place === 'chat' ? place : 'general'
 }
 
 /**
@@ -33,8 +47,11 @@ export function MemoryCandidateCard({ candidate, status, variant = 'chat' }: {
   const [text, setText] = useState(candidate.text)
   const [busy, setBusy] = useState<CandidateDecision | null>(null)
   const [error, setError] = useState('')
+  const [place, setPlace] = useState<Place>(() => initialPlace(candidate))
   const fieldId = useId()
   const pending = status === 'pending'
+  // «Recordar en» (#75): proyecto solo si la propuesta trae su proyecto.
+  const places: Place[] = candidate.project_root ? ['general', 'profile', 'project', 'chat'] : ['general', 'profile', 'chat']
 
   async function decide(decision: CandidateDecision) {
     if (decision === 'allow_once' && editing && !text.trim()) { setError(t('memory.error.empty')); return }
@@ -47,7 +64,10 @@ export function MemoryCandidateCard({ candidate, status, variant = 'chat' }: {
             ...(topic.trim() && topic.trim() !== candidate.topic ? { topic: topic.trim() } : {}),
           }
         : {}
-      await resolveCandidate(candidate.id, decision, edits)
+      const where = decision === 'allow_once' && place !== initialPlace(candidate)
+        ? { place, ...(place === 'project' && candidate.project_root ? { project_root: candidate.project_root } : {}) }
+        : {}
+      await resolveCandidate(candidate.id, decision, edits, where)
       setEditing(false)
     } catch (e) {
       toast.error(memoryErrorMessage(e, t))
@@ -98,6 +118,20 @@ export function MemoryCandidateCard({ candidate, status, variant = 'chat' }: {
         </p>
       )}
       {error && <p role="alert" className="mt-1.5 text-[12px] text-[var(--danger)]">{error}</p>}
+
+      {pending && (
+        <div className="memory-candidate-where" data-testid="memory-candidate-where">
+          <span className="memory-candidate-where-label"><MapPin size={12} aria-hidden="true" />{t('memory.candidate.where')}</span>
+          <Select<Place>
+            compact
+            value={place}
+            label={t('memory.candidate.where')}
+            options={places.map((value) => ({ value, label: t(`memory.place.${value}` as I18nKey), icon: <PlaceIcon place={value} size={13} /> }))}
+            onChange={setPlace}
+            disabled={busy !== null}
+          />
+        </div>
+      )}
 
       {pending ? (
         <div className="mt-2.5 flex flex-wrap gap-2">

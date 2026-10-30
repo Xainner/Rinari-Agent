@@ -28,9 +28,14 @@ export const CHANNEL = {
   filesRevealInFolder: 'rinari:files.revealInFolder',
   filesMedia: 'rinari:files.media',
   clipboardWriteText: 'rinari:clipboard.writeText',
+  /** «Copiar» y «Descargar» del visor: la imagen que resolvió el Engine. */
+  imagesCopy: 'rinari:images.copy',
+  imagesSave: 'rinari:images.save',
   /** «Exportar diagnóstico»: qué incluiría el paquete y guardarlo donde diga la persona. */
   diagnosticsPreview: 'rinari:diagnostics.preview',
   diagnosticsExport: 'rinari:diagnostics.export',
+  /** «Exportar para revisión» (#79): la parte del Engine + los registros de esas horas. */
+  diagnosticsExportReview: 'rinari:diagnostics.exportReview',
   /** Segundo plano: bandeja al cerrar e inicio con el sistema (preferencia de main). */
   appBackgroundGet: 'rinari:app.background.get',
   appBackgroundSet: 'rinari:app.background.set',
@@ -38,6 +43,15 @@ export const CHANNEL = {
   appLanguageSet: 'rinari:app.language.set',
   /** Chats pendientes: número en la barra de tareas y marca en la bandeja. */
   appIndicatorsSet: 'rinari:app.indicators.set',
+  /** Ajustes → Avanzado: abre una carpeta conocida (nunca una ruta del renderer). */
+  appOpenFolder: 'rinari:app.openFolder',
+  /** Ajustes → Avanzado → Motor y Diagnóstico: lo que main lee antes de la ventana (#70, #91, #96). */
+  appHostSettingsGet: 'rinari:app.hostSettings.get',
+  appHostSettingsSet: 'rinari:app.hostSettings.set',
+  /** Reiniciar la app (la aceleración por hardware se aplica al abrir). */
+  appRelaunch: 'rinari:app.relaunch',
+  appStableReturnPreview: 'rinari:app.stableReturn.preview',
+  appStableReturnApply: 'rinari:app.stableReturn.apply',
   contextMenuShow: 'rinari:contextMenu.show',
   notificationsSupport: 'rinari:notifications.support',
   notificationsSend: 'rinari:notifications.send',
@@ -74,6 +88,9 @@ export const CHANNEL = {
   browserSetControl: 'rinari:browser.setControl',
   browserNavigate: 'rinari:browser.navigate',
   browserHistory: 'rinari:browser.history',
+  browserNewTab: 'rinari:browser.newTab',
+  browserCloseTab: 'rinari:browser.closeTab',
+  browserClearData: 'rinari:browser.clearData',
   browserPreview: 'rinari:browser.preview',
 } as const
 
@@ -88,12 +105,19 @@ export const PUSH = {
   contextMenuAction: 'rinari:push.contextMenuAction',
   /** El usuario pulsó una notificación: el renderer resuelve el destino. */
   notificationActivated: 'rinari:push.notificationActivated',
+  notificationReplied: 'rinari:push.notificationReplied',
   /**
    * Cambió el contexto del browser de una sesión: pestañas, control o estado.
    * Se empuja para que la toolbar no tenga que sondear —el §10 limita el poll
    * al visor de capturas, y el nativo no lo necesita—.
    */
   browserContextChanged: 'rinari:push.browserContext',
+  /**
+   * Un atajo del navegador pulsado con el foco en la página que tiene que
+   * atender la barra (Ctrl+L: ir a la dirección). La vista nativa se queda
+   * con las teclas y el renderer no las ve.
+   */
+  browserShortcut: 'rinari:push.browserShortcut',
   /** Progreso y estados del updater Electron; nunca contiene rutas ni tokens. */
   updateState: 'rinari:push.updateState',
 } as const
@@ -195,6 +219,17 @@ export interface NotificationSupport {
 export interface NotificationTarget {
   sessionId?: string
   turnId?: string
+  /** Botón que se pulsó en la notificación (#64); sin él, fue un clic. */
+  action?: NotificationActionId
+}
+
+/** Botones de una notificación: abrir, o abrir en el plan. Aprobar, nunca (#64). */
+export type NotificationActionId = 'open' | 'review-plan'
+
+/** Lo que el dueño escribió en «Responder» de la notificación (#64). */
+export interface NotificationReply {
+  target: NotificationTarget
+  text: string
 }
 
 /** Segundo plano: la preferencia de main y la verdad del sistema. */
@@ -212,10 +247,62 @@ export interface BackgroundPatch {
   launchAtLogin?: boolean
 }
 
+/** «Exportar para revisión» (#79): lo que el Engine ya preparó, sin secretos. */
+export interface ReviewExportRequest {
+  files: Record<string, string>
+  from?: string | null
+  to?: string | null
+  includeLogs: boolean
+  suggestedName: string
+}
+
+/** Cuánto se espera el saludo del Engine: «Automático» lo adapta (#70). */
+export type StartupLimit = 'auto' | 30 | 60
+
+/** Ajustes del host para Avanzado → Motor y Diagnóstico (#70, #91, #96). */
+export interface HostSettings {
+  startupLimit: StartupLimit
+  /** El plazo en uso ahora, en s (con «Automático», el calculado). */
+  startupLimitS: number
+  /** Lo que tardó el último saludo del Engine, en ms. */
+  lastStartupMs: number | null
+  /** Línea de tiempos del último arranque (#91.6), en ms desde que abrió el proceso. */
+  startupTimeline: Array<{ step: string; ms: number }>
+  hardwareAcceleration: boolean
+  /** Cambió la aceleración y falta reiniciar para aplicarla. */
+  restartRequired: boolean
+  detailedLogs: boolean
+  /** Hasta cuándo, en ISO; se apagan solos a las 24 h. */
+  detailedLogsUntil: string | null
+  /** Variables que cambian cómo trabaja Rinari; solo lectura y sin secretos. */
+  environment: Array<{ name: string; value: string }>
+  channel: 'stable' | 'nightly'
+  packaged: boolean
+}
+
+/** «Volver a la versión normal» desde la Nightly (#96): a qué copia de la base se vuelve. */
+export interface StableReturnPreview {
+  /** Solo en la Nightly. */
+  available: boolean
+  backup: { name: string; createdAt: string; from: number; to: number } | null
+  /** La versión normal está instalada para este usuario (si no, se abre la página de descargas). */
+  stableInstalled: boolean
+}
+
+export interface HostSettingsPatch {
+  startupLimit?: StartupLimit
+  hardwareAcceleration?: boolean
+  detailedLogs?: boolean
+}
+
 export interface SystemNotificationRequest {
   title: string
   body: string
   target?: NotificationTarget
+  /** Botones (Windows y macOS), en orden. */
+  actions?: Array<{ id: NotificationActionId; label: string }>
+  /** Caja «Responder» (Windows y macOS): lo escrito llega como `notificationReplied`. */
+  reply?: { placeholder: string }
   /** Sin sonido del sistema: la app reproduce su propio tono. */
   silent?: boolean
 }
@@ -347,6 +434,8 @@ export interface BrowserSlotLayoutRequest {
   layout_revision: number
   overlay_depth: number
   occlusions?: Array<{ x: number; y: number; width: number; height: number }>
+  /** Radio de las esquinas del hueco, en DIP. */
+  corner_radius?: number
 }
 
 export interface BrowserSlotLease {

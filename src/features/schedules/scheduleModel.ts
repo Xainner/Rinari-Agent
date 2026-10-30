@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { I18nKey } from '../../i18n'
-import type { ScheduleSpec, ScheduledRunStatus, ScheduledTask, ScheduledTaskInput } from '../../services/engine'
+import type { ScheduleSpec, ScheduledCommand, ScheduledRunStatus, ScheduledTask, ScheduledTaskInput } from '../../services/engine'
 
 type Translate = (key: I18nKey, vars?: Record<string, string | number>) => string
 
@@ -16,6 +16,7 @@ export const WEEKDAY_KEYS: readonly I18nKey[] = [
 ]
 
 export const RUN_STATUS_KEYS: Record<ScheduledRunStatus, I18nKey> = {
+  queued: 'schedules.status.queued',
   running: 'schedules.status.running',
   needs_you: 'schedules.status.needs_you',
   completed: 'schedules.status.completed',
@@ -30,7 +31,7 @@ export function runTone(status: ScheduledRunStatus): 'ok' | 'warn' | 'bad' | 'mu
   if (status === 'completed') return 'ok'
   if (status === 'needs_you' || status === 'blocked') return 'warn'
   if (status === 'failed') return 'bad'
-  if (status === 'running') return 'live'
+  if (status === 'running' || status === 'queued') return 'live'
   return 'muted'
 }
 
@@ -38,6 +39,17 @@ export const SKIP_REASON_KEYS: Record<string, I18nKey> = {
   missed: 'schedules.reason.missed',
   previous_run_active: 'schedules.reason.previous_run_active',
   engine_restarted: 'schedules.reason.engine_restarted',
+  conversation_deleted: 'schedules.reason.conversation_deleted',
+  cancelled_by_owner: 'schedules.reason.cancelled_by_owner',
+  task_deleted: 'schedules.reason.task_deleted',
+}
+
+/** Lo que el programador no puede sostener: revisa lo pendiente cada 5 s (Engine). */
+export const MIN_INTERVAL_SECONDS = 5
+
+/** Cada cuántos segundos corre un intervalo, lo dé en minutos o en segundos. */
+export function intervalSeconds(spec: Extract<ScheduleSpec, { kind: 'interval' }>): number {
+  return spec.seconds ?? spec.minutes * 60
 }
 
 export function describeSchedule(spec: ScheduleSpec, t: Translate, locale: string): string {
@@ -49,10 +61,14 @@ export function describeSchedule(spec: ScheduleSpec, t: Translate, locale: strin
         : at.toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' })
       return t('schedules.describe.once', { at: text })
     }
-    case 'interval':
-      return spec.minutes % 60 === 0
-        ? t('schedules.describe.everyHours', { n: spec.minutes / 60 })
-        : t('schedules.describe.everyMinutes', { n: spec.minutes })
+    case 'interval': {
+      const seconds = intervalSeconds(spec)
+      if (seconds % 60 !== 0) return t('schedules.describe.everySeconds', { n: seconds })
+      const minutes = seconds / 60
+      return minutes % 60 === 0
+        ? t('schedules.describe.everyHours', { n: minutes / 60 })
+        : t('schedules.describe.everyMinutes', { n: minutes })
+    }
     case 'daily':
       return t('schedules.describe.daily', { time: spec.time })
     case 'weekly': {
@@ -61,6 +77,8 @@ export function describeSchedule(spec: ScheduleSpec, t: Translate, locale: strin
         : spec.days.map((day) => t(WEEKDAY_KEYS[day])).join(', ')
       return t('schedules.describe.weekly', { days, time: spec.time })
     }
+    case 'cron':
+      return t('schedules.describe.cron', { expr: spec.expr })
   }
 }
 
@@ -86,6 +104,7 @@ export function emptyDraft(): ScheduledTaskInput {
     prompt: '',
     project_id: null,
     mode: 'build',
+    permission_profile: null,
     model: null,
     skills: [],
     grants: [],
@@ -100,10 +119,40 @@ export function draftFromTask(task: ScheduledTask): ScheduledTaskInput {
     prompt: task.prompt,
     project_id: task.project_id,
     mode: task.mode,
+    permission_profile: task.permission_profile ?? null,
     model: task.model,
     skills: task.skills,
     grants: task.grants,
+    ...(task.command ? { command: task.command } : {}),
+    ...(task.target === 'this_conversation' && task.session_id ? { target: task.target, session_id: task.session_id } : {}),
+    // Without it, editing showed «Cada vuelta» for a muted task (22-oct).
+    ...(task.notify ? { notify: task.notify } : {}),
   }
+}
+
+/**
+ * El nombre de la tarea de un mensaje o una entrada de la cola que corre en
+ * su conversación («Repetir aquí», `schedule_target_v1`). Los tipos generados
+ * del protocolo aún no traen `task_name`: se lee sin suponerlo.
+ */
+export function scheduleTaskName(origin: { kind: string } | null | undefined): string | null {
+  const name = (origin as { task_name?: unknown } | null | undefined)?.task_name
+  return typeof name === 'string' && name.trim() ? name : null
+}
+
+/** Una ejecución de tarea que corre en la conversación donde se pidió. */
+export function runsInItsConversation(origin: { kind: string } | null | undefined): boolean {
+  return origin?.kind === 'schedule' && (origin as { target?: unknown }).target === 'this_conversation'
+}
+
+/** La tarea corre en la conversación donde se pidió («Repetir aquí»). */
+export function runsHere(draft: Pick<ScheduledTaskInput, 'target' | 'session_id'>): boolean {
+  return draft.target === 'this_conversation' && Boolean(draft.session_id)
+}
+
+/** Una tarea «Comando» nueva: avisa solo si falla (#50). */
+export function emptyCommand(): ScheduledCommand {
+  return { command: '', shell: 'default', cwd: null, timeout_s: 600, on_result: 'notify_failure' }
 }
 
 /**
@@ -112,11 +161,22 @@ export function draftFromTask(task: ScheduledTask): ScheduledTaskInput {
  */
 export function draftProblem(draft: ScheduledTaskInput, t: Translate): string | null {
   if (!draft.name.trim()) return t('schedules.form.needName')
-  if (!draft.prompt.trim()) return t(draft.kind === 'reminder' ? 'schedules.form.needReminder' : 'schedules.form.needPrompt')
-  const spec = draft.schedule
+  if (draft.kind === 'command') {
+    if (!draft.command?.command.trim()) return t('schedules.form.needCommand')
+    if (draft.command.on_result === 'agent' && !draft.prompt.trim()) return t('schedules.form.needPrompt')
+  } else if (!draft.prompt.trim()) return t(draft.kind === 'reminder' ? 'schedules.form.needReminder' : 'schedules.form.needPrompt')
+  return specProblem(draft.schedule, t)
+}
+
+/** Lo que le falta a un horario (también el de una regla de la Agency). */
+export function specProblem(spec: ScheduleSpec, t: Translate): string | null {
   if (spec.kind === 'weekly' && spec.days.length === 0) return t('schedules.form.needDays')
-  if (spec.kind === 'interval' && (!Number.isInteger(spec.minutes) || spec.minutes < 5)) return t('schedules.form.minInterval')
+  if (spec.kind === 'interval') {
+    const seconds = intervalSeconds(spec)
+    if (!Number.isInteger(seconds) || seconds < MIN_INTERVAL_SECONDS) return t('schedules.form.minInterval')
+  }
   if (spec.kind === 'once' && !spec.at) return t('schedules.form.needAt')
+  if (spec.kind === 'cron' && spec.expr.trim().split(/\s+/).length !== 5) return t('schedules.form.needCron')
   return null
 }
 

@@ -42,14 +42,19 @@ export function coverageDetail(coverage: ReadingCoverage, t: (key: I18nKey, vars
 }
 
 /** Cómo se leyó el adjunto: OCR (y si la imagen también fue) y páginas leídas de un PDF. */
-export function ReadingBadges({ attachment }: { attachment: Pick<AttachmentRef, 'ocr' | 'keepImage' | 'coverage'> }) {
+export function ReadingBadges({ attachment }: { attachment: Pick<AttachmentRef, 'ocr' | 'keepImage' | 'coverage' | 'ocrAuto'> }) {
   const { t } = useI18n()
   const coverage = attachment.coverage
   const partial = coverage && (coverage.prepared_pages < coverage.total_pages || coverage.failed_pages + coverage.unprocessed_pages > 0)
   return <>
     {attachment.ocr && (
-      <span title={t(attachment.keepImage ? 'attach.read.bothHint' : 'attach.read.textHint')} className="rounded bg-[var(--accent-2)]/10 px-1 text-[10px] text-[var(--accent-2)]">
-        {attachment.keepImage ? t('attach.badge.ocrImage') : 'OCR'}
+      <span
+        title={t(attachment.ocrAuto ? 'attach.badge.autoTextHint' : attachment.keepImage ? 'attach.read.bothHint' : 'attach.read.textHint')}
+        className="rounded bg-[var(--accent-2)]/10 px-1 text-[10px] text-[var(--accent-2)]"
+        data-testid="attach-read-badge"
+        data-auto={attachment.ocrAuto || undefined}
+      >
+        {attachment.ocrAuto ? t('attach.badge.autoText') : attachment.keepImage ? t('attach.badge.ocrImage') : 'OCR'}
       </span>
     )}
     {coverage && (

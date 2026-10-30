@@ -12,7 +12,7 @@ import ProvidersView from '../providers/ProvidersView'
 import ModelsView from '../providers/ModelsView'
 import AgentsView from '../agents/AgentsView'
 import SoulsView from '../souls/SoulsView'
-import McpView from '../ecosystem/McpView'
+import ConnectorsView from '../connectors/ConnectorsView'
 import SkillsView from '../skills/SkillsView'
 import PluginsView from '../ecosystem/PluginsView'
 import ToolsView from '../ecosystem/ToolsView'
@@ -22,6 +22,9 @@ import AdvancedSettings from '../../components/settings/AdvancedSettings'
 import ShortcutsSettings from '../../components/settings/ShortcutsSettings'
 import MemorySettings from '../memory/MemorySettings'
 import DictationSettings from '../dictation/DictationSettings'
+import NotificationSettings from '../../components/settings/NotificationSettings'
+import BrowserSettings from '../../components/settings/BrowserSettings'
+import { ZoneBoundary } from '../../components/ZoneBoundary'
 
 /** Vista de ajustes: shell + sección activa. Terminal llega en Fase 10. */
 export default function SettingsView({
@@ -31,6 +34,7 @@ export default function SettingsView({
   activeSessionId,
   engineCapabilities,
   onCatalogChanged,
+  onOpenSession,
 }: {
   appVersion: string
   providers: ProviderSummary[]
@@ -38,6 +42,8 @@ export default function SettingsView({
   activeSessionId: string | null
   engineCapabilities?: Record<string, boolean>
   onCatalogChanged: () => void
+  /** Abre una conversación (el origen de un recuerdo, #75). */
+  onOpenSession?: (id: string) => void
 }) {
   const { lang } = useI18n()
   const section = useUIStore((s) => s.settingsSection)
@@ -47,6 +53,7 @@ export default function SettingsView({
 
   return (
     <SettingsShell onBack={goBackToWork}>
+      <ZoneBoundary zone="settings" key={section}>
       {section === 'general' && (
         <GeneralSettings language={lang} onLanguageChange={(next) => setLang(next)} />
       )}
@@ -55,10 +62,12 @@ export default function SettingsView({
       {section === 'providers' && (
         <ProvidersView providers={providers} onChanged={onCatalogChanged} engineCapabilities={engineCapabilities} />
       )}
-      {section === 'vision' && <VisionSettings models={models} providers={providers} />}
+      {section === 'vision' && <VisionSettings models={models} providers={providers} imageCreation={engineCapabilities?.image_creation_v1 === true} />}
       {section === 'context' && <ContextSettings models={models} providers={providers} />}
-      {section === 'memory' && <MemorySettings />}
+      {section === 'memory' && <MemorySettings onOpenSession={onOpenSession} />}
       {section === 'dictation' && <DictationSettings />}
+      {section === 'notifications' && <NotificationSettings />}
+      {section === 'browser' && <BrowserSettings />}
       {section === 'models' && (
         <ModelsView
           providers={providers}
@@ -75,7 +84,7 @@ export default function SettingsView({
       )}
       {section === 'soul' && <SoulsView onChanged={onCatalogChanged} />}
       {section === 'skills' && <SkillsView />}
-      {section === 'mcp' && <McpView onChanged={onCatalogChanged} />}
+      {section === 'mcp' && <ConnectorsView onChanged={onCatalogChanged} engineCapabilities={engineCapabilities} />}
       {section === 'plugins' && <PluginsView onChanged={onCatalogChanged} />}
       {section === 'tools' && <ToolsView />}
       {section === 'profiles' && (
@@ -85,11 +94,13 @@ export default function SettingsView({
         />
       )}
       {section === 'terminal' && <TerminalView />}
-      {section === 'advanced' && <AdvancedSettings models={models} providers={providers} />}
+      {section === 'advanced' && <AdvancedSettings models={models} providers={providers} activeSessionId={activeSessionId} />}
       {section === 'about' && <AboutSettings version={appVersion} />}
-      {!['context', 'memory', 'vision', 'general', 'shortcuts', 'appearance', 'providers', 'models', 'agents', 'soul', 'skills', 'mcp', 'plugins', 'tools', 'profiles', 'terminal', 'advanced', 'about'].includes(section) && (
+      {/* Solo lo que aún no tiene página: Dictado, Notificaciones y Navegador ya la tienen. */}
+      {!['context', 'memory', 'vision', 'general', 'shortcuts', 'appearance', 'providers', 'models', 'agents', 'soul', 'skills', 'mcp', 'plugins', 'tools', 'profiles', 'terminal', 'dictation', 'notifications', 'browser', 'advanced', 'about'].includes(section) && (
         <SoonSettings />
       )}
+      </ZoneBoundary>
     </SettingsShell>
   )
 }

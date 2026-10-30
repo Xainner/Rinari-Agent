@@ -107,3 +107,64 @@ it('a caller can create without a first conversation and take over what happens 
   expect(create[1]).toMatchObject({ open: false })
   expect(useCreateProjectStore.getState().options).toEqual({})
 })
+
+it('«Confiar» starts on, already trusted folders say so, and folders with hooks or MCP start off with a warning (#60)', async () => {
+  vi.mocked(invoke).mockImplementation(async (name: string, args: Record<string, unknown> = {}) => {
+    if (name === 'project_folders_validate') {
+      const paths = args.paths as string[]
+      return {
+        folders: paths.map((path) => ({
+          ...check(path),
+          trust_state: path.endsWith('old') ? 'trusted' : 'not-trusted',
+          has_hooks: path.endsWith('hooked'),
+          has_mcp: path.endsWith('served'),
+        })),
+      }
+    }
+    if (name === 'project_create') return { project: { id: 'p9', name: args.name, root: '/a/new' }, session: null, trust: [] }
+    return {}
+  })
+  const onCreated = mount()
+  act(() => useCreateProjectStore.getState().openWith(['/a/new', '/a/old', '/a/hooked', '/a/served']))
+  await waitFor(() => expect(screen.getAllByTestId('create-project-commands')).toHaveLength(2))
+  const switches = screen.getAllByRole('checkbox') as HTMLInputElement[]
+  expect(switches.map((box) => box.checked)).toEqual([true, true, false, false])
+  expect(screen.getAllByTestId('create-project-already-trusted')).toHaveLength(1)
+  expect(screen.getByTestId('create-project-summary').textContent).toContain('4 carpetas (2 de confianza)')
+
+  await waitFor(() => expect((screen.getByTestId('create-project-submit') as HTMLButtonElement).disabled).toBe(false))
+  await userEvent.click(screen.getByTestId('create-project-submit'))
+  await waitFor(() => expect(onCreated).toHaveBeenCalled())
+  const create = vi.mocked(invoke).mock.calls.find(([name]) => name === 'project_create')!
+  // No empty conversation: the app opens a draft of the project instead.
+  expect(create[1]).toMatchObject({
+    open: false,
+    folders: [
+      { path: '/a/new', trust: true },
+      { path: '/a/old', trust: true },
+      { path: '/a/hooked', trust: false },
+      { path: '/a/served', trust: false },
+    ],
+  })
+})
+
+it('the owner can still turn a warned folder on before creating (#60)', async () => {
+  vi.mocked(invoke).mockImplementation(async (name: string, args: Record<string, unknown> = {}) => {
+    if (name === 'project_folders_validate') {
+      return { folders: (args.paths as string[]).map((path) => ({ ...check(path), has_hooks: true, has_mcp: false })) }
+    }
+    if (name === 'project_create') return { project: { id: 'p9', name: args.name, root: '/a/hooked' }, session: null, trust: [] }
+    return {}
+  })
+  mount()
+  act(() => useCreateProjectStore.getState().openWith(['/a/hooked']))
+  await screen.findByTestId('create-project-commands')
+  const box = screen.getByRole('checkbox') as HTMLInputElement
+  expect(box.checked).toBe(false)
+  await userEvent.click(box)
+  expect(box.checked).toBe(true)
+  await userEvent.click(screen.getByTestId('create-project-submit'))
+  await waitFor(() => expect(vi.mocked(invoke).mock.calls.some(([name]) => name === 'project_create')).toBe(true))
+  const create = vi.mocked(invoke).mock.calls.find(([name]) => name === 'project_create')!
+  expect(create[1]).toMatchObject({ folders: [{ path: '/a/hooked', trust: true }] })
+})

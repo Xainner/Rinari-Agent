@@ -4,9 +4,7 @@ import { useUIStore } from '../../stores/ui'
 import { useBoardStore } from '../../stores/board'
 import { inputClass, Row, Section } from './parts'
 import { Switch } from '../ui/switch'
-import { notificationSupport } from '../../services/notifications'
 import BackgroundSettings from './BackgroundSettings'
-import SoundSettings from './SoundSettings'
 
 /** Settings > General (§19): idioma + comportamiento. Guardado inmediato. */
 export default function GeneralSettings({
@@ -27,12 +25,6 @@ export default function GeneralSettings({
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed)
   const softLimit = useBoardStore((s) => s.softLimit)
   const setSoftLimit = useBoardStore((s) => s.setSoftLimit)
-  const messagingEnabled = useBoardStore((s) => s.messagingEnabled)
-  const setMessagingEnabled = useBoardStore((s) => s.setMessagingEnabled)
-  const notifications = useBoardStore((s) => s.notifications)
-  const setNotifications = useBoardStore((s) => s.setNotifications)
-  // El canal nativo requiere el plugin oficial (PR aparte): este build no lo incluye.
-  const systemSupported = notificationSupport.canSend
 
   return (
     <div className="space-y-6">
@@ -118,43 +110,7 @@ export default function GeneralSettings({
             />
           }
         />
-        <Row
-          title={t('board.peers.boardToggle')}
-          desc={t('board.peers.boardToggleHint')}
-          control={
-            <Switch
-              checked={messagingEnabled}
-              onCheckedChange={setMessagingEnabled}
-              aria-label={t('board.peers.boardToggle')}
-            />
-          }
-        />
       </Section>
-
-      <Section title={t('settings.general.board.notifications')}>
-        <Row
-          title={t('settings.general.board.toasts')}
-          desc={t('settings.general.board.toastsHint')}
-          control={<Switch checked={notifications.toasts} onCheckedChange={(value) => setNotifications({ toasts: value })} aria-label={t('settings.general.board.toasts')} />}
-        />
-        <Row
-          title={t('settings.general.board.needsYou')}
-          desc={t('settings.general.board.needsYouHint')}
-          control={<Switch checked={notifications.needsYou} onCheckedChange={(value) => setNotifications({ needsYou: value })} aria-label={t('settings.general.board.needsYou')} />}
-        />
-        <Row
-          title={t('settings.general.board.system')}
-          desc={systemSupported ? t('settings.general.board.systemHint') : t('settings.general.board.systemUnsupported')}
-          control={<Switch checked={notifications.system && systemSupported} disabled={!systemSupported} onCheckedChange={(value) => setNotifications({ system: value })} aria-label={t('settings.general.board.system')} />}
-        />
-        <Row
-          title={t('settings.general.board.systemDetails')}
-          desc={t('settings.general.board.systemDetailsHint')}
-          control={<Switch checked={notifications.systemDetails} disabled={!systemSupported} onCheckedChange={(value) => setNotifications({ systemDetails: value })} aria-label={t('settings.general.board.systemDetails')} />}
-        />
-      </Section>
-
-      <SoundSettings />
     </div>
   )
 }

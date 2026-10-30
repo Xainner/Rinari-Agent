@@ -50,8 +50,13 @@ Antes de escribir estilos, usa lo que ya existe:
 
 - Botones: clases `.btn` + `btn-primary | btn-secondary | btn-ghost | btn-quiet | btn-danger` y tamaños `btn-sm | btn-xs | btn-lg | btn-icon` (también vía `<Button>`).
 - Campos: `.field-input`, `.field-label`, `.field-hint`.
+- Selectores: `<Select>` de `src/components/ui/select.tsx` (disparador con icono, nombre y chevron; lista `.r-pop` con iconos, check e insignia; `compact` para barras). Nada de `<select>` nativo en lo nuevo: su lista es el menú del sistema.
+- Progreso: `<ProgressBar>` de `src/components/ui/progress-bar.tsx` (indeterminada sin `value`). Un test falla si aparece un `<progress>` nativo.
+- Casillas: `<input type="checkbox" className="r-checkbox">` (dibuja su check al marcarse y una raya con `indeterminate`); nada de `accent-color` sobre la casilla del sistema.
+- Chips de estado: `.r-chip` con `data-tone` (`accent`, `success`, `warning`, `danger`; sin tono, neutro). Una superficie solo ajusta tamaño (`.skill-status`, `.goal-chip`), no colores.
 - Pestañas y segmentados: `.seg-tabs` / `.seg-tab` con la píldora `.seg-tab-pill` (framer-motion `layoutId`); navegación por flechas.
 - Overlays: `Dialog`, `AlertDialog`, `DropdownMenu`, `Popover`, `Tooltip` de `src/components/ui` (clases `.r-overlay`, `.r-dialog`, `.r-pop`, `.r-tip` con entrada y salida).
+- Panel lateral (#47): un botón por vista en la barra de título (`DockViewButtons`, con su indicador vivo) y hasta cuatro vistas en mosaico (`SessionDock`). Una vista nueva del panel se añade a `DockView` en `stores/sessionDock.ts`, con su icono y nombre en `features/session/dockViews.tsx`; no se crea otra barra de pestañas.
 - Tarjetas de ajustes: `Section` (`.settings-card`). Tostadas: Sonner con `.rinari-toast`.
 - Estados vacíos: un chibi de Rinari + título en display + una frase útil (`.dock-empty`, `.mcp-empty`, `.notify-empty`).
 - Rinari: `<RinariAvatar state=…>` (`src/features/rinari`). Estados: `idle`, `listening`, `thinking`, `working`, `streaming`, `waiting`, `done`, `error`, `offline`.
@@ -69,6 +74,7 @@ No crees una segunda familia de botones, badges o puntos de estado.
 - **Una animación nunca es necesaria para llegar al estado final.** Si no avanza (ventana sin pintar, CI, equipo lento), el elemento tiene que quedar en su tamaño y estado finales igual: termina también con un temporizador, no solo con `animationend`.
 - **Animar cambios, no montajes.** Plegar, desplegar o cerrar un panel se anima cuando el usuario lo cambia, no cada vez que la vista se monta. Para animar una salida sin retener el contenido real (y su navegador nativo), deja un fantasma vacío del mismo tamaño que se pliega.
 - **El foco lo dibuja el anillo global.** No añadas `outline` propio en `:focus-visible` de botones: hay un anillo neutro común y una prueba lo vigila.
+- **Reorganizar no vuelve a montar.** Las vistas del mosaico del panel lateral se colocan con posición absoluta y en un orden fijo del DOM: abrir otra, cambiarlas de sitio o ampliar una solo mueve su caja (con transición), nunca recrea su terminal ni su navegador. Los arrastres se siguen en la ventana, no solo con la captura del puntero: una vista nativa que se mueve puede quitársela.
 - **Nada de `transform` ni `filter` en contenedores que tengan dentro el navegador nativo** durante su vida: mueven el rectángulo de la `WebContentsView`. Las vistas entran solo con opacidad; el panel lateral puede deslizarse porque `useNativeBrowser` vuelve a medir en `animationend`/`transitionend`.
 
 ## 6. Arte de Rinari
@@ -80,6 +86,7 @@ para la app), `sheet.py` (hoja de revisión), `collect.py` (recoge lo que gener�
 Codex).
 
 - Expresiones `exp-<nombre>` (bustos cuadrados con el mismo encuadre) y chibis `chibi-<pose>` en `src/assets/rinari/*.webp`; se consumen con `art.expression()` / `art.chibi()` (`src/features/rinari/art.ts`), que cae en una pieza aprobada si falta una.
+- Rinari de pie `vn-<pose>` (medio cuerpo largo 2:3, fondo transparente: `hello`, `think`, `wait`, `happy`, `wink`) y su cuarto `room`, traídos de la bienvenida del prototipo móvil (`Documents/Proyectos/rinari-mobile-proto/assets/vn/`); se consumen con `art.standing()` / `art.room()`. Hoy los usa la bienvenida de primer uso: una pose por paso, montadas todas y cruzadas por opacidad.
 - Arte del instalador: `build/installer/source/rinari-*.png` (medio cuerpo 2:3, mismo encuadre) y `studio-generated.png`; `npm run installer:art` los verifica y copia.
 - Generar: Codex CLI con la skill `imagegen` (guía en `~/.claude/skills/promo-video/references/codex-imagegen.md`), máximo 5 referencias por trabajo, invariantes repetidas en el prompt, fondo transparente real, sin texto.
 - Revisar siempre a mano (identidad, accesorios del lado correcto, manos, alfa) con `sheet.py` antes de exportar. Codex dice «revisado» aunque falle.

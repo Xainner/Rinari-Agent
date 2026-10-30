@@ -20,13 +20,15 @@ import { createServer } from 'node:http'
  * La petición de herramienta lleva una frase para el usuario (`say`), como un
  * modelo bien portado: el Engine no ejecuta un primer lote mudo y pide antes
  * la apertura. `say: ''` guioniza ese lote mudo.
+ * `args` puede ser una función de la petición recibida: el paso usa lo que
+ * devolvió una herramienta anterior (una ruta con fecha, un id).
  */
 export function scriptedModel(initial = []) {
   let script = [...initial]
   let step = 0
   const served = []
 
-  const nextMessage = () => {
+  const nextMessage = (request = {}) => {
     const entry = script[step] ?? { text: 'listo' }
     step += 1
     served.push(entry)
@@ -40,7 +42,7 @@ export function scriptedModel(initial = []) {
         {
           id: `call_${step}`,
           type: 'function',
-          function: { name: entry.tool, arguments: JSON.stringify(entry.args ?? {}) },
+          function: { name: entry.tool, arguments: JSON.stringify((typeof entry.args === 'function' ? entry.args(request) : entry.args) ?? {}) },
         },
       ],
     }
@@ -144,12 +146,13 @@ export function scriptedModel(initial = []) {
     let body = ''
     request.on('data', (chunk) => (body += chunk))
     request.on('end', () => {
-      let wantsStream = false
+      let parsed = {}
       try {
-        wantsStream = Boolean(JSON.parse(body || '{}').stream)
+        parsed = JSON.parse(body || '{}')
       } catch {
-        wantsStream = false
+        parsed = {}
       }
+      const wantsStream = Boolean(parsed.stream)
       // `{ httpError: { status, body, headers } }`: the provider refuses the
       // request (quota, rate limit…) so the error path is the real one.
       const failing = script[step]?.httpError
@@ -160,13 +163,52 @@ export function scriptedModel(initial = []) {
         response.end(JSON.stringify(failing.body ?? { error: { message: 'fake failure' } }))
         return
       }
-      const message = nextMessage()
+      const message = nextMessage(parsed)
+      const entry = served[served.length - 1] ?? {}
       if (wantsStream) {
         response.writeHead(200, {
           'Content-Type': 'text/event-stream',
           'Cache-Control': 'no-cache',
           Connection: 'keep-alive',
         })
+        // `{ text | tool, say, think, streamDelayMs, streamChunk }`: the answer
+        // arrives in pieces over time, like a real model writing (escenarios de
+        // scroll en vivo). `think` streams first as reasoning (the «Pensando…»
+        // card); a tool step streams its `say` and then asks for the tool.
+        if (entry.streamDelayMs && (typeof message.content === 'string' || entry.think)) {
+          const base = { id: `chatcmpl-${step}`, object: 'chat.completion.chunk', model: 'fake-vertical' }
+          const size = entry.streamChunk ?? 24
+          const split = (text) => {
+            const out = []
+            for (let at = 0; at < text.length; at += size) out.push(text.slice(at, at + size))
+            return out
+          }
+          const deltas = [
+            ...split(entry.think ?? '').map((piece) => ({ reasoning_content: piece })),
+            ...split(typeof message.content === 'string' ? message.content : '').map((piece) => ({ content: piece })),
+          ]
+          if (deltas.length > 0) deltas[0] = { role: 'assistant', ...deltas[0] }
+          const send = (chunk) => response.write(`data: ${JSON.stringify(chunk)}\n\n`)
+          let index = 0
+          const next = () => {
+            if (index < deltas.length) {
+              send({ ...base, choices: [{ index: 0, delta: deltas[index], finish_reason: null }] })
+              index += 1
+              setTimeout(next, entry.streamDelayMs)
+              return
+            }
+            if (message.tool_calls) {
+              send({ ...base, choices: [{ index: 0, delta: { tool_calls: message.tool_calls.map((call, at) => ({ index: at, ...call })) }, finish_reason: null }] })
+              send({ ...base, choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }] })
+            } else {
+              send({ ...base, choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] })
+            }
+            send({ ...base, choices: [], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } })
+            response.end('data: [DONE]\n\n')
+          }
+          next()
+          return
+        }
         response.end(stream(message))
         return
       }

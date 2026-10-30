@@ -6,6 +6,7 @@ import { useSessionProcesses } from './useSessionProcesses'
 import ProcessRow from './ProcessRow'
 import ProcessInspector, { type ProcessInspectorFilter } from './ProcessInspector'
 import ProcessStopDialog from './ProcessStopDialog'
+import StopAllButton from './StopAllButton'
 import { PROCESSES_DURATION, useProcessesMotion } from './processMotion'
 import {
   isExternalPreview,
@@ -494,6 +495,7 @@ export default function ProcessesDock({
                   {t('processes.viewAll')}
                 </button>
               )}
+              <StopAllButton items={ordered} stop={snap.stop} />
               <button
                 type="button"
                 onClick={() => setCollapsed(true)}
@@ -546,6 +548,7 @@ export default function ProcessesDock({
                   stopConfirmed={confirmedIds.has(item.resource.id)}
                   onToggle={() => toggleRow(item)}
                   onStop={() => requestStop(item.resource.id)}
+                  sessionId={sessionId}
                 />
               ))}
             </AnimatePresence>

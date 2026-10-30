@@ -2,6 +2,7 @@ import { toast } from 'sonner'
 import { translate } from '../../i18n'
 import { commandMessage, engineApi, type TrustState } from '../../services/engine'
 import { useUIStore } from '../../stores/ui'
+import { useProjectOffersCheck } from '../connectors/connectorStore'
 
 /**
  * Aviso de un proyecto sin confianza vigente, con la acción para confiar.
@@ -27,7 +28,27 @@ async function trustFromWarning(root: string): Promise<void> {
   try {
     await engineApi.projectTrust(root)
     toast.success(translate(useUIStore.getState().lang, 'project.trusted'))
+    useProjectOffersCheck.getState().check(root)
   } catch (err) {
     toast.error(commandMessage(err))
   }
+}
+
+/**
+ * Un turno cambió la identidad de una carpeta del proyecto (`project.trust.changed`, #38).
+ *
+ * Antes la app solo se enteraba al volver a abrir la conversación. Un
+ * `git init` sin remotos conserva la confianza y solo se informa; cualquier
+ * otro cambio pide volver a confiar en ese momento.
+ */
+export function applyTrustChangedEvent(payload: Record<string, unknown> | undefined): void {
+  const path = typeof payload?.path === 'string' ? payload.path : null
+  const state = typeof payload?.state === 'string' ? (payload.state as TrustState) : null
+  if (!path || !state) return
+  const id = `project-trust-${typeof payload?.project_id === 'string' ? payload.project_id : path}`
+  if (state === 'trusted') {
+    if (payload?.reason === 'git-init') toast.info(translate(useUIStore.getState().lang, 'project.nowGitRepo'), { id })
+    return
+  }
+  warnUntrusted(path, state, id)
 }

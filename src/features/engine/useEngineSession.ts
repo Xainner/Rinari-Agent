@@ -12,10 +12,14 @@ import { useProjectPromotionReveal } from '../projects/useProjectPromotionReveal
 import { useProjectRootWatch } from '../projects/useProjectRootWatch'
 import { useSessionList } from './useSessionList'
 import { useTurnRuntime } from './useTurnRuntime'
-import { selectSessionModel } from './sessionSelectors'
+import { selectSessionModel, selectSessionTimelines } from './sessionSelectors'
+import { sessionPlans } from '../plan/planModel'
 import { useSessionUiStore } from '../../stores/sessionUi'
+import { isAgencySession } from '../../stores/agency'
+import { unreadTurnIds, useBoardAttentionStore } from '../../stores/boardAttention'
 import { sessionForDraft, useConversationDraftStore, type ConversationDraft } from '../../stores/conversationDraft'
 import { useProjectExpansionStore } from '../../stores/projectExpansion'
+import { useUnknownProjectRefresh } from '../projects/useUnknownProjectRefresh'
 
 export interface SendOptions {
   reasoningEffort?: ReasoningEffort
@@ -56,6 +60,8 @@ export function useEngineSession() {
   })
   const projects = useProjects({ engineReady: connection.ready })
   useProjectPromotionReveal(sessions.sessionsById, engineGeneration, projects.refreshProjects)
+  const knownProjectIds = useMemo(() => [...projects.projects, ...projects.archivedProjects].map((project) => project.id), [projects.projects, projects.archivedProjects])
+  useUnknownProjectRefresh(sessions.sessionsById, knownProjectIds, projects.refreshProjects, connection.ready)
   const catalog = useCatalog()
   const attachmentJobsRef = useRef(new Map<string, string>())
   /** Admisión de envío por sesión: dos clics antes del siguiente render no crean dos turnos. */
@@ -143,6 +149,10 @@ export function useEngineSession() {
         sessionId,
         message: { id: optimisticId, role: 'user', content: trimmed, createdAt: Date.now(), attachments: preparedAttachments },
       })
+      // Si escribió en la conversación, ya vio lo anterior (#84).
+      const attention = useBoardAttentionStore.getState()
+      const unread = unreadTurnIds(attention.sessions[sessionId])
+      if (unread.length > 0) attention.markSessionResultsSeen(sessionId, unread)
       runtime.dispatch({ type: 'busy/set', sessionId, busy: true })
       try {
         const started = await engineApi.startTurn(
@@ -248,7 +258,10 @@ export function useEngineSession() {
           selected = added.model
         }
         if (options.setGlobalDefault) await engineApi.modelUse(selected.alias, selected.provider ?? undefined)
-        if (sessionId) await engineApi.setSessionModel(sessionId, selected.id, selected.provider ?? undefined)
+        if (sessionId) {
+          const result = await engineApi.setSessionModel(sessionId, selected.id, selected.provider ?? undefined)
+          if (result?.session) sessions.rememberRows([result.session])
+        }
         if (options.setGlobalDefault || model.saved === false) await catalog.refreshCatalog()
         await sessions.refreshSessions()
         return true
@@ -263,11 +276,15 @@ export function useEngineSession() {
       if (modelChangeChain.current.get(sessionId) === chained) modelChangeChain.current.delete(sessionId)
     })
     return job
-  }, [catalog, sessions.refreshSessions])
+  }, [catalog, sessions.refreshSessions, sessions.rememberRows])
 
-  /** Vista Normal: conserva el comportamiento histórico (default global + sesión activa). */
+  /** Vista Normal: conserva el comportamiento histórico (default global + sesión activa).
+   * El chat de un agente de la Agency cambia solo su conversación: el default
+   * de Rinari no es suyo. */
   async function useModel(model: ModelSummary): Promise<void> {
-    await useModelFor(sessions.activeSession, model, { setGlobalDefault: true })
+    const active = sessions.activeSession
+    const agency = Boolean(sessions.sessionsById[active]?.agent_id) || isAgencySession(active)
+    await useModelFor(active, model, { setGlobalDefault: !agency })
   }
   /**
    * Abre una conversación nueva en Normal **sin crearla**: un borrador del
@@ -303,11 +320,33 @@ export function useEngineSession() {
 
 
 
+  /**
+   * La conversación nueva de Normal pasa a existir sin mensaje: lo que la
+   * necesita antes de escribir nada (`/init`, #81). Normal pasa a ella.
+   */
+  const startDraftSession = useCallback(async (): Promise<string | null> => {
+    if (sessions.activeSession) return sessions.activeSession
+    const draft = useConversationDraftStore.getState().normal
+    if (!draft) return null
+    const created = await materializeDraft(draft, { activate: false })
+    if (!created) return null
+    useConversationDraftStore.getState().consumeNormal(draft.key)
+    sessions.setActiveSession(created)
+    return created
+  }, [materializeDraft, sessions])
+
   // -- plan --------------------------------------------------------------------
 
-  const implementPlanFor = useCallback(async (sessionId: string): Promise<boolean> => {
+  const implementPlanFor = useCallback(async (sessionId: string, planTurnId?: string): Promise<boolean> => {
     if (!sessionId || runtime.store.getState().busySessions.has(sessionId)) return false
     try {
+      // El turno arranca por su origen (#55): sin burbuja del usuario; el Engine
+      // pasa a BUILD, escribe la instrucción y siembra los pasos del plan.
+      const plan = planTurnId ?? sessionPlans(selectSessionTimelines(runtime.store.getState(), sessionId))[0]?.turnId
+      if (plan) {
+        await engineApi.startPlanTurn(sessionId, { kind: 'user', source: 'plan_implement', plan_turn_id: plan })
+        return true
+      }
       const ok = await sessions.setModeFor(sessionId, 'build')
       if (!ok) return false
       // En el idioma de la interfaz: es un mensaje de la app enviado como del usuario.
@@ -367,6 +406,7 @@ export function useEngineSession() {
     ensureSessionReady: sessions.prepareSession,
     ensureHistoryLoaded: sessions.ensureHistoryLoaded,
     retryHistoryFor: sessions.retrySessionHistory,
+    loadEarlierFor: sessions.loadEarlierHistory,
     retryHistory: () => sessions.retrySessionHistory(sessions.activeSession),
     send,
     sendTo,
@@ -407,6 +447,7 @@ export function useEngineSession() {
       : sessions.setPermission(profile),
     openDraft,
     materializeDraft,
+    startDraftSession,
     setPermissionFor: sessions.setPermissionFor,
     searchFiles: sessions.searchFiles,
     searchFilesFor: sessions.searchFilesFor,

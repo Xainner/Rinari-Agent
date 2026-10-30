@@ -8,6 +8,8 @@
  * el próximo arranque; hasta entonces decide el idioma del sistema.
  */
 
+import { IS_NIGHTLY, PRODUCT_NAME } from '../channel'
+
 export type HostLanguage = 'es' | 'en'
 
 export function isHostLanguage(value: unknown): value is HostLanguage {
@@ -33,11 +35,14 @@ const ES = {
   menuCopy: 'Copiar',
   menuPaste: 'Pegar',
   menuSelectAll: 'Seleccionar todo',
+  spellAddToDictionary: 'Agregar al diccionario',
+  spellNoSuggestions: 'Sin sugerencias',
   menuView: 'Ver',
   menuNormal: 'Normal',
   menuBoards: 'Boards',
   menuFlows: 'Flujos',
   menuSidebar: 'Barra lateral',
+  menuSidePanel: 'Panel lateral',
   menuFiles: 'Panel de archivos',
   menuBrowser: 'Panel de navegador',
   menuWorkspace: 'Panel de Workspace',
@@ -47,23 +52,34 @@ const ES = {
   menuZoomOut: 'Alejar',
   menuZoomReset: 'Tamaño real',
   menuHelp: 'Ayuda',
-  menuAbout: 'Acerca de Rinari Agent',
+  menuAbout: `Acerca de ${PRODUCT_NAME}`,
   menuEngine: 'Estado del motor',
   menuUpdates: 'Buscar actualizaciones',
   menuReportBug: 'Reportar error…',
   diagnosticsSaveTitle: 'Guardar diagnóstico',
+  imageSaveTitle: 'Guardar imagen',
   trayOpen: 'Abrir Rinari',
+  trayMarkAllRead: 'Marcar todo como leído',
   trayQuit: 'Salir',
   trayNoticeTitle: 'Rinari sigue en la bandeja',
   trayNoticeBody: 'Ábrela desde su icono en la bandeja del sistema. Para salir, usa «Salir» en ese menú.',
   updateRestart: 'Reiniciar y actualizar',
+  keepRunningQuestion: '¿Dejar corriendo lo que Rinari pidió mantener?',
+  keepRunningDetail: 'Al salir se detiene todo lo que Rinari dejó corriendo, salvo esto:\n\n{list}',
+  keepRunningKeep: 'Dejar corriendo',
+  keepRunningStop: 'Detener',
   updateCancel: 'Cancelar',
+  otherChannelTitle: IS_NIGHTLY ? 'Rinari Agent está abierto' : 'Rinari Agent Nightly está abierto',
+  otherChannelBody: `Las dos comparten tus conversaciones y no pueden trabajar a la vez. Cierra ${IS_NIGHTLY ? 'Rinari Agent' : 'Rinari Agent Nightly'} (también desde la bandeja) y pulsa «Reintentar».`,
+  otherChannelRetry: 'Reintentar',
   updateQuestion: '¿Aplicar la actualización ahora?',
   updateDetail: 'Rinari cerrará el Engine y reiniciará con la versión descargada. Los turnos y procesos activos se interrumpen.',
   updateNothingToDownload: 'No hay ninguna actualización para descargar.',
   updateDownloadFirst: 'Descarga y verifica la actualización antes de aplicarla.',
   updateNoLongerReady: 'La actualización ya no está lista para instalarse.',
-  updateUnavailable: 'El actualizador solo funciona en una versión instalada o en un canal de prueba explícito.',
+  updateUnavailable: IS_NIGHTLY
+    ? 'Rinari Agent Nightly se actualiza volviendo a correr «npm run nightly».'
+    : 'El actualizador solo funciona en una versión instalada o en un canal de prueba explícito.',
 }
 
 export type HostText = typeof ES
@@ -82,11 +98,14 @@ const EN: HostText = {
   menuCopy: 'Copy',
   menuPaste: 'Paste',
   menuSelectAll: 'Select all',
+  spellAddToDictionary: 'Add to dictionary',
+  spellNoSuggestions: 'No suggestions',
   menuView: 'View',
   menuNormal: 'Normal',
   menuBoards: 'Boards',
   menuFlows: 'Flows',
   menuSidebar: 'Sidebar',
+  menuSidePanel: 'Side panel',
   menuFiles: 'Files panel',
   menuBrowser: 'Browser panel',
   menuWorkspace: 'Workspace panel',
@@ -96,23 +115,34 @@ const EN: HostText = {
   menuZoomOut: 'Zoom out',
   menuZoomReset: 'Actual size',
   menuHelp: 'Help',
-  menuAbout: 'About Rinari Agent',
+  menuAbout: `About ${PRODUCT_NAME}`,
   menuEngine: 'Engine status',
   menuUpdates: 'Check for updates',
   menuReportBug: 'Report a bug…',
   diagnosticsSaveTitle: 'Save diagnostics',
+  imageSaveTitle: 'Save image',
   trayOpen: 'Open Rinari',
+  trayMarkAllRead: 'Mark all as read',
   trayQuit: 'Quit',
   trayNoticeTitle: 'Rinari is still running in the system tray',
   trayNoticeBody: 'Open it from its icon in the system tray. To quit, use “Quit” in that menu.',
   updateRestart: 'Restart and update',
+  keepRunningQuestion: 'Leave running what Rinari asked to keep?',
+  keepRunningDetail: 'Quitting stops everything Rinari left running, except this:\n\n{list}',
+  keepRunningKeep: 'Leave running',
+  keepRunningStop: 'Stop',
   updateCancel: 'Cancel',
+  otherChannelTitle: IS_NIGHTLY ? 'Rinari Agent is open' : 'Rinari Agent Nightly is open',
+  otherChannelBody: `Both share your conversations and cannot work at the same time. Close ${IS_NIGHTLY ? 'Rinari Agent' : 'Rinari Agent Nightly'} (also from the tray) and press “Retry”.`,
+  otherChannelRetry: 'Retry',
   updateQuestion: 'Apply the update now?',
   updateDetail: 'Rinari will close the Engine and restart with the downloaded version. Active turns and processes are interrupted.',
   updateNothingToDownload: 'No update is available to download.',
   updateDownloadFirst: 'Download and verify the update before applying it.',
   updateNoLongerReady: 'The update is no longer ready to install.',
-  updateUnavailable: 'The updater is available only in an installed build or an explicit update test channel.',
+  updateUnavailable: IS_NIGHTLY
+    ? 'Rinari Agent Nightly updates by running “npm run nightly” again.'
+    : 'The updater is available only in an installed build or an explicit update test channel.',
 }
 
 export function hostText(language: HostLanguage): HostText {

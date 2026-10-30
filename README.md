@@ -222,7 +222,13 @@ $env:RINARI_ENGINE_CWD = "C:\dev\Rinari-CLI"
 npm run desktop:dev
 ```
 
-Local dictation from a source build needs `RINARI_WHISPER_BIN` pointing to a `whisper-cli.exe` (the installer ships one). A Vite-only preview is not a substitute for the native host and engine.
+Local dictation needs whisper.cpp, which only the installer ships. From source, any of these works:
+
+- `$env:RINARI_WHISPER_BIN = "C:\tools\whisper\whisper-cli.exe"` (an absolute path to a file named `whisper-cli.exe`);
+- `whisper-cli.exe` in a folder on the `PATH`;
+- `python scripts/package-speech.py`, then point `RINARI_WHISPER_BIN` at `engine-dist\speech\whisper-cli.exe`.
+
+The model downloads on first use from Settings → Dictation. A Vite-only preview is not a substitute for the native host and engine.
 
 <details>
 <summary><strong>Checks and Windows packaging</strong></summary>

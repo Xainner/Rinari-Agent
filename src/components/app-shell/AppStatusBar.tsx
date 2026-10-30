@@ -1,5 +1,5 @@
 import { useSyncExternalStore, type ReactNode } from 'react'
-import { Menu, PanelRight } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import type { WorkspaceView } from '../../stores/ui'
 import WorkspaceViewSwitcher from './WorkspaceViewSwitcher'
@@ -22,12 +22,13 @@ interface AppStatusBarProps {
    */
   onToggleSidebar: () => void
   sidebarCollapsed: boolean
-  /** El panel lateral de la sesión destino está abierto. */
-  dockOpen?: boolean
-  /** Hay sesión sobre la que actuar: la activa en Normal, el panel enfocado en Boards. */
-  dockTargetAvailable?: boolean
-  /** Abre el panel lateral en su última pestaña, o lo cierra. */
-  onToggleDock?: () => void
+  /**
+   * Los botones de las vistas del panel lateral de la sesión destino (#47):
+   * la abierta en Normal, el panel enfocado en Boards. Sin conversación, nada.
+   */
+  dockViews?: ReactNode
+  /** Rinari Agency: tiene su propio Normal | Agencia en la barra lateral; aquí no va Normal | Boards. */
+  hideViewSwitcher?: boolean
   /** Durante el splash la barra puede pintarse con controles deshabilitados. */
   disabled?: boolean
   /** Lista de pendientes del board (menú accesible), junto al resumen. */
@@ -61,12 +62,11 @@ export default function AppStatusBar({
   toggleShortcut,
   attentionCount,
   boardAttentionCount = 0,
+  hideViewSwitcher = false,
   onOpenMobileSidebar,
   onToggleSidebar,
   sidebarCollapsed,
-  dockOpen = false,
-  dockTargetAvailable = false,
-  onToggleDock,
+  dockViews,
   disabled = false,
   attentionMenu,
 }: AppStatusBarProps) {
@@ -92,33 +92,22 @@ export default function AppStatusBar({
         <div className="app-topbar-context">{context}</div>
       </div>
       <div className="app-topbar-center">
-        <WorkspaceViewSwitcher
-          selected={selectedView}
-          onSelect={onSelectView}
-          toggleShortcut={toggleShortcut}
-          attentionCount={boardAttentionCount}
-          disabled={disabled}
-        />
+        {!hideViewSwitcher && (
+          <WorkspaceViewSwitcher
+            selected={selectedView}
+            onSelect={onSelectView}
+            toggleShortcut={toggleShortcut}
+            attentionCount={boardAttentionCount}
+            disabled={disabled}
+          />
+        )}
       </div>
       <div className="app-topbar-trailing">
         {attentionCount > 0 && (
-          <span className="app-topbar-summary" role="status" aria-live="polite">{t('topbar.attention', { n: attentionCount })}</span>
+          <span className="app-topbar-summary" role="status" aria-live="polite">{attentionCount === 1 ? t('topbar.attentionOne') : t('topbar.attention', { n: attentionCount })}</span>
         )}
         {attentionMenu}
-        <button
-          type="button"
-          onClick={() => onToggleDock?.()}
-          aria-label={t('topbar.sidePanel')}
-          // Sin sesión destino se dice por qué, en vez de dejar un botón
-          // apagado que no explica nada.
-          title={dockTargetAvailable ? t('topbar.sidePanel') : t('topbar.dockNeedsSession')}
-          aria-pressed={dockOpen}
-          data-active={dockOpen || undefined}
-          className="app-topbar-icon app-topbar-dock-button"
-          disabled={disabled || !dockTargetAvailable}
-        >
-          <PanelRight size={16} />
-        </button>
+        {!disabled && dockViews}
       </div>
     </header>
   )

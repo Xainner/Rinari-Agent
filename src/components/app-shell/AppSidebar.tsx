@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useReviewExport } from '../../features/review/ReviewExportDialog'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { strongestSignal } from '../../features/notifications/attentionIndicators'
 import { toast } from 'sonner'
 import {
   Archive,
@@ -14,7 +16,10 @@ import {
   MessageSquare,
   MoreHorizontal,
   Plus,
+  CornerDownRight,
+  GitBranch,
   GitFork,
+  Hand,
   Pencil,
   Pin,
   PinOff,
@@ -22,10 +27,13 @@ import {
   Trash2,
   Workflow,
   X,
+  PackageOpen,
 } from 'lucide-react'
 import type { ProjectSummary, SessionSummary } from '../../services/engine'
 import type { PendingApproval } from '../../types'
-import { buildWorkspaceModel, projectDisplayName, groupRecentChats, PINNED_VISIBLE_LIMIT } from '../../features/projects/workspaceModel'
+import { buildWorkspaceModel, projectDisplayName, groupRecentChats, nestSessions, PINNED_VISIBLE_LIMIT } from '../../features/projects/workspaceModel'
+import { useChildMotion } from './useChildMotion'
+import { useChildrenStore } from '../../features/children/childrenStore'
 import { useI18n } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
 import { cn } from '../../lib/utils'
@@ -56,11 +64,19 @@ import { ease, useCalmMotion } from '../../lib/motion'
 import { art } from '../../features/rinari/art'
 import { inProfile, useProfileStore } from '../../features/profiles/profileStore'
 import { isProjectExpanded, useProjectExpansionStore } from '../../stores/projectExpansion'
-import { ProjectBranch } from '../../features/projects/ProjectBranch'
 import { TitleSwap } from '../TitleSwap'
+import { ResumeChip } from '../../features/resume/ResumeChip'
+import { SESSION_DRAG_TYPE } from '../../features/board/boardDrag'
+import { SearchClearButton } from '../ui/SearchField'
+
 
 export interface AppSidebarProps {
   collapsed: boolean
+  /**
+   * Rinari Agency: la tarjeta que abre la Agency, encima de Ajustes (con
+   * `compact` en el riel). Ausente si esta versión de Rinari no la tiene.
+   */
+  agencyCard?: (compact: boolean) => ReactNode
   onSearch: () => void
   onOpenSettings: () => void
   onOpenEngine: () => void
@@ -87,7 +103,8 @@ export interface AppSidebarProps {
   /** Sesiones presentes en el board (marca visual). */
   boardSessionIds?: ReadonlySet<string>
   /** Señal de atención por sesión del board (intervención › fallo › resultado sin leer). */
-  boardSignalBySession?: Record<string, 'needs_you' | 'failed' | 'unread'>
+  /** Señal de cada conversación (#33): te necesita, falló o sin leer. */
+  signalBySession?: Record<string, 'needs_you' | 'failed' | 'unread'>
   /** Añade la sesión al board (o la enfoca) y va a Boards. */
   onOpenInBoard?: (id: string) => void
   /** Abre Flujos con ese alcance (proyecto o conversación). */
@@ -138,6 +155,7 @@ function RailButton({
 
 export function AppSidebar({
   collapsed,
+  agencyCard,
   onSearch,
   onOpenEngine,
   onOpenSchedules,
@@ -156,7 +174,7 @@ export function AppSidebar({
   activeId,
   busySessionIds,
   boardSessionIds,
-  boardSignalBySession,
+  signalBySession,
   onOpenInBoard,
   onViewFlow,
   onSelectSession,
@@ -276,19 +294,22 @@ export function AppSidebar({
     observer.observe(section)
     return () => observer.disconnect()
   }, [placeTraveler])
+  // Lo archivado, como lo activo, solo del perfil en uso (#85).
+  const profileArchivedProjects = useMemo(() => archivedProjects.filter((project) => inProfile(project, activeProfileId)), [archivedProjects, activeProfileId])
+  const profileArchivedSessions = useMemo(() => archivedSessions.filter((session) => inProfile(session, activeProfileId)), [archivedSessions, activeProfileId])
   const archivedProjectResults = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase()
-    if (!needle) return archivedProjects
-    return archivedProjects.filter((project) =>
+    if (!needle) return profileArchivedProjects
+    return profileArchivedProjects.filter((project) =>
       [project.name, project.description, project.root]
         .some((value) => value?.toLocaleLowerCase().includes(needle)),
     )
-  }, [archivedProjects, query])
+  }, [profileArchivedProjects, query])
   const archivedSessionResults = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase()
-    if (!needle) return archivedSessions
-    return archivedSessions.filter((session) => session.title?.toLocaleLowerCase().includes(needle))
-  }, [archivedSessions, query])
+    if (!needle) return profileArchivedSessions
+    return profileArchivedSessions.filter((session) => session.title?.toLocaleLowerCase().includes(needle))
+  }, [profileArchivedSessions, query])
 
   const confirmDelete = () => {
     if (!deleteTarget) return
@@ -297,20 +318,70 @@ export function AppSidebar({
     setCascade(false)
   }
 
-  const row = (session: SessionSummary, opts?: { closed?: boolean; travel?: boolean; projectName?: string }) => {
+  // Los chats sueltos se anidan antes de agruparlos por fecha: una hija de hoy
+  // cuelga de su madre de ayer, no aparece suelta en «Hoy» (#40).
+  const chatNest = nestSessions(model.chats)
+  const childMotion = useChildMotion(sessions, busySessionIds)
+  // La rama propia de cada hija que se conoce (plan-sesiones-hijas 5.5): la hija que
+  // trabaja en su worktree lleva el icono de rama junto al título.
+  const childrenByParent = useChildrenStore((state) => state.byParent)
+  const childBranch = useMemo(() => {
+    const branches = new Map<string, string>()
+    for (const list of Object.values(childrenByParent)) for (const child of list) if (child.branch && child.resolution !== 'discarded') branches.set(child.child_session_id, child.branch)
+    return branches
+  }, [childrenByParent])
+  /**
+   * Una sesión con sus hijas debajo, con sangría y siempre a la vista (#40).
+   * Las nietas (P8) cuelgan de la misma raíz, en el mismo nivel que las hijas
+   * y en el orden en que nacieron, como en Claude Code: una sola sangría, por
+   * mucho que se encadenen. Antes no salían en ningún lado.
+   */
+  const tree = (list: SessionSummary[], opts?: { travel?: boolean }, nest?: ReturnType<typeof nestSessions>) => {
+    const { tops, children } = nest ? { tops: list, children: nest.children } : nestSessions(list)
+    const descendants = (id: string, seen: Set<string>): SessionSummary[] => {
+      const out: SessionSummary[] = []
+      for (const kid of children.get(id) ?? []) {
+        if (seen.has(kid.id)) continue
+        seen.add(kid.id)
+        out.push(kid, ...descendants(kid.id, seen))
+      }
+      return out
+    }
+    return tops.map((session) => {
+      const kids = descendants(session.id, new Set([session.id])).sort((a, b) => a.id.localeCompare(b.id))
+      if (kids.length === 0) return row(session, opts)
+      return row(session, {
+        ...opts,
+        nested: (
+          <ul className="sidebar-tree sidebar-children mt-0.5 ml-3.5 space-y-0.5 pl-1" data-testid="session-children">
+            {kids.map((kid) => row(kid, { child: true }))}
+          </ul>
+        ),
+      })
+    })
+  }
+
+  const row = (session: SessionSummary, opts?: { closed?: boolean; travel?: boolean; projectName?: string; child?: boolean; nested?: ReactNode }) => {
     const active = session.id === activeId
     const working = busySessionIds?.has(session.id) === true
     const onBoard = boardSessionIds?.has(session.id) === true
-    const signal = boardSignalBySession?.[session.id] ?? null
+    const signal = signalBySession?.[session.id] ?? null
     const signalLabel = signal === 'needs_you' ? t('sidebar.sessionNeedsYou') : signal === 'failed' ? t('sidebar.sessionFailed') : signal === 'unread' ? t('sidebar.sessionUnread') : null
     return (
-      <li key={session.id} ref={opts?.travel ? (element) => { if (element) travelerRowRefs.current.set(session.id, element); else travelerRowRefs.current.delete(session.id) } : undefined} className="group relative" onContextMenu={e => { e.preventDefault(); setSessionMenu(session.id) }}>
+      <li key={session.id} data-entering={opts?.child && childMotion.entering(session.id) ? '' : undefined} ref={opts?.travel ? (element) => { if (element) travelerRowRefs.current.set(session.id, element); else travelerRowRefs.current.delete(session.id) } : undefined} className="group relative" onContextMenu={e => { e.preventDefault(); setSessionMenu(session.id) }}>
         <div
           className={cn('sidebar-row', active && 'is-active')}
         >
           <button
             type="button"
             onClick={() => onSelectSession(session.id)}
+            // Se arrastra al board para añadirla como panel (plan-boards B.4.2).
+            draggable
+            onDragStart={(event) => {
+              event.dataTransfer.setData(SESSION_DRAG_TYPE, session.id)
+              event.dataTransfer.setData('text/plain', session.title || session.id)
+              event.dataTransfer.effectAllowed = 'copyMove'
+            }}
             aria-current={active ? 'page' : undefined}
             className="flex min-w-0 flex-1 items-center gap-2.5 py-1.5 text-left"
           >
@@ -321,9 +392,17 @@ export function AppSidebar({
                 className={cn('sidebar-row-rail', active ? 'scale-y-100 opacity-100' : 'scale-y-0 opacity-0')}
               />
             )}
-            {working ? <span role="status" aria-label={t('sidebar.sessionWorking')} title={t('sidebar.sessionWorking')}>
+            {/* «Te necesita» va en lugar del círculo de trabajando (#33), con más presencia que un punto. */}
+            {signal === 'needs_you' && signalLabel ? <span role="status" aria-label={signalLabel} title={signalLabel} className="sidebar-signal" data-signal="needs_you" data-testid="sidebar-signal">
+              <Hand size={10} aria-hidden="true" />
+            </span> : working ? <span role="status" aria-label={t('sidebar.sessionWorking')} title={t('sidebar.sessionWorking')}>
               <span aria-hidden="true" className="sidebar-spin" />
-            </span> : <MessageSquare
+            </span> : opts?.child ? <CornerDownRight
+              size={13}
+              aria-hidden="true"
+              data-testid="session-child-icon"
+              className={cn('shrink-0 transition-colors', active ? 'text-[var(--accent)]' : 'text-[var(--text-subtle)]')}
+            /> : <MessageSquare
               size={14}
               aria-hidden="true"
               className={cn('shrink-0 transition-colors', active ? 'text-[var(--accent)]' : 'text-[var(--text-subtle)]')}
@@ -336,6 +415,11 @@ export function AppSidebar({
                 active ? 'font-semibold text-[var(--text)]' : 'text-[var(--text-muted)]',
               )}
             />
+            {opts?.child && childBranch.has(session.id) && (
+              <span role="img" aria-label={t('sidebar.childBranch', { branch: childBranch.get(session.id)! })} title={childBranch.get(session.id)} data-testid="session-child-branch" className="shrink-0 text-[var(--text-subtle)]">
+                <GitBranch size={12} aria-hidden="true" />
+              </span>
+            )}
             {opts?.projectName && (
               <span title={opts.projectName} className="max-w-[40%] shrink-0 truncate text-[11px] text-[var(--text-subtle)]">
                 {opts.projectName}
@@ -350,7 +434,8 @@ export function AppSidebar({
                 className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--warning)]"
               />
             )}
-            {signal && signalLabel && (
+            {!working && <ResumeChip sessionId={session.id} compact />}
+            {signal && signal !== 'needs_you' && signalLabel && (
               <span role="status" aria-label={signalLabel} title={signalLabel} className="sidebar-signal" data-signal={signal} data-testid="sidebar-signal" />
             )}
             {onBoard && <span role="img" aria-label={t('sidebar.onBoard')} title={t('sidebar.onBoard')} className="shrink-0 text-[var(--text-subtle)]"><Columns3 size={12} aria-hidden="true" /></span>}
@@ -407,6 +492,9 @@ export function AppSidebar({
                   <DropdownMenuItem onSelect={() => onForkSession(session.id)}>
                     <GitFork size={13} /> {t('sidebar.fork')}
                   </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => useReviewExport.getState().open(session.id)} data-testid="session-export-review">
+                    <PackageOpen size={13} /> {t('review.menu')}
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => onArchiveSession(session.id)}>
                     <Archive size={13} /> {t('sidebar.archive')}
@@ -429,6 +517,7 @@ export function AppSidebar({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+        {opts?.nested}
       </li>
     )
   }
@@ -456,6 +545,7 @@ export function AppSidebar({
           <Cpu size={17} />
         </RailButton>
         <div className="flex-1" />
+        {agencyCard?.(true)}
         <ApplicationMenu collapsed />
       </div>
     )
@@ -499,6 +589,7 @@ export function AppSidebar({
           placeholder={t('sidebar.searchWorkspace')}
           className="min-w-0 flex-1 border-0 bg-transparent text-xs text-[var(--text)] outline-none"
         />
+        <SearchClearButton value={query} onClear={() => setQuery('')} />
       </div>
       <div className={cn('sidebar-scroll min-h-0 min-w-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto pr-0.5', !animatedSwitch && 'sidebar-switch-instant')}>
         <AnimatePresence mode="wait" initial={false}>
@@ -565,7 +656,7 @@ export function AppSidebar({
           <ul className="space-y-1.5">
             {model.sections.map(({ project, sessions: items }) => (
               <li key={project.id} className="group/project" onContextMenu={e => { if (!e.defaultPrevented) { e.preventDefault(); setProjectMenu(project.id) } }}>
-                <div className="flex items-center">
+                <div className="flex min-w-0 items-center">
                 <button
                   type="button"
                   aria-expanded={projectOpen(project.id)}
@@ -575,27 +666,35 @@ export function AppSidebar({
                 >
                   <Folder size={14} aria-hidden="true" className="shrink-0 text-[var(--accent-2)]" />
                   <span className="sidebar-project-label">
+                    {/* Sin rama (#83): varias conversaciones pueden compartirla; vive en Resumen. */}
                     <span className="sidebar-project-name">{project.name || projectDisplayName(project.root)}</span>
-                    <ProjectBranch head={project.git_head} />
                   </span>
-                  {project.pinned && <Pin size={11} className="text-[var(--text-subtle)]" />}
+                  {project.pinned && <Pin size={11} className="shrink-0 text-[var(--text-subtle)]" />}
                   {items.length > 0 && (
                     <span className="shrink-0 rounded-md border border-[var(--border)] px-1 font-mono text-[10px] text-[var(--text-subtle)]">
                       {items.length}
                     </span>
                   )}
-                  {items.some(item => busySessionIds?.has(item.id)) && (
-                    <span role="status" aria-label={t('sidebar.projectWorking')} title={t('sidebar.projectWorking')}>
-                      <span aria-hidden="true" className="sidebar-spin" />
-                    </span>
-                  )}
+                  {(() => {
+                    // Plegado, el proyecto muestra la señal más urgente de sus conversaciones (#33).
+                    const projectSignal = projectOpen(project.id) ? null : strongestSignal(items.map(item => signalBySession?.[item.id]))
+                    if (projectSignal) {
+                      const label = projectSignal === 'needs_you' ? t('sidebar.sessionNeedsYou') : projectSignal === 'failed' ? t('sidebar.sessionFailed') : t('sidebar.sessionUnread')
+                      return <span role="status" aria-label={label} title={label} className="sidebar-signal" data-signal={projectSignal} data-testid="sidebar-project-signal">{projectSignal === 'needs_you' && <Hand size={10} aria-hidden="true" />}</span>
+                    }
+                    return items.some(item => busySessionIds?.has(item.id)) && (
+                      <span role="status" aria-label={t('sidebar.projectWorking')} title={t('sidebar.projectWorking')}>
+                        <span aria-hidden="true" className="sidebar-spin" />
+                      </span>
+                    )
+                  })()}
                 </button>
                 {onNewProjectChat && <button type="button" aria-label={t('sidebar.newSessionIn', { name: project.name || projectDisplayName(project.root) })} title={t('sidebar.newSessionInProject')} onClick={() => {
                   onNewProjectChat(project.id)
-                }} className="rounded-md p-1 text-[var(--text-subtle)] opacity-0 group-hover/project:opacity-100 focus-visible:opacity-100 hover:bg-[var(--bg-hover)]"><Plus size={14} /></button>}
+                }} className="sidebar-project-add shrink-0 rounded-md p-1 text-[var(--text-subtle)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"><Plus size={14} /></button>}
                 <DropdownMenu open={projectMenu === project.id} onOpenChange={open => setProjectMenu(open ? project.id : null)}>
                   <DropdownMenuTrigger asChild>
-                    <button type="button" aria-label={t('project.options')} className="rounded-md p-1 text-[var(--text-subtle)] opacity-0 group-hover/project:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100">
+                    <button type="button" aria-label={t('project.options')} className="shrink-0 rounded-md p-1 text-[var(--text-subtle)] opacity-0 group-hover/project:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100">
                       <MoreHorizontal size={13} />
                     </button>
                   </DropdownMenuTrigger>
@@ -617,7 +716,7 @@ export function AppSidebar({
                 </div>
                 {items.length > 0 && projectOpen(project.id) && (
                   <ul className="sidebar-tree mt-0.5 ml-3.5 space-y-0.5 pl-1">
-                    {items.map((session) => row(session))}
+                    {tree(items)}
                   </ul>
                 )}
               </li>
@@ -668,9 +767,9 @@ export function AppSidebar({
             </button>
           </div>
           <ul className="space-y-0.5">
-            {groupRecentChats(model.chats).map(group => <li key={group.key} className="mt-2">
+            {groupRecentChats(chatNest.tops).map(group => <li key={group.key} className="mt-2">
               <details open><summary className="cursor-pointer px-1 pb-2 text-[11px] text-[var(--text-subtle)]">{t(`home.${group.key}`)}</summary>
-              <ul className="space-y-0.5">{group.sessions.map(session => row(session, { travel: true }))}</ul></details>
+              <ul className="space-y-0.5">{tree(group.sessions, { travel: true }, chatNest)}</ul></details>
             </li>)}
             {model.chats.length === 0 && !profileEmpty && (
               <li className="px-2 text-xs text-[var(--text-subtle)]">{t('sidebar.emptyChats')}</li>
@@ -745,6 +844,7 @@ export function AppSidebar({
         )}
       </div>
 
+      {agencyCard && <div className="shrink-0">{agencyCard(false)}</div>}
       <SidebarFooter />
 
       <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>

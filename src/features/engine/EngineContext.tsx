@@ -17,13 +17,13 @@ import type { RuntimeStore } from './runtimeStore'
 
 type CommandKeys =
   | 'startEngine' | 'shutdownEngine' | 'restartEngine' | 'refreshStatus' | 'refreshSessions'
-  | 'createSession' | 'prepareSession' | 'ensureSessionReady' | 'ensureHistoryLoaded' | 'retryHistoryFor' | 'retryHistory'
+  | 'createSession' | 'prepareSession' | 'ensureSessionReady' | 'ensureHistoryLoaded' | 'retryHistoryFor' | 'retryHistory' | 'loadEarlierFor'
   | 'send' | 'sendTo' | 'prepareAttachments' | 'prepareAttachmentsFor'
   | 'cancelAttachmentPreparation' | 'cancelAttachmentPreparationFor'
   | 'implementPlan' | 'implementPlanFor' | 'cancelTurn' | 'cancelTurnFor' | 'steerTo' | 'queueTo' | 'resolveApproval'
   | 'refreshCatalog' | 'discoverCatalog' | 'refreshModels' | 'useModel' | 'useModelFor'
   | 'selectSession' | 'setActiveSession' | 'setMode' | 'setModeFor' | 'setPermission' | 'setPermissionFor'
-  | 'searchFiles' | 'searchFilesFor' | 'openDraft' | 'materializeDraft'
+  | 'searchFiles' | 'searchFilesFor' | 'openDraft' | 'materializeDraft' | 'startDraftSession'
   | 'closeSession' | 'renameSession' | 'pinSession' | 'archiveSession' | 'restoreSession' | 'forkSession' | 'deleteSession'
   | 'refreshProjects' | 'openProject' | 'updateProject' | 'removeProject'
   | 'loadProjectStatus' | 'loadProjectIntelligence' | 'trustProject'
@@ -31,13 +31,13 @@ type CommandKeys =
 
 const COMMAND_KEYS: readonly CommandKeys[] = [
   'startEngine', 'shutdownEngine', 'restartEngine', 'refreshStatus', 'refreshSessions',
-  'createSession', 'prepareSession', 'ensureSessionReady', 'ensureHistoryLoaded', 'retryHistoryFor', 'retryHistory',
+  'createSession', 'prepareSession', 'ensureSessionReady', 'ensureHistoryLoaded', 'retryHistoryFor', 'retryHistory', 'loadEarlierFor',
   'send', 'sendTo', 'prepareAttachments', 'prepareAttachmentsFor',
   'cancelAttachmentPreparation', 'cancelAttachmentPreparationFor',
   'implementPlan', 'implementPlanFor', 'cancelTurn', 'cancelTurnFor', 'steerTo', 'queueTo', 'resolveApproval',
   'refreshCatalog', 'discoverCatalog', 'refreshModels', 'useModel', 'useModelFor',
   'selectSession', 'setActiveSession', 'setMode', 'setModeFor', 'setPermission', 'setPermissionFor',
-  'searchFiles', 'searchFilesFor', 'openDraft', 'materializeDraft',
+  'searchFiles', 'searchFilesFor', 'openDraft', 'materializeDraft', 'startDraftSession',
   'closeSession', 'renameSession', 'pinSession', 'archiveSession', 'restoreSession', 'forkSession', 'deleteSession',
   'refreshProjects', 'openProject', 'updateProject', 'removeProject',
   'loadProjectStatus', 'loadProjectIntelligence', 'trustProject',

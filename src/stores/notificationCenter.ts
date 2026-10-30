@@ -8,15 +8,21 @@ import { create } from 'zustand'
  * Es presentación de este escritorio (localStorage, con tope); la verdad de
  * cada cosa sigue en el Engine.
  */
-export type NotificationModule = 'schedules' | 'skills' | 'system'
+export type NotificationModule = 'schedules' | 'agency' | 'skills' | 'system'
 
 export type NotificationTarget =
-  | { kind: 'session'; sessionId: string }
+  | { kind: 'session'; sessionId: string; turnId?: string }
   | { kind: 'schedules' }
+  /** Rinari Agency: la vista «Reglas» del chat de un agente. */
+  | { kind: 'agency-rules'; agentId: string }
+  /** Rinari Agency: la oficina de un equipo (una cadena cortada, un recado entregado). */
+  | { kind: 'agency-office'; teamId: string }
   | { kind: 'skills'; skill?: string }
   | { kind: 'providers' }
   /** Ajustes > Acerca de, con la versión ofrecida y su acción. */
   | { kind: 'update' }
+  /** Ajustes > Conectores con el detalle de ese conector (p. ej. «hay que reconectar»). */
+  | { kind: 'connector'; name: string }
 
 export interface CenterNotification {
   id: string
@@ -28,11 +34,22 @@ export interface CenterNotification {
   read: boolean
   tone?: 'info' | 'success' | 'warning' | 'error'
   target?: NotificationTarget
+  /**
+   * El perfil de Rinari al que pertenece (una tarea de un proyecto, la regla
+   * de un agente…). Sin él, es de toda la app (una actualización, un
+   * conector) y se ve en cualquier perfil.
+   */
+  profileId?: string | null
+}
+
+/** Si un aviso se ve con este perfil activo: el suyo, o uno de toda la app. */
+export function visibleIn(item: CenterNotification, activeId: string | null): boolean {
+  return !item.profileId || !activeId || item.profileId === activeId
 }
 
 export const NOTIFICATION_CENTER_KEY = 'rinari.notifications.v1'
 export const NOTIFICATION_LIMIT = 100
-export const NOTIFICATION_MODULES: readonly NotificationModule[] = ['schedules', 'skills', 'system']
+export const NOTIFICATION_MODULES: readonly NotificationModule[] = ['schedules', 'agency', 'skills', 'system']
 
 function load(): CenterNotification[] {
   try {
@@ -56,9 +73,10 @@ function save(items: CenterNotification[]) {
 interface NotificationCenterState {
   items: CenterNotification[]
   push: (item: Omit<CenterNotification, 'id' | 'at' | 'read'> & { id?: string; at?: number }) => void
-  markRead: (module?: NotificationModule) => void
+  /** Con `profileId`, solo los que se ven en ese perfil (los de otro siguen sin leer allí). */
+  markRead: (module?: NotificationModule, profileId?: string | null) => void
   dismiss: (id: string) => void
-  clear: (module?: NotificationModule) => void
+  clear: (module?: NotificationModule, profileId?: string | null) => void
 }
 
 let counter = 0
@@ -74,9 +92,11 @@ export const useNotificationCenter = create<NotificationCenterState>((set) => ({
       save(items)
       return { items }
     }),
-  markRead: (module) =>
+  markRead: (module, profileId) =>
     set((state) => {
-      const items = state.items.map((item) => (!module || item.module === module ? { ...item, read: true } : item))
+      const items = state.items.map((item) => (
+        (!module || item.module === module) && (profileId === undefined || visibleIn(item, profileId)) ? { ...item, read: true } : item
+      ))
       save(items)
       return { items }
     }),
@@ -86,15 +106,20 @@ export const useNotificationCenter = create<NotificationCenterState>((set) => ({
       save(items)
       return { items }
     }),
-  clear: (module) =>
+  clear: (module, profileId) =>
     set((state) => {
-      const items = module ? state.items.filter((item) => item.module !== module) : []
+      const items = state.items.filter((item) => (
+        (module && item.module !== module) || (profileId !== undefined && !visibleIn(item, profileId))
+      ))
       save(items)
       return { items }
     }),
 }))
 
 export const selectUnreadCount = (state: NotificationCenterState) => state.items.filter((item) => !item.read).length
+/** Los sin leer que se ven con este perfil activo. */
+export const selectUnreadCountIn = (activeId: string | null) => (state: NotificationCenterState) =>
+  state.items.filter((item) => !item.read && visibleIn(item, activeId)).length
 
 /** Solo tests. */
 export function resetNotificationCenterForTests(): void {

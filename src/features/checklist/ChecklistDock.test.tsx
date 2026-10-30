@@ -47,6 +47,35 @@ describe('checklist store', () => {
 })
 
 describe('ChecklistDock', () => {
+  it('#26: the inner scroll turns on only once open and off as soon as it closes', () => {
+    vi.useFakeTimers()
+    try {
+      useChecklistStore.getState().apply('s1', list('active', steps('completed', 'in_progress', 'pending')), false)
+      mount()
+      const body = document.querySelector('.checklist-body') as HTMLElement
+      expect(body.hasAttribute('data-settled')).toBe(false)
+      act(() => useChecklistStore.getState().setExpanded('s1', true))
+      expect(body.hasAttribute('data-open')).toBe(true)
+      expect(body.hasAttribute('data-settled')).toBe(false)
+      act(() => { vi.advanceTimersByTime(300) })
+      expect(body.hasAttribute('data-settled')).toBe(true)
+      act(() => useChecklistStore.getState().setExpanded('s1', false))
+      expect(body.hasAttribute('data-settled')).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('#6: one step left is singular, two are plural, also when interrupted', async () => {
+    mount()
+    act(() => applyChecklistEvent({ session_id: 's1', checklist: list('open', steps('completed', 'pending')) }))
+    expect((await screen.findByTestId('checklist-dock')).textContent).toContain('Queda 1 paso')
+    act(() => applyChecklistEvent({ session_id: 's1', checklist: list('open', steps('pending', 'pending'), 2) }))
+    await waitFor(() => expect(screen.getByTestId('checklist-dock').textContent).toContain('Quedan 2 pasos'))
+    act(() => applyChecklistEvent({ session_id: 's1', checklist: list('interrupted', steps('completed', 'pending'), 3) }))
+    await waitFor(() => expect(screen.getByTestId('checklist-dock').textContent).toContain('Interrumpida: quedó 1 paso'))
+  })
+
   it('shows nothing for a conversation without a list', async () => {
     mount()
     await waitFor(() => expect(engineApi.sessionChecklist).toHaveBeenCalledWith('s1'))
@@ -60,7 +89,8 @@ describe('ChecklistDock', () => {
     act(() => applyChecklistEvent({ session_id: 's1', checklist: list('active', items) }))
     const dock = await screen.findByTestId('checklist-dock')
     expect(dock.getAttribute('data-state')).toBe('active')
-    expect(dock.textContent).toContain('1/3')
+    // The step in progress, like the turn's header: «Paso 2/3», not the 1 done.
+    expect(dock.textContent).toContain('Paso 2/3')
     expect(dock.textContent).toContain('Escribiendo las pruebas')
     expect(screen.queryByRole('button', { name: 'Quitar la lista' })).toBeNull()
     const toggle = screen.getByRole('button', { expanded: false })
@@ -80,6 +110,18 @@ describe('ChecklistDock', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Quitar la lista' }))
     expect(clear).toHaveBeenCalledWith('s1')
     await waitFor(() => expect(screen.queryByTestId('checklist-dock')).toBeNull())
+  })
+
+  it('a list left open can be marked done by the owner (#59)', async () => {
+    const complete = vi.spyOn(engineApi, 'completeSessionChecklist').mockResolvedValue({ checklist: list('completed', steps('completed', 'completed', 'completed'), 3) })
+    vi.mocked(engineApi.sessionChecklist).mockResolvedValue({ checklist: list('open', steps('completed', 'in_progress', 'pending'), 2) })
+    mount()
+    const dock = await screen.findByTestId('checklist-dock')
+    expect(dock.textContent).toContain('2')
+    await userEvent.click(screen.getByRole('button', { name: 'Marcar todo como hecho' }))
+    expect(complete).toHaveBeenCalledWith('s1')
+    await waitFor(() => expect(screen.getByTestId('checklist-dock').getAttribute('data-state')).toBe('completed'))
+    expect(screen.queryByRole('button', { name: 'Marcar todo como hecho' })).toBeNull()
   })
 
   it('animates only what it sees change, not a list already there', async () => {

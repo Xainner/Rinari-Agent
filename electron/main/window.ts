@@ -14,6 +14,7 @@ import { screen } from 'electron'
 import { APP_ORIGIN, contentSecurityPolicy } from './appScheme'
 import { CHROME_BACKGROUND, CHROME_OVERLAY_HEIGHT, CHROME_SYMBOL } from '../shared/chrome'
 import type { WindowState } from '../shared/contracts'
+import { createRepeatGrouper } from './repeatGrouper'
 
 export interface WindowDeps {
   preloadPath: string
@@ -43,6 +44,8 @@ export interface WindowDeps {
    * se muestra hasta que el usuario la abre (`presentWindow`).
    */
   startHidden?: boolean
+  /** La ventana quedó lista para mostrarse (línea de tiempos del arranque, #91). */
+  onRevealed?: (reason: string) => void
 }
 
 type RevealWindow = Pick<BrowserWindow, 'isDestroyed' | 'isVisible' | 'maximize' | 'show'>
@@ -243,8 +246,9 @@ export function createMainWindow(deps: WindowDeps): BrowserWindow {
   const reveal = (reason: string) => {
     if (shown || window.isDestroyed()) return
     shown = true
-    if (reason !== 'ready-to-show') {
-      console.error(`[rinari] la ventana se muestra por ${reason}: la página no llegó a pintar`)
+    deps.onRevealed?.(reason)
+    if (reason.startsWith('did-fail-load')) {
+      console.error(`[rinari] la ventana se muestra por ${reason}: la página no cargó`)
     }
     // Arranque en la bandeja: se queda oculta hasta que el usuario la abra.
     if (deps.startHidden) return
@@ -252,8 +256,10 @@ export function createMainWindow(deps: WindowDeps): BrowserWindow {
     revealMaximized(window, push)
   }
   window.once('ready-to-show', () => reveal('ready-to-show'))
-  // Respaldo: la página terminó de cargar pero no pintó.
-  window.webContents.once('did-finish-load', () => setTimeout(() => reveal('did-finish-load'), 1_500))
+  // En los arranques medidos `ready-to-show` no llegaba nunca y la ventana
+  // esperaba siempre 1,5 s de respaldo (#91): se muestra al terminar de
+  // cargar. El fondo oscuro de la ventana evita el destello blanco.
+  window.webContents.once('did-finish-load', () => reveal('did-finish-load'))
   // Y si ni siquiera carga, se muestra igual para poder diagnosticar.
   window.webContents.once('did-fail-load', (_event, code, description) =>
     reveal(`did-fail-load ${code}: ${description}`),
@@ -261,8 +267,20 @@ export function createMainWindow(deps: WindowDeps): BrowserWindow {
 
   // Errores del renderer al proceso principal: sin esto, una excepción en el
   // arranque de React no aparece en ningún sitio que se pueda leer.
-  window.webContents.on('console-message', (_event, level, message, line, sourceId) => {
-    if (level >= 2) console.error(`[renderer] ${message} (${sourceId}:${line})`)
+  // Los avisos repetidos iguales se agrupan (#58): «(×120 más en 10 min)».
+  const rendererErrors = createRepeatGrouper((entry) => console.error(entry))
+  const rendererNotes = createRepeatGrouper((entry) => console.info(entry))
+  window.webContents.on('console-message', (details) => {
+    const { level, message, lineNumber, sourceId } = details
+    const entry = `[renderer] ${message} (${sourceId}:${lineNumber})`
+    // Avisos y errores como ERROR; las líneas de diagnóstico propias
+    // (`[rinari] …`) que no lo son, como INFO: «attention 0» no es un error (#91).
+    if (level === 'warning' || level === 'error') rendererErrors.log(entry)
+    else if (message.startsWith('[rinari] ')) rendererNotes.log(entry)
+  })
+  window.on('closed', () => {
+    rendererErrors.flush()
+    rendererNotes.flush()
   })
   window.webContents.on('render-process-gone', (_event, details) => {
     console.error(`[renderer] el proceso se fue: ${details.reason}`)

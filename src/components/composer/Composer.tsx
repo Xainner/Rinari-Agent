@@ -1,29 +1,34 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent } from 'react'
 import DictationButton from '../../features/dictation/DictationButton'
 import { useDictationPrefs } from '../../features/dictation/dictationPrefs'
 import { useReducedMotion } from 'framer-motion'
 import { createPortal } from 'react-dom'
-import { ArrowUp, Check, Columns3, FileText, Image as ImageIcon, LoaderCircle, MessageSquareShare, Plus, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
+import { ArrowUp, Check, FileText, Film, Image as ImageIcon, LoaderCircle, MoreHorizontal, Music, Pause, Play, Plus, RefreshCw, Search, Shield, Square, X } from 'lucide-react'
 import { platform } from '../../platform'
 import { useI18n } from '../../i18n'
 import { AttachmentPreview } from '../AttachmentPreview'
-import { cn } from '../../lib/utils'
+import { AttachmentPlayer, isPlayableAttachment } from '../AttachmentMedia'
+import ImageViewer, { useImageViewer } from '../image-viewer/ImageViewer'
+import { attachmentViewerImages, isImageAttachment } from '../image-viewer/attachmentImages'
+import { useFileWorkspace } from '../../features/files/FileWorkspace'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '../ui/dropdown-menu'
 import { ReadingBadges, RecognizedPreview, coverageDetail } from '../AttachmentReading'
 
-type ImageReadMode = 'image' | 'text' | 'both'
 import { selectDraft, useComposerStore } from '../../stores/composer'
+import { readModeFields, readModeOf, useImageReadPrefs, type ImageReadMode } from '../../stores/imageReadPrefs'
 import { useUIStore } from '../../stores/ui'
 import { engineApi, commandMessage, type ModelRefreshResult, type ModelSummary, type ProviderSummary } from '../../services/engine'
 import type { AttachmentRef } from '../../types'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { supportsEffort, type ReasoningEffort } from '../../lib/reasoning'
 import ModelPicker from './ModelPicker'
+import { ProjectChip } from './ProjectChip'
+import { MENTION_FILE_EVENT, TREE_FILE_MIME, type TreeFileRef } from '../../features/files/treeFile'
 import EffortPicker from './EffortPicker'
 import ContextRing from '../../features/context/ContextRing'
 import { useComposerHeight } from './useComposerHeight'
 import { useChatFileReceiver } from './ChatFileDropZone'
 import { FOCUS_COMPOSER_EVENT } from './focusComposer'
-import { matchPaneTargets, paneMentionQuery, parsePaneMention, type PaneMentionTarget } from './paneMention'
 import { matchSlashCommands, parseSlashCommand, planSlash, runsOnPick, slashQuery, type SlashPlan } from './slashCommands'
 import { useSlashCommands } from './useSlashCommands'
 import { SlashMenu, groupSlashCommands } from './SlashMenu'
@@ -31,6 +36,7 @@ import type { SlashCommand } from '../../services/engine'
 import type { SendOptions } from '../../features/engine/useEngineSession'
 import type { I18nKey } from '../../i18n'
 import { FullAccessDialog } from '../../features/permissions/FullAccessDialog'
+import { INLINE_MAX_BYTES, attachmentCategory, attachmentKind, contentKey, formatMiB, maxBytes, newAttachmentId } from './attachmentRules'
 
 export type ComposerPlacement = 'centered' | 'bottom'
 
@@ -73,7 +79,8 @@ interface ComposerProps {
    * Mientras Rinari trabaja, Enter le da el mensaje en el turno en curso (lo
    * lee al terminar el paso actual). Sin esta prop el compositor espera.
    */
-  onSteer?: (text: string) => Promise<boolean>
+  /** `now`: «Enviar ahora» (#31), corta el paso en curso. */
+  onSteer?: (text: string, attachments?: AttachmentRef[], now?: boolean) => Promise<boolean>
   /** Tab mientras trabaja: el mensaje espera a que termine el turno. */
   onQueue?: (text: string) => Promise<boolean>
   models: ModelSummary[]
@@ -95,21 +102,24 @@ interface ComposerProps {
   onPermissionChange: (profile: string) => void
   onSearchFiles: (query: string) => Promise<{ root: string; files: Array<{ path: string; relative_path: string; name: string }> }>
   /**
-   * Paneles del board a los que se puede escribir con `@Panel mensaje`. Solo
-   * en Boards; sin lista no hay autocompletado ni envío directo.
+   * Proyecto de una conversación nueva, elegible antes del primer envío (#42).
+   * Solo en un borrador; sin él no hay chip.
    */
-  mentionTargets?: readonly PaneMentionTarget[]
-  /** Envía `text` al panel `targetId` como tarea del usuario (reenvío manual). */
-  onSendToTarget?: (targetId: string, text: string) => Promise<boolean>
+  draftProject?: { projectId: string | null; onChange: (projectId: string | null) => void }
+  /** Quién responde, si no es Rinari (un agente de la Agency): los textos lo nombran. */
+  assistantName?: string
 }
 
 const MODES = ['plan', 'build', 'review'] as const
 
 /** Comandos `/` de interfaz que resuelve el propio compositor. */
 const LOCAL_SLASH = new Set(['help', 'model'])
+/** Comandos de interfaz del Engine que el escritorio ya no ofrece: su vista se quitó del panel (0.4.0). */
+const DROPPED_SLASH = new Set(['tasks'])
 
 /** Descripción localizada de los comandos integrados; el resto usa la del Engine. */
 const SLASH_DESCRIPTION_KEYS: Record<string, I18nKey> = {
+  child: 'slash.child',
   help: 'slash.help',
   new: 'slash.new',
   plan: 'slash.plan',
@@ -123,7 +133,8 @@ const SLASH_DESCRIPTION_KEYS: Record<string, I18nKey> = {
   context: 'slash.context',
   model: 'slash.model',
   diff: 'slash.diff',
-  tasks: 'slash.tasks',
+  goal: 'slash.goal',
+  init: 'slash.init',
   fork: 'slash.fork',
   rename: 'slash.rename',
 }
@@ -165,8 +176,8 @@ export default function Composer({
   permissionProfilesV2,
   onPermissionChange,
   onSearchFiles,
-  mentionTargets,
-  onSendToTarget,
+  draftProject,
+  assistantName,
 }: ComposerProps) {
   const { t } = useI18n()
   const draftKey = explicitDraftKey ?? (sessionId || 'draft')
@@ -227,7 +238,16 @@ export default function Composer({
   const [permissionOpen, setPermissionOpen] = useState(false)
   // «Acceso completo» se confirma en un diálogo antes de pedirlo.
   const [confirmFullAccess, setConfirmFullAccess] = useState(false)
+  // En un panel de Boards la confirmación sale sobre ese panel (plan-boards C14).
+  const [fullAccessHost, setFullAccessHost] = useState<HTMLElement | null>(null)
   const [previewAttachment, setPreviewAttachment] = useState<AttachmentRef | null>(null)
+  // El audio o video adjunto que suena bajo los chips (#57), uno a la vez.
+  const [playingId, setPlayingId] = useState<string | null>(null)
+  // El menú «Enviar como…» abierto, por chip (también con clic derecho, #77).
+  const [readMenuId, setReadMenuId] = useState<string | null>(null)
+  // Un solo visor grande para las imágenes del composer (#77).
+  const viewer = useImageViewer()
+  const fileWorkspace = useFileWorkspace()
   const [previewUrl, setPreviewUrl] = useState<string | undefined>()
   const [previewText, setPreviewText] = useState<string | undefined>()
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -237,6 +257,8 @@ export default function Composer({
     if (!supportsEffort(reasoningCapabilities, reasoningEffort)) onReasoningChange('off')
   }, [reasoningCapabilities, reasoningEffort, onReasoningChange])
   const attachments = draft.attachments
+  const viewerImages = useMemo(() => attachmentViewerImages(attachments, fileWorkspace), [attachments, fileWorkspace])
+  const playing = sessionId && playingId ? attachments.find((file) => file.id === playingId && file.uri) : undefined
   const addAttachmentFor = useComposerStore((s) => s.addAttachmentFor)
   const updateAttachmentFor = useComposerStore((s) => s.updateAttachmentFor)
   const removeAttachmentFor = useComposerStore((s) => s.removeAttachmentFor)
@@ -249,22 +271,13 @@ export default function Composer({
   const setText = (value: string) => setTextFor(draftKey, value)
   const [fileMatches, setFileMatches] = useState<Array<{ path: string; relative_path: string; name: string }>>([])
   const mention = text.match(/(?:^|\s)@([^\s]*)$/)?.[1] ?? null
-  // Mensaje directo a otro panel: `@Panel texto` al inicio del mensaje.
-  const paneTargets = mentionTargets ?? []
-  const paneQuery = paneTargets.length > 0 ? paneMentionQuery(text) : null
-  const paneMatches = paneQuery !== null ? matchPaneTargets(paneQuery, paneTargets) : []
-  const paneMention = onSendToTarget && paneTargets.length > 0 ? parsePaneMention(text, paneTargets) : null
-  const [paneHighlight, setPaneHighlight] = useState(0)
-  useEffect(() => {
-    setPaneHighlight(0)
-  }, [paneQuery])
   // Comandos `/`: el catálogo llega del Engine al escribir la primera barra.
   const [engineCommands, loadCommands] = useSlashCommands(sessionId)
   const wantsCommands = text.startsWith('/')
   useEffect(() => {
     if (wantsCommands) loadCommands()
   }, [wantsCommands, loadCommands])
-  const slashCommands = engineCommands.filter((command) => command.kind !== 'ui' || LOCAL_SLASH.has(command.name) || Boolean(onUiCommand))
+  const slashCommands = engineCommands.filter((command) => !(command.kind === 'ui' && DROPPED_SLASH.has(command.name)) && (command.kind !== 'ui' || LOCAL_SLASH.has(command.name) || Boolean(onUiCommand)))
   const slashQ = slashQuery(text)
   // Sin tope: con solo «/» también deben verse las skills (van tras los comandos).
   const slashMatches = slashQ !== null ? groupSlashCommands(matchSlashCommands(slashQ, slashCommands, Number.POSITIVE_INFINITY)) : []
@@ -277,7 +290,7 @@ export default function Composer({
   useEffect(() => {
     setSlashHighlight(0)
   }, [slashQ])
-  const menuOpen = slashMatches.length > 0 || paneMatches.length > 0 || fileMatches.length > 0
+  const menuOpen = slashMatches.length > 0 || fileMatches.length > 0
   const menuRef = useRef<HTMLDivElement>(null)
   // Con las flechas, la opción elegida no se salía de la lista visible.
   useEffect(() => {
@@ -377,27 +390,39 @@ export default function Composer({
   }, [acceptsGlobalFocus, sessionId])
 
   useEffect(() => {
-    if (acceptsGlobalFocus) textareaRef.current?.focus()
+    if (!acceptsGlobalFocus) return
+    // Pulsar el botón del panel lateral de un panel de Boards lo enfoca y abre
+    // a la vez el cajón, que toma el foco: el composer no se lo quita.
+    if (document.activeElement?.closest('.pane-dock-drawer')) return
+    textareaRef.current?.focus()
   }, [placement, acceptsGlobalFocus])
 
   const { armSendReset, cancelSendReset } = useComposerHeight(textareaRef, text, draftKey, placement, reducePillMotion)
 
   const canSteer = isStreaming && Boolean(onSteer)
 
-  /** Mensaje durante el turno: ahora (guiar) o al terminar (cola). Solo texto. */
-  async function handleSteer(later: boolean) {
+  /**
+   * Mensaje durante el turno: ahora (guiar) o al terminar (cola). Al guiar,
+   * los adjuntos listos van con el texto (#54); a la cola, solo el texto.
+   */
+  async function handleSteer(later: boolean, now = false) {
     const submissionSessionKey = draftKey
-    const content = useComposerStore.getState().getDraft(submissionSessionKey).text
-    const deliver = later ? onQueue : onSteer
-    if (!deliver || !content.trim() || isSubmitting) return
+    const draft = useComposerStore.getState().getDraft(submissionSessionKey)
+    const content = draft.text
+    const files = later ? [] : draft.attachments.filter((item) => item.status !== 'error' && item.status !== 'preparing')
+    if (later ? !onQueue : !onSteer) return
+    if ((!content.trim() && files.length === 0) || isSubmitting) return
     armSendReset()
     setTextFor(submissionSessionKey, '')
     textareaRef.current?.focus()
     setIsSubmitting(true)
     try {
-      if (!(await deliver(content.trim()))) {
+      const delivered = later ? await onQueue!(content.trim()) : (now ? await onSteer!(content.trim(), files, true) : await onSteer!(content.trim(), files))
+      if (!delivered) {
         setTextFor(submissionSessionKey, content)
         cancelSendReset()
+      } else if (files.length) {
+        removeAttachmentsById(files.map((item) => item.id))
       }
     } catch {
       setTextFor(submissionSessionKey, content)
@@ -440,28 +465,6 @@ export default function Composer({
     const outgoing = current.attachments
     const attachmentIds = outgoing.map((item) => item.id)
     if (isStreaming || isSubmitting || visionUnavailable || outgoing.some((item) => item.status === 'preparing' || item.status === 'error') || (!content.trim() && outgoing.length === 0)) return
-    const direct = onSendToTarget && paneTargets.length > 0 ? parsePaneMention(content, paneTargets) : null
-    if (direct && onSendToTarget) {
-      // Mensaje directo a otro panel: solo texto; los adjuntos se quedan en el borrador.
-      if (!direct.message) return
-      armSendReset()
-      setTextFor(submissionSessionKey, '')
-      textareaRef.current?.focus()
-      setIsSubmitting(true)
-      try {
-        const ok = await onSendToTarget(direct.target.id, direct.message)
-        if (!ok) {
-          setTextFor(submissionSessionKey, content)
-          cancelSendReset()
-        }
-      } catch {
-        setTextFor(submissionSessionKey, content)
-        cancelSendReset()
-      } finally {
-        setIsSubmitting(false)
-      }
-      return
-    }
     // `/comando`: la interfaz lo resuelve aquí o viaja con el turno para que el
     // Engine lo expanda. Un texto que empieza por `/` sin ser comando (una
     // ruta) se envía tal cual.
@@ -546,7 +549,7 @@ export default function Composer({
     void handleSend()
   }
 
-  const canSend = paneMention ? paneMention.message.length > 0 : (!!text.trim() || attachments.length > 0)
+  const canSend = !!text.trim() || attachments.length > 0
 
   async function prepareOne(item: AttachmentRef) {
     if (!onPrepareAttachments) {
@@ -570,32 +573,56 @@ export default function Composer({
 
   function addAttachment(item: AttachmentRef) {
     const currentAttachments = useComposerStore.getState().getDraft(draftKey).attachments
-    if (currentAttachments.some(current => current.path === item.path && current.name === item.name)) return
+    // Lo pegado sin ruta se compara por nombre **y** contenido: dos capturas
+    // distintas se llaman las dos `image.png` (#18). Lo que tiene ruta, por
+    // su ruta.
+    const key = item.data_url ? contentKey(item.data_url) : null
+    const duplicate = currentAttachments.some(current => key
+      ? current.name === item.name && current.data_url !== undefined && contentKey(current.data_url) === key
+      : !current.data_url && current.path === item.path)
+    if (duplicate) {
+      setAttachmentNotice(t('attach.duplicate', { name: item.name }))
+      return
+    }
     if (currentAttachments.length >= 8) {
       setAttachmentNotice(t('attach.limitCount'))
       return
     }
     setAttachmentNotice(undefined)
+    // «Cómo enviar imágenes por defecto» (Ajustes → Visión, #77).
+    const image = item.kind === 'image' || item.mime_type?.startsWith('image/') || /\.(png|jpe?g|webp)$/i.test(item.name)
+    const defaultMode = useImageReadPrefs.getState().mode
+    const chosen = image && item.ocr === undefined && defaultMode !== 'image' ? { ...item, ...readModeFields(defaultMode) } : item
     const pending = onPrepareAttachments
-      ? { ...item, status: 'preparing' as const, error: undefined }
-      : item
+      ? { ...chosen, status: 'preparing' as const, error: undefined }
+      : chosen
     addAttachmentFor(draftKey, pending)
     if (onPrepareAttachments) void prepareOne(pending)
   }
 
-  /** Cómo leer las imágenes: píxeles (visión), texto (OCR) o ambos. */
-  const imageReadMode: ImageReadMode | undefined = (() => {
-    const modes = new Set(imageAttachments.map(file => !file.ocr ? 'image' : file.keepImage ? 'both' : 'text'))
-    return modes.size === 1 ? [...modes][0] as ImageReadMode : undefined
-  })()
-  function setImageReadMode(mode: ImageReadMode) {
-    const ocr = mode !== 'image'
-    const keepImage = mode === 'both'
-    for (const file of imageAttachments) {
-      if (Boolean(file.ocr) === ocr && Boolean(file.keepImage) === keepImage) continue
-      void prepareOne({ ...file, ocr, keepImage: keepImage || undefined, derivedUri: ocr ? file.derivedUri : undefined })
-    }
+  /** Cómo va una imagen, elegido desde su chip (#77): ya no lo cambia el composer. */
+  function setImageReadMode(file: AttachmentRef, mode: ImageReadMode) {
+    const fields = readModeFields(mode)
+    void prepareOne({ ...file, ...fields, ocrAuto: undefined, readChosen: true, derivedUri: fields.ocr ? file.derivedUri : undefined })
   }
+
+  // Sin visión, la imagen va como texto reconocido sin preguntar, y el chip
+  // lo marca; con un modelo que ve, vuelve a ir como imagen (#77). Lo que el
+  // dueño eligió en el chip se respeta.
+  const visionKnown = visionRoute?.key === visionRouteKey ? visionRoute.available : undefined
+  useEffect(() => {
+    if (visionKnown === undefined) return
+    for (const file of imageAttachments) {
+      if (file.readChosen || file.status === 'preparing') continue
+      if (!visionKnown && !file.ocr) {
+        void prepareOne({ ...file, ocr: true, keepImage: undefined, ocrAuto: true })
+      } else if (visionKnown && file.ocrAuto) {
+        void prepareOne({ ...file, ...readModeFields(useImageReadPrefs.getState().mode), ocrAuto: undefined, derivedUri: undefined })
+      }
+    }
+    // Solo cuando cambia lo que se sabe del modelo o llegan imágenes nuevas.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visionKnown, imageAttachments.map((file) => `${file.id}:${file.ocr ? 1 : 0}:${file.status ?? ''}`).join('|')])
 
   async function cancelAttachment(file: AttachmentRef) {
     // Invalidate local ownership before awaiting the engine so a completion
@@ -627,26 +654,52 @@ export default function Composer({
     }
   }
 
+  /** Lo que el Engine no aceptará se dice aquí, antes de enviar (#57). */
+  function admissible(name: string, size: number, mime?: string) {
+    const category = attachmentCategory(name, mime)
+    if (!category) {
+      setAttachmentNotice(t('attach.unsupported', { name }))
+      return null
+    }
+    if (size > maxBytes(category)) {
+      setAttachmentNotice(t('attach.tooLarge', { name, limit: formatMiB(maxBytes(category)) }))
+      return null
+    }
+    return category
+  }
+
   function addBrowserFile(file: File) {
-    if (file.size > 25 * 1024 * 1024) {
-      setAttachmentNotice(t('attach.limitSize', { name: file.name }))
+    const category = admissible(file.name, file.size, file.type || undefined)
+    if (!category) return
+    const isImage = category === 'image'
+    // Arrastrado desde el equipo: viaja por su ruta, no entero dentro del
+    // mensaje, y el límite de 8 MiB por comando deja de importar (#57).
+    const realPath = platform().files.pathFor(file)
+    if (!realPath && file.size > INLINE_MAX_BYTES) {
+      setAttachmentNotice(t('attach.inlineTooLarge', { name: file.name, limit: formatMiB(INLINE_MAX_BYTES) }))
+      return
+    }
+    const base: AttachmentRef = {
+      id: newAttachmentId(),
+      path: realPath ?? file.name,
+      name: file.name,
+      mime_type: file.type || undefined,
+      size: file.size,
+      source: 'native',
+      kind: attachmentKind(category),
+      status: 'ready',
+    }
+    if (realPath && !isImage) {
+      addAttachment(base)
       return
     }
     const reader = new FileReader()
     reader.onload = () => {
       if (typeof reader.result !== 'string') return
-      addAttachment({
-        id: `att_${Date.now().toString(36)}_${file.name}`,
-        path: file.name,
-        name: file.name,
-        mime_type: file.type || undefined,
-        size: file.size,
-        source: 'native',
-        kind: file.type.startsWith('image/') ? 'image' : undefined,
-        data_url: reader.result,
-        previewUrl: file.type.startsWith('image/') ? reader.result : undefined,
-        status: 'ready',
-      })
+      // Con ruta, el data URL de una imagen solo sirve de miniatura.
+      addAttachment(realPath
+        ? { ...base, previewUrl: reader.result }
+        : { ...base, data_url: reader.result, previewUrl: isImage ? reader.result : undefined })
     }
     reader.readAsDataURL(file)
   }
@@ -660,12 +713,18 @@ export default function Composer({
   async function chooseFiles() {
     const paths = (await platform().dialog.openFiles({ multiple: true, directory: false, title: t('attach.attachFiles') })) ?? []
     for (const path of paths) {
+      const name = path.split(/[/\\]/).pop() ?? path
+      const category = attachmentCategory(name)
+      if (!category) {
+        setAttachmentNotice(t('attach.unsupported', { name }))
+        continue
+      }
       addAttachment({
-        id: `att_${Date.now().toString(36)}_${path}`,
+        id: newAttachmentId(),
         path,
-        name: path.split(/[/\\]/).pop() ?? path,
+        name,
         source: 'native',
-        kind: /\.(png|jpe?g|webp)$/i.test(path) ? 'image' : undefined,
+        kind: attachmentKind(category),
         status: 'ready',
       })
     }
@@ -680,32 +739,109 @@ export default function Composer({
     })
   }
 
-  function choosePaneTarget(target: PaneMentionTarget) {
-    setText(`@${target.label} `)
-    setFileMatches([])
-    requestAnimationFrame(() => {
-      textareaRef.current?.focus()
-    })
+  // Del árbol de Archivos (#98): arrastrado o con «Mencionar en el chat», entra como «@archivo».
+  const [treeDrag, setTreeDrag] = useState(false)
+  function mentionTreeFile(file: TreeFileRef) {
+    if (sessionId && file.sessionId !== sessionId) return
+    addAttachment({ id: newAttachmentId(), path: file.path, name: file.relative_path, source: 'workspace', kind: /\.(png|jpe?g|webp)$/i.test(file.path) ? 'image' : undefined, status: 'ready' })
+    setText(`${text}${text && !/\s$/.test(text) ? ' ' : ''}@${file.relative_path} `)
+    textareaRef.current?.focus()
   }
+  useEffect(() => {
+    const onMention = (event: Event) => {
+      const file = (event as CustomEvent<TreeFileRef>).detail
+      if (file && sessionId && file.sessionId === sessionId) mentionTreeFile(file)
+    }
+    window.addEventListener(MENTION_FILE_EVENT, onMention)
+    return () => window.removeEventListener(MENTION_FILE_EVENT, onMention)
+  })
 
   function chooseWorkspaceFile(file: { path: string; relative_path: string; name: string }) {
-    addAttachment({ id: `att_${Date.now().toString(36)}_${file.path}`, path: file.path, name: file.relative_path, source: 'workspace', kind: /\.(png|jpe?g|webp)$/i.test(file.path) ? 'image' : undefined, status: 'ready' })
+    addAttachment({ id: newAttachmentId(), path: file.path, name: file.relative_path, source: 'workspace', kind: /\.(png|jpe?g|webp)$/i.test(file.path) ? 'image' : undefined, status: 'ready' })
     setText(text.replace(/(?:^|\s)@[^\s]*$/, (match) => `${match.startsWith(' ') ? ' ' : ''}@${file.relative_path} `))
     setFileMatches([])
   }
 
   return (
     <div ref={rootRef} className="composer-root relative">
-      <div onDrop={event => event.preventDefault()} onDragOver={event => event.preventDefault()} data-working={isStreaming || undefined} className="composer-surface rounded-[22px] border p-2.5 transition-colors">
+      {/* El proyecto de una conversación nueva va encima del composer (#42; decisión del dueño). */}
+      {draftProject && !sessionId && (
+        <div className="composer-context-row">
+          <ProjectChip projectId={draftProject.projectId} onChange={draftProject.onChange} primary={primary} disabled={isSubmitting} />
+        </div>
+      )}
+      <div
+        onDrop={event => {
+          event.preventDefault()
+          setTreeDrag(false)
+          // Un archivo arrastrado desde el árbol de Archivos (#98): como elegirlo con «@».
+          if (!Array.from(event.dataTransfer.types ?? []).includes(TREE_FILE_MIME)) return
+          const raw = event.dataTransfer.getData(TREE_FILE_MIME)
+          if (raw) { try { mentionTreeFile(JSON.parse(raw) as TreeFileRef) } catch { /* not ours */ } }
+        }}
+        onDragOver={event => {
+          event.preventDefault()
+          if (Array.from(event.dataTransfer.types).includes(TREE_FILE_MIME)) { event.dataTransfer.dropEffect = 'copy'; setTreeDrag(true) }
+        }}
+        onDragLeave={event => { if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) setTreeDrag(false) }}
+        data-working={isStreaming || undefined}
+        data-tree-drag={treeDrag || undefined}
+        data-toast-avoid=""
+        className="composer-surface rounded-[22px] border p-2.5 transition-colors"
+      >
         {attachments.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5 px-1">
             {attachments.map((file) => (
-              <span key={`${file.path}:${file.name}`} className="inline-flex max-w-[320px] items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2 py-1 text-[11px] text-[var(--text-muted)]">
-                <button type="button" onClick={() => void openAttachmentPreview(file)} className="inline-flex min-w-0 items-center gap-1.5 rounded px-0.5 text-left hover:text-[var(--text)]" title={t('attach.openPreview')}>
-                  {file.previewUrl ? <img src={file.previewUrl} alt="" className="size-7 rounded object-cover" /> : file.kind === 'image' ? <ImageIcon size={12} className="shrink-0" /> : <FileText size={12} className="shrink-0" />}
-                  <span className="truncate">{file.name}</span>
-                </button>
+              <span
+                key={`${file.path}:${file.name}`}
+                // La ruta de visión, en el tooltip del chip en vez de una línea aparte (#77).
+                title={visualAttachments.includes(file) && visionRoute?.key === visionRouteKey && visionRoute.available ? t('attach.visionRoute', { destination: visionRoute.destination }) : undefined}
+                data-vision-route={visualAttachments.includes(file) && visionRoute?.key === visionRouteKey && visionRoute.available ? visionRoute.destination : undefined}
+                className="inline-flex max-w-[320px] items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2 py-1 text-[11px] text-[var(--text-muted)]"
+                onContextMenu={imageAttachments.includes(file) ? (event) => { event.preventDefault(); setReadMenuId(file.id) } : undefined}
+              >
+                {isPlayableAttachment(file) ? (
+                  <button type="button" disabled={!sessionId || !file.uri} onClick={() => setPlayingId((current) => (current === file.id ? null : file.id))} className="attach-chip-play" aria-pressed={playingId === file.id} aria-label={t(playingId === file.id ? 'attach.stop' : 'attach.play', { name: file.name })} title={t(playingId === file.id ? 'attach.stop' : 'attach.play', { name: file.name })}>
+                    <span className="attach-chip-play-icon" aria-hidden="true">{playingId === file.id ? <Pause size={10} /> : <Play size={10} />}</span>
+                    {file.kind === 'audio' ? <Music size={12} className="shrink-0" aria-hidden="true" /> : <Film size={12} className="shrink-0" aria-hidden="true" />}
+                    <span className="truncate">{file.name}</span>
+                  </button>
+                ) : (
+                  <button type="button" onClick={(event) => (isImageAttachment(file) ? viewer.show(viewerImages, Math.max(0, viewerImages.findIndex((image) => image.key === file.id)), event.currentTarget) : void openAttachmentPreview(file))} className="inline-flex min-w-0 items-center gap-1.5 rounded px-0.5 text-left hover:text-[var(--text)]" title={t('attach.openPreview')}>
+                    {file.previewUrl ? <img src={file.previewUrl} alt="" className="size-7 rounded object-cover" /> : file.kind === 'image' ? <ImageIcon size={12} className="shrink-0" /> : <FileText size={12} className="shrink-0" />}
+                    <span className="truncate">{file.name}</span>
+                  </button>
+                )}
                 <ReadingBadges attachment={file} />
+                {imageAttachments.includes(file) && (
+                  // Cómo va esta imagen (#77): el menú del chip sustituye a la barra «Leer imágenes como».
+                  <DropdownMenu open={readMenuId === file.id} onOpenChange={(open) => setReadMenuId(open ? file.id : null)}>
+                    <DropdownMenuTrigger
+                      className="attach-read-trigger"
+                      data-testid="attach-read-menu"
+                      aria-label={t('attach.read.menu', { name: file.name })}
+                      title={t('attach.read.menu', { name: file.name })}
+                    >
+                      <MoreHorizontal size={12} aria-hidden="true" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="min-w-56">
+                      <DropdownMenuLabel>{t('attach.read.label')}</DropdownMenuLabel>
+                      <DropdownMenuRadioGroup value={readModeOf(file)} onValueChange={(value) => {
+                        const mode = value as 'image' | 'text' | 'both'
+                        if (readModeOf(file) !== mode || file.ocrAuto) setImageReadMode(file, mode)
+                      }}>
+                        {(['image', 'text', 'both'] as const).map((mode) => (
+                          <DropdownMenuRadioItem key={mode} value={mode} disabled={file.status === 'preparing'} title={t(`attach.read.${mode}Hint`)}>
+                            <span className="flex flex-col">
+                              <span>{t(`attach.read.as.${mode}`)}</span>
+                              <span className="text-[11px] text-[var(--text-subtle)]">{t(`attach.read.${mode}Hint`)}</span>
+                            </span>
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
                 {file.warning && <span title={file.warning} className="text-[var(--warning)]">⚠</span>}
                 {file.kind === 'pdf' && <details className="relative"><summary className="cursor-pointer rounded px-1 text-[10px] text-[var(--text-subtle)] hover:text-[var(--text)]">PDF</summary><div className="absolute top-full right-0 z-40 mt-1 w-56 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] p-2 shadow-xl"><label className="block text-[10px] text-[var(--text-subtle)]">{t('attach.pdfPages')}<input disabled={file.status === 'preparing'} defaultValue={file.pageRange ?? ''} onChange={(event) => updateAttachmentFor(draftKey, file.id, { pageRange: event.target.value || undefined })} className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-1.5 py-1 font-mono text-[11px] text-[var(--text)] outline-none disabled:opacity-50" /></label><label className="mt-2 block text-[10px] text-[var(--text-subtle)]">{t('attach.pdfVisualPages')}<input disabled={file.status === 'preparing'} defaultValue={file.visualPages?.join(',') ?? ''} onChange={(event) => updateAttachmentFor(draftKey, file.id, { visualPages: event.target.value.split(',').map((value) => Number(value.trim())).filter((value) => Number.isInteger(value) && value > 0) })} className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--bg-subtle)] px-1.5 py-1 font-mono text-[11px] text-[var(--text)] outline-none disabled:opacity-50" /></label><button type="button" disabled={file.status === 'preparing'} onClick={() => void prepareOne(useComposerStore.getState().getDraft(draftKey).attachments.find((candidate) => candidate.id === file.id) ?? file)} className="mt-2 rounded border border-[var(--border)] px-2 py-1 text-[10px] text-[var(--text-muted)] hover:text-[var(--text)] disabled:opacity-50">{t('attach.pdfPrepareAgain')}</button></div></details>}
                 {file.status === 'preparing' && <><LoaderCircle size={12} className="animate-spin text-[var(--accent-2)]" /><button type="button" aria-label={t('attach.cancelPrepare', { name: file.name })} onClick={() => void cancelAttachment(file)} className="cursor-pointer rounded p-0.5 hover:bg-[var(--bg-hover)]"><Square size={10} /></button></>}
@@ -715,35 +851,9 @@ export default function Composer({
             ))}
           </div>
         )}
+        {playing && sessionId && <div className="mb-2 px-1"><AttachmentPlayer key={playing.id} sessionId={sessionId} attachment={playing} onClose={() => setPlayingId(null)} /></div>}
         {attachmentNotice && <div className="mb-2 rounded-lg border border-[var(--danger)]/30 bg-[var(--danger)]/5 px-2.5 py-2 text-[11px] text-[var(--danger)]">{attachmentNotice}</div>}
         {visionUnavailable && <div role="alert" className="mb-2 rounded-lg border border-[var(--warning)]/30 p-2 text-xs">{visionRoute?.reason}</div>}
-        {visualAttachments.length > 0 && visionRoute?.key === visionRouteKey && visionRoute.available && <p className="mb-2 text-[11px] text-[var(--text-subtle)]">{t('attach.visionRoute', { destination: visionRoute.destination })}</p>}
-        {imageAttachments.length > 0 && onPrepareAttachments && (
-          <div role="radiogroup" aria-label={t('attach.read.label')} className="mb-2 flex flex-wrap items-center gap-1 px-1 text-[11px]">
-            <span className="mr-1 text-[var(--text-subtle)]">{t('attach.read.label')}</span>
-            {(['image', 'text', 'both'] as const).map(mode => (
-              <button
-                key={mode}
-                type="button"
-                role="radio"
-                aria-checked={imageReadMode === mode}
-                title={t(`attach.read.${mode}Hint`)}
-                disabled={imageAttachments.some(file => file.status === 'preparing')}
-                onClick={() => setImageReadMode(mode)}
-                className={cn('rounded-md border px-2 py-0.5 transition-colors disabled:opacity-50', imageReadMode === mode ? 'border-[var(--accent-2)]/50 bg-[var(--accent-2)]/10 text-[var(--text)]' : 'border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)]')}
-              >
-                {t(`attach.read.${mode}`)}
-              </button>
-            ))}
-          </div>
-        )}
-        {paneMention && (
-          <div className="mb-2 flex items-center gap-2 text-[11px] text-[var(--accent-2)]" data-testid="pane-mention-chip">
-            <MessageSquareShare size={12} aria-hidden="true" />
-            <span>{t('composer.paneMention.direct', { label: paneMention.target.label })}</span>
-            <span className="text-[var(--text-subtle)]">· {paneMention.message ? t('composer.paneMention.hint') : t('composer.paneMention.empty')}</span>
-          </div>
-        )}
         {menuOpen && menuBox && createPortal(
           <div
             ref={menuRef}
@@ -753,24 +863,6 @@ export default function Composer({
           >
             {slashMatches.length > 0 && (
               <SlashMenu commands={slashMatches} highlight={slashHighlight} onHighlight={setSlashHighlight} onPick={pickSlash} descriptions={SLASH_DESCRIPTION_KEYS} />
-            )}
-            {paneMatches.length > 0 && (
-              <div role="listbox" aria-label={t('composer.paneMention.heading')} data-testid="pane-mention-list">
-                <p className="px-2.5 pt-1 pb-0.5 text-[10px] font-semibold tracking-wider text-[var(--text-subtle)] uppercase">{t('composer.paneMention.heading')}</p>
-                {paneMatches.map((target, index) => (
-                  <button
-                    key={target.id}
-                    type="button"
-                    role="option"
-                    aria-selected={index === paneHighlight}
-                    onMouseEnter={() => setPaneHighlight(index)}
-                    onClick={() => choosePaneTarget(target)}
-                    className={`flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition-colors ${index === paneHighlight ? 'bg-[var(--bg-hover)] text-[var(--text)]' : 'text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]'}`}
-                  >
-                    <Columns3 size={13} /><span className="truncate">{target.label}</span>
-                  </button>
-                ))}
-              </div>
             )}
             {fileMatches.map((file) => (
               <button key={file.path} type="button" onClick={() => chooseWorkspaceFile(file)} className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text)]">
@@ -785,7 +877,11 @@ export default function Composer({
           value={text}
           rows={placement === 'centered' ? 2 : 1}
           aria-label={t('composer.message')}
-          placeholder={canSteer ? t('composer.placeholderSteer') : isStreaming ? t('composer.placeholderStreaming') : t('composer.placeholder')}
+          placeholder={canSteer
+            ? (assistantName ? t('composer.placeholderSteerNamed', { name: assistantName }) : t('composer.placeholderSteer'))
+            : isStreaming
+              ? (assistantName ? t('composer.placeholderStreamingNamed', { name: assistantName }) : t('composer.placeholderStreaming'))
+              : t('composer.placeholder')}
           onChange={(e) => {
             setText(e.target.value)
           }}
@@ -798,12 +894,6 @@ export default function Composer({
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); pickSlash(slashMatches[slashHighlight] ?? slashMatches[0]); return }
               if (e.key === 'Escape') { e.preventDefault(); setText(''); return }
             }
-            if (paneMatches.length > 0 && !e.nativeEvent.isComposing) {
-              if (e.key === 'ArrowDown') { e.preventDefault(); setPaneHighlight((index) => (index + 1) % paneMatches.length); return }
-              if (e.key === 'ArrowUp') { e.preventDefault(); setPaneHighlight((index) => (index - 1 + paneMatches.length) % paneMatches.length); return }
-              if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) { e.preventDefault(); choosePaneTarget(paneMatches[paneHighlight] ?? paneMatches[0]); return }
-              if (e.key === 'Escape') { e.preventDefault(); setText(text.replace(/^@/, '')); return }
-            }
             const sendWithEnter = useUIStore.getState().enterToSend
             const mod = e.ctrlKey || e.metaKey
             if (canSteer && onQueue && e.key === 'Tab' && !e.shiftKey && text.trim() && !e.nativeEvent.isComposing) {
@@ -814,10 +904,13 @@ export default function Composer({
             if (
               e.key === 'Enter' &&
               !e.nativeEvent.isComposing &&
-              (sendWithEnter ? !e.shiftKey : mod)
+              (sendWithEnter ? !e.shiftKey || (canSteer && mod) : mod)
             ) {
               e.preventDefault()
-              void (canSteer ? handleSteer(false) : handleSend())
+              // Mientras trabaja, Ctrl+Enter es «Enviar ahora» (#31); con «Enter
+              // envía» apagado, Ctrl+Mayús+Enter.
+              const now = canSteer && mod && (sendWithEnter || e.shiftKey)
+              void (canSteer ? handleSteer(false, now) : handleSend())
             }
           }}
           className="composer-textarea block max-h-[240px] min-h-13 w-full resize-none border-0 bg-transparent text-[15px] leading-relaxed text-[var(--text)] outline-none placeholder:text-[var(--text-subtle)] focus:outline-none focus-visible:outline-none"
@@ -847,20 +940,22 @@ export default function Composer({
             <PopoverTrigger asChild>
               <button type="button" disabled={isStreaming} title={t('perm.title')} className="composer-chip">
                 <Shield size={13} style={{ color: permissionColors[sessionMode === 'plan' || sessionMode === 'review' ? permissionProfile : effectivePermissionProfile] }} />
-                <span className="composer-chip-label">{sessionMode === 'plan' || sessionMode === 'review' ? (permissionProfile === 'full-access' ? t('perm.readFull') : permissionProfile === 'workspace' ? t('perm.readWorkspace') : t('perm.readOnly')) : effectivePermissionProfile === 'read-only' ? t('perm.readOnly') : effectivePermissionProfile === 'full-access' ? t('perm.fullAccess') : 'Workspace'}</span>
+                <span className="composer-chip-label">{sessionMode === 'plan' || sessionMode === 'review' ? (permissionProfile === 'full-access' ? t('perm.readFull') : permissionProfile === 'workspace' ? t('perm.readWorkspace') : t('perm.readOnly')) : effectivePermissionProfile === 'read-only' ? t('perm.readOnly') : effectivePermissionProfile === 'full-access' ? t('perm.fullAccess') : t('perm.workspace')}</span>
               </button>
             </PopoverTrigger>
             <PopoverContent align="start" className="w-64 p-1.5">
               {currentMode !== 'build' && <p className="px-2.5 py-2 text-[11px] text-[var(--text-subtle)]">{t('perm.readModesNote')}</p>}
               {([
                 ['read-only', t('perm.readOnly'), t('perm.readOnlyHint')],
-                ['workspace', 'Workspace', t('perm.workspaceHint')],
+                ['workspace', t('perm.workspace'), t('perm.workspaceHint')],
                 ['full-access', t('perm.fullAccess'), t('perm.fullAccessHint')],
               ] as const).map(([value, label, description]) => (
                 <button key={value} type="button" disabled={isStreaming || (value === 'full-access' && !permissionProfilesV2)} title={value === 'full-access' && !permissionProfilesV2 ? t('perm.fullAccessNeedsUpdate') : undefined} onClick={() => {
                   setPermissionOpen(false)
-                  if (value === 'full-access' && permissionProfile !== 'full-access') setConfirmFullAccess(true)
-                  else onPermissionChange(value)
+                  if (value === 'full-access' && permissionProfile !== 'full-access') {
+                    setFullAccessHost(textareaRef.current?.closest<HTMLElement>('section[data-pane-id]') ?? null)
+                    setConfirmFullAccess(true)
+                  } else onPermissionChange(value)
                 }} className="flex w-full cursor-pointer items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[var(--bg-hover)] disabled:cursor-default disabled:opacity-40">
                   <span className="min-w-0 flex-1"><span className="block text-[13px]" style={{ color: permissionColors[value] }}>{label}</span><span className="block text-[11px] text-[var(--text-subtle)]">{sessionMode === 'plan' || sessionMode === 'review' ? t('perm.readModesHint') : description}</span></span>
                   {permissionProfile === value && <Check size={14} className="mt-0.5" style={{ color: permissionColors[value] }} />}
@@ -870,6 +965,7 @@ export default function Composer({
           </Popover>
           <FullAccessDialog
             open={confirmFullAccess}
+            container={fullAccessHost}
             onCancel={() => setConfirmFullAccess(false)}
             onConfirm={() => { setConfirmFullAccess(false); onPermissionChange('full-access') }}
           />
@@ -978,6 +1074,7 @@ export default function Composer({
       <p className="mt-1.5 px-1 text-center text-[11px] text-[var(--text-subtle)]">
         {canSteer ? t(onQueue ? 'composer.steerHint' : 'composer.steerHintNow') : t('composer.hint')}
       </p>
+      <ImageViewer {...viewer.props} />
       {previewAttachment && (
         <AttachmentPreview name={previewAttachment.name} open onOpenChange={(open) => { if (!open) setPreviewAttachment(null) }}>
           {previewLoading && <div className="flex items-center justify-center gap-2 py-10 text-sm text-[var(--text-muted)]"><LoaderCircle size={16} className="animate-spin" /> {t('attach.previewLoading')}</div>}

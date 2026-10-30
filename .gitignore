@@ -35,6 +35,8 @@ engine-dist/
 release/electron/
 release/installer/
 release/evidence/
+release/electron-nightly/
+release/nightly/
 installer/setup/dist/
 installer/setup/src-tauri/target/
 installer/setup/src-tauri/resources/payload/

@@ -23,6 +23,7 @@ import type {
   NativeBrowserContext,
   NativeBrowserControl,
   NativeBrowserPreview,
+  NotificationReply,
   NotificationTarget,
   OpenFilesOptions,
   OpenJsonRequest,
@@ -37,6 +38,9 @@ import type {
   MigrationStatus,
   BackgroundPatch,
   BackgroundSettings,
+  HostSettings,
+  ReviewExportRequest,
+  HostSettingsPatch,
   DiagnosticsExportResult,
   DiagnosticsPreview,
 } from './contract'
@@ -75,6 +79,7 @@ interface DesktopHostApi {
       layout_revision: number
       overlay_depth: number
       occlusions?: Array<{ x: number; y: number; width: number; height: number }>
+      corner_radius?: number
     }): Promise<void>
     detachSlot(slotId: string): Promise<void>
     selectTarget(sessionId: string, targetId: string): Promise<unknown>
@@ -86,8 +91,12 @@ interface DesktopHostApi {
     ): Promise<NativeBrowserControl>
     navigate(sessionId: string, url: string): Promise<unknown>
     history(sessionId: string, action: 'back' | 'forward' | 'reload' | 'stop'): Promise<unknown>
+    newTab(sessionId: string, url?: string): Promise<unknown>
+    closeTab(sessionId: string, targetId: string): Promise<unknown>
+    clearData(): Promise<void>
     preview(sessionId: string): Promise<NativeBrowserPreview | null>
     onContextChanged(callback: (view: NativeBrowserContext) => void): Unsubscribe
+    onShortcut(callback: (event: { session_id: string; action: 'focus-address' }) => void): Unsubscribe
   }
   dialog: {
     openFiles(options?: OpenFilesOptions): Promise<string[] | null>
@@ -100,6 +109,7 @@ interface DesktopHostApi {
     support(): Promise<NotificationSupport>
     send(notification: SystemNotification): Promise<boolean>
     onActivated(callback: (target: NotificationTarget) => void): Unsubscribe
+    onReplied?(callback: (reply: NotificationReply) => void): Unsubscribe
   }
   updates: {
     check(): Promise<UpdateAvailable | null>
@@ -121,20 +131,32 @@ interface DesktopHostApi {
     onOpenRequest(callback: (request: OpenRequest) => void): Unsubscribe
   }
   files: {
+    pathFor(file: File): string | null
     openExternal(input: { session_id: string; path: string; turn_id?: string }): Promise<void>
     revealInFolder(input: { session_id: string; path: string; turn_id?: string }): Promise<void>
     media(input: { session_id: string; path: string; turn_id?: string }): Promise<WorkspaceMedia>
   }
   clipboard: { writeText(text: string): Promise<void> }
+  images: {
+    copy(input: { session_id: string; path: string; turn_id?: string }): Promise<void>
+    save(input: { session_id: string; path: string; turn_id?: string }): Promise<{ saved: boolean }>
+  }
   diagnostics: {
     preview(): Promise<DiagnosticsPreview>
     export(): Promise<DiagnosticsExportResult>
+    exportReview(request: ReviewExportRequest): Promise<DiagnosticsExportResult>
   }
   app: {
     background(): Promise<BackgroundSettings>
     setBackground(patch: BackgroundPatch): Promise<BackgroundSettings>
     setLanguage(language: 'es' | 'en'): Promise<void>
     setIndicators(state: AttentionIndicators): Promise<void>
+    openFolder(place: 'home' | 'logs' | 'instructions'): Promise<void>
+    hostSettings(): Promise<HostSettings>
+    setHostSettings(patch: HostSettingsPatch): Promise<HostSettings>
+    relaunch(): Promise<void>
+    stableReturnPreview(): Promise<import('../../electron/shared/contracts').StableReturnPreview>
+    stableReturnApply(name: string): Promise<void>
   }
   menu: { onAction(callback: (action: string) => void): Unsubscribe }
 }
@@ -244,6 +266,7 @@ export const electronBridge: DesktopBridge = {
   },
 
   files: {
+    pathFor: (file) => required().files.pathFor(file),
     openExternal: (input) => required().files.openExternal(input),
     revealInFolder: (input) => required().files.revealInFolder(input),
     media: (input) => required().files.media(input),
@@ -253,9 +276,15 @@ export const electronBridge: DesktopBridge = {
     writeText: (text) => required().clipboard.writeText(text),
   },
 
+  images: {
+    copy: (input) => required().images.copy(input),
+    save: (input) => required().images.save(input),
+  },
+
   diagnostics: {
     preview: () => required().diagnostics.preview(),
     export: () => required().diagnostics.export(),
+    exportReview: (request) => required().diagnostics.exportReview(request),
   },
 
   app: {
@@ -263,6 +292,12 @@ export const electronBridge: DesktopBridge = {
     setBackgroundSettings: (patch) => required().app.setBackground(patch),
     setLanguage: (language) => required().app.setLanguage(language),
     setIndicators: (state) => required().app.setIndicators(state),
+    openFolder: (place) => required().app.openFolder(place),
+    hostSettings: () => required().app.hostSettings(),
+    setHostSettings: (patch) => required().app.setHostSettings(patch),
+    relaunch: () => required().app.relaunch(),
+    stableReturnPreview: () => required().app.stableReturnPreview(),
+    stableReturnApply: (name) => required().app.stableReturnApply(name),
   },
 
   events: {
@@ -299,6 +334,7 @@ export const electronBridge: DesktopBridge = {
         layout_revision: layout.layoutRevision,
         overlay_depth: layout.overlayDepth,
         occlusions: layout.occlusions,
+        corner_radius: layout.cornerRadius,
       }),
     detachSlot: (slotId) => required().browser.detachSlot(slotId),
     selectTarget: async (sessionId, targetId) => {
@@ -312,8 +348,16 @@ export const electronBridge: DesktopBridge = {
     navigate: async (sessionId, url) => {
       await required().browser.navigate(sessionId, url)
     },
+    newTab: async (sessionId, url) => {
+      await required().browser.newTab(sessionId, url)
+    },
+    closeTab: async (sessionId, targetId) => {
+      await required().browser.closeTab(sessionId, targetId)
+    },
+    clearData: () => required().browser.clearData(),
     preview: (sessionId) => required().browser.preview(sessionId),
     onContextChanged: async (callback) => required().browser.onContextChanged(callback),
+    onShortcut: async (callback) => required().browser.onShortcut(callback),
   },
 
   dialog: {
@@ -334,6 +378,8 @@ export const electronBridge: DesktopBridge = {
     support: () => required().notifications.support(),
     send: (notification) => required().notifications.send(notification),
     onActivated: (callback) => ready(required().notifications.onActivated(callback)),
+    // Un host anterior sin «Responder» no lo ofrece: nada que escuchar.
+    onReplied: (callback) => ready(required().notifications.onReplied?.(callback) ?? (() => {})),
   },
 
   updates: {

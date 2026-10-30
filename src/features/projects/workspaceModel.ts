@@ -115,3 +115,43 @@ export function groupRecentChats(sessions: SessionSummary[], now = new Date()) {
   }
   return groups.filter(group => group.sessions.length > 0)
 }
+
+/**
+ * Sesiones hijas bajo su madre (#40, sesiones hijas A1): de una lista,
+ * las que cuelgan de otra sesión **de la misma lista** salen de arriba y quedan
+ * en `children` de su madre, en el orden en que nacieron. Una hija cuya madre
+ * no está en la lista (otro proyecto, cerrada o filtrada) sigue arriba.
+ */
+export function nestSessions(list: SessionSummary[]): { tops: SessionSummary[]; children: Map<string, SessionSummary[]> } {
+  const ids = new Set(list.map((session) => session.id))
+  const children = new Map<string, SessionSummary[]>()
+  const tops: SessionSummary[] = []
+  for (const session of list) {
+    const parent = session.parent_session_id
+    if (parent && parent !== session.id && ids.has(parent)) {
+      const siblings = children.get(parent) ?? []
+      siblings.push(session)
+      children.set(parent, siblings)
+    } else {
+      tops.push(session)
+    }
+  }
+  // En el orden en que nacieron: los ids de sesión son ULID, ordenables por fecha.
+  for (const siblings of children.values()) siblings.sort((a, b) => a.id.localeCompare(b.id))
+  return { tops, children }
+}
+
+const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
+
+/** Cuándo nació una sesión, por su id (un ULID con prefijo, `ses_01H…`); `null` si no lo es. */
+export function bornAt(id: string): number | null {
+  const ulid = id.slice(id.lastIndexOf('_') + 1)
+  if (ulid.length !== 26) return null
+  let ms = 0
+  for (const char of ulid.slice(0, 10).toUpperCase()) {
+    const value = CROCKFORD.indexOf(char)
+    if (value < 0) return null
+    ms = ms * 32 + value
+  }
+  return ms
+}

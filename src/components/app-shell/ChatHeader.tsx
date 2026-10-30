@@ -1,82 +1,54 @@
-import { GitBranch } from 'lucide-react'
-import { projectDisplayName } from '../../features/projects/workspaceModel'
-import { useI18n } from '../../i18n'
 import { TitleSwap } from '../TitleSwap'
-
-export interface HeaderGit {
-  branch: string | null
-  dirty: boolean
-  changed: number
-}
+import { ArrowLeft } from 'lucide-react'
+import { ResumeChip } from '../../features/resume/ResumeChip'
+import { useI18n } from '../../i18n'
 
 interface ChatHeaderProps {
   /** null = sin sesión activa. */
   title: string | null
-  /** La conversación del título: un cambio a otra no se anima. */
+  /** La conversación del título: un cambio a otra no se anima; también da el «Reanuda 17:40» (#24). */
   sessionId?: string | null
-  kind: string | null
-  mode: string | null
-  projectRoot: string | null
-  projectName: string | null
-  /** null = aún cargando o no aplica; missing = carpeta ausente. */
-  git: HeaderGit | null
-  gitMissing: boolean
-  onOpenProject: (() => void) | null
+  /**
+   * La conversación madre de una hija (#40): «← Madre · Encargo» vuelve a
+   * ella con un clic. `brief` es el título del encargo.
+   */
+  mother?: { id: string; title: string; brief?: string | null; onOpen: (id: string) => void } | null
 }
 
 /**
- * Contenido contextual de la conversación (título + proyecto/git + kind/modo).
- * Se monta dentro de `AppStatusBar`; no es un segundo header global.
+ * La barra de título de una conversación solo lleva su título (plan 0.4.0
+ * #83): el proyecto se ve en la barra lateral y en Resumen → Entorno, la rama
+ * también en Resumen, y el modo y los permisos en el composer (el dueño,
+ * 2026-10-17: la etiqueta de permisos de P-4 junto al título sobraba). Un título largo se recorta con
+ * «…» y el completo sale al pasar el ratón. Se monta dentro de `AppStatusBar`;
+ * no es un segundo header global.
  */
-export default function ChatHeader({
-  title,
-  sessionId = null,
-  kind,
-  mode,
-  projectRoot,
-  projectName,
-  git,
-  gitMissing,
-  onOpenProject,
-}: ChatHeaderProps) {
+export default function ChatHeader({ title, sessionId = null, mother = null }: ChatHeaderProps) {
   const { t } = useI18n()
+  if (!title) return null
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-2">
-      {title && (
-        <TitleSwap
-          as="p"
-          sessionId={sessionId}
-          text={title}
-          className="min-w-0 flex-1 text-sm font-semibold text-[var(--text)]"
-        />
-      )}
-      {projectName && (
+    <div className="flex min-w-0 flex-1 items-center gap-2" title={title}>
+      {mother && (
         <button
           type="button"
-          onClick={onOpenProject ?? undefined}
-          disabled={onOpenProject === null}
-          title={onOpenProject ? `${t('header.openProject')}: ${projectRoot ?? ''}` : (projectRoot ?? '')}
-          className="flex max-w-55 shrink-0 items-center gap-1.5 rounded-md border border-[var(--border)] px-1.5 py-0.5 text-[11px] text-[var(--text-muted)] transition-colors hover:border-[var(--accent)]/50 hover:text-[var(--text)] disabled:cursor-default disabled:hover:border-[var(--border)] disabled:hover:text-[var(--text-muted)]"
+          className="chat-header-mother"
+          data-testid="chat-header-mother"
+          title={t('sidebar.backToMother', { title: mother.title })}
+          onClick={() => mother.onOpen(mother.id)}
         >
-          <GitBranch size={11} aria-hidden="true" className="shrink-0" />
-          <span className="truncate font-medium">{projectDisplayName(projectName)}</span>
-          {gitMissing ? (
-            <span className="shrink-0 text-amber-500">· {t('project.gitMissing')}</span>
-          ) : git?.branch ? (
-            <span className="shrink-0 font-mono text-[var(--text-subtle)]">
-              · {git.branch}
-              {git.dirty ? ` · ${git.changed}` : ''}
-            </span>
-          ) : (
-            <span className="shrink-0 text-[var(--text-subtle)]">· {t('header.noGit')}</span>
-          )}
+          <ArrowLeft size={13} aria-hidden="true" />
+          <span className="truncate">{mother.title}</span>
+          {mother.brief && <span className="chat-header-brief truncate">· {mother.brief}</span>}
         </button>
       )}
-      {(kind ?? mode) && (
-        <span className="shrink-0 rounded-md border border-[var(--border)] px-1.5 py-0.5 font-mono text-[10px] tracking-wide text-[var(--text-subtle)]">
-          {[kind, mode].filter(Boolean).join(' · ')}
-        </span>
-      )}
+      <TitleSwap
+        as="p"
+        sessionId={sessionId}
+        text={title}
+        className="min-w-0 truncate text-sm font-semibold text-[var(--text)]"
+      />
+      <ResumeChip sessionId={sessionId} />
+      <span className="flex-1" />
     </div>
   )
 }

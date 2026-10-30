@@ -20,16 +20,44 @@ scenario(async () => {
   await seedBoard({ boardId: 'activity', panes: panesFor(ids), focusedPaneId: 'pane_0' })
   await click('.view-switcher button[aria-label="Normal"]')
   await clickText('Actividad A', 'aside button', { includes: true })
+  // The live card enters (sampled frame by frame from the send): its slot grows instead of popping in,
+  // the chat follows without a jump the size of the card, and the card fades up. Reduced motion: it is just there.
+  await evaluate(`(() => { const out = window.__cardFrames = []; const start = performance.now(); const tick = () => { const wrap = document.querySelector('.turn-status-wrap'); const card = wrap?.querySelector('.turn-status'); const scroll = document.querySelector('${scroller}'); out.push({ h: wrap ? wrap.getBoundingClientRect().height : null, o: card ? Number(getComputedStyle(card).opacity) : null, top: scroll ? scroll.scrollTop : null }); if (performance.now() - start < 2500) requestAnimationFrame(tick) }; requestAnimationFrame(tick) })();0`)
   await send('', 'Revisa los archivos locales paso a paso')
+  await wait(`Boolean(document.querySelector('.turn-status-wrap'))`)
+  await delay(900)
+  {
+    const reduced = await evaluate(`document.documentElement.dataset.motion === 'reduced' || matchMedia('(prefers-reduced-motion: reduce)').matches`)
+    const frames = await evaluate(`window.__cardFrames`)
+    const shown = frames.filter((frame) => frame.h !== null)
+    assert(shown.length > 5, 'the live card is sampled while it enters: ' + shown.length)
+    const full = shown.at(-1).h
+    assert.equal(shown.at(-1).o, 1, 'the card ends fully visible')
+    if (!reduced) {
+      assert(shown.some((frame) => frame.o > 0.02 && frame.o < 0.98), 'the card fades in over several frames: ' + JSON.stringify(shown.slice(0, 20).map((frame) => frame.o)))
+      assert(shown.filter((frame) => frame.h > 1 && frame.h < full - 1).length >= 3, 'its slot grows over several frames: ' + JSON.stringify(shown.slice(0, 20).map((frame) => Math.round(frame.h))))
+      const start = Math.max(1, frames.indexOf(shown[0]))
+      const jumps = frames.slice(start, start + 30).map((frame, index) => Math.abs((frame.top ?? 0) - (frames[start + index - 1].top ?? 0)))
+      assert(Math.max(...jumps) < full * 0.6, `the chat follows the card without jumping its whole height (${Math.max(...jumps)} px of ${Math.round(full)})`)
+    }
+  }
   await release()
   await until(async () => await pending() > 0, 'first progress classified')
   await wait(`document.body.innerText.includes('PROGRESO 1')`)
   assert.equal(await evaluate(`Boolean(${q(body)})`), false)
   assert.equal(await evaluate(`Boolean(${q(show)})`), false, 'running legend never folds the turn')
-  assert(await evaluate(`document.body.innerText.includes('En proceso desde hace')`))
+  // The live turn is a status card (#49): what Rinari does and, on the right, the total time.
+  assert(await evaluate(`/[0-9]+ (s|min)/.test(document.querySelector('[data-live-activity] [data-testid="turn-total-time"]')?.textContent ?? '')`), 'live status card with its total time')
   await screenshot('normal-live-visible')
   await evaluate(`${q('[data-operation-group] details > summary')}.click()`)
   await wait(`Boolean(document.querySelector('[data-operation-group] details[open]'))`)
+  // Opened by hand, its content is in view (#16): the chat goes down just enough, the header stays visible.
+  await delay(450)
+  {
+    const fit = await evaluate(`(() => { const view = document.querySelector('${scroller}').getBoundingClientRect(); const box = document.querySelector('[data-operation-group] details[open]').getBoundingClientRect(); const head = document.querySelector('[data-operation-group] details[open] > summary').getBoundingClientRect(); return { bottom: box.bottom, viewBottom: view.bottom, head: head.top, viewTop: view.top } })()`)
+    assert(fit.head >= fit.viewTop - 1, `the opened card keeps its header in view (${JSON.stringify(fit)})`)
+    assert(fit.bottom <= fit.viewBottom + 1 || fit.head <= fit.viewTop + 20, `the opened card's content is in view (${JSON.stringify(fit)})`)
+  }
   await evaluate(`${q('[data-operation-group] details > summary')}.focus()`)
   ui.win.focus()
   await key('Space')
@@ -68,9 +96,12 @@ scenario(async () => {
   await wait(`Boolean(${q(a + ' [data-operation-group] details[open]')})`)
   // Boards se monta de nuevo al cambiar de vista; en una máquina lenta el texto llega un poco después.
   await wait(`${q(a)}.innerText.includes('PROGRESO 24')`)
-  await clickText('Colapsar todo')
+  // Colapsar / Expandir todo viven en el menú «⋯» de la barra (plan-boards B.4.3).
+  await click('.board-toolbar button[aria-label="Más acciones del board"]')
+  await clickText('Colapsar todo', '[role="menu"] [role="menuitem"]')
   assert.equal(await evaluate(`Boolean(${q(a + ' [data-operation-group] details')})`), false)
-  await clickText('Expandir todo')
+  await click('.board-toolbar button[aria-label="Más acciones del board"]')
+  await clickText('Expandir todo', '[role="menu"] [role="menuitem"]')
   // En el runner la ventana a veces no pinta y la animación de desplegar no
   // avanza: se congela aquí a propósito y el panel debe llegar igual a su ancho.
   // Solo las del plegado de paneles: `<html>` también lleva data-motion con
@@ -128,6 +159,7 @@ scenario(async () => {
   // The neighbour has its own execution and disclosure state.
   await send(b, 'Prueba del fallo recuperable')
   await release()
+  await release() // the same request with the system message folded
   await wait(`${q(b)}.innerText.includes('El turno falló')`, 60000)
   assert(await evaluate(`Boolean(${q(b + ' [role="alert"]')})`))
   await screenshot('boards-failure-outside')

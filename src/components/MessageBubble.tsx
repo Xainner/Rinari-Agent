@@ -1,16 +1,52 @@
-import { useEffect, useState } from 'react'
-import { ArrowUpRight, Check, Copy, FileText, Image as ImageIcon, LoaderCircle, MessageSquareShare, CalendarClock, Sparkles, SquareSlash } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { BellRing, Check, Copy, FileText, Film, Flag, Hammer, Music, PencilLine, Image as ImageIcon, LoaderCircle, MessageSquareShare, CalendarClock, Play, Sparkles, SquareSlash, ClipboardList, ChevronRight } from 'lucide-react'
 import type { ChatMessage } from '../types'
 import { useI18n } from '../i18n'
-import { usePeerNavigation } from '../features/board/PeerNavigationContext'
+import type { I18nKey } from '../i18n/es'
 import { copyText } from '../lib/clipboard'
 import { engineApi } from '../services/engine'
 import { AttachmentPreview } from './AttachmentPreview'
+import { AttachmentPlayer, isPlayableAttachment } from './AttachmentMedia'
+import { useFileWorkspace } from '../features/files/FileWorkspace'
 import { ReadingBadges, RecognizedPreview, coverageDetail } from './AttachmentReading'
 import Markdown from './Markdown'
+import ImageViewer, { useImageViewer } from './image-viewer/ImageViewer'
+import { attachmentViewerImages, isImageAttachment } from './image-viewer/attachmentImages'
 import { RinariAvatar } from '../features/rinari/RinariAvatar'
+import { useOptionalEngineCommands, useOptionalEngineData } from '../features/engine/EngineContext'
+import { useChildrenStore } from '../features/children/childrenStore'
+import { scheduleTaskName } from '../features/schedules/scheduleModel'
 
-function HistoricalAttachment({ attachment }: { attachment: NonNullable<ChatMessage['attachments']>[number] }) {
+/** An audio or a video the owner sent (#57): a chip that opens its player in the bubble. */
+function PlayableAttachment({ attachment }: { attachment: NonNullable<ChatMessage['attachments']>[number] }) {
+  const { t } = useI18n()
+  const sessionId = useFileWorkspace()?.sessionId
+  const [open, setOpen] = useState(false)
+  if (open && sessionId) return <div className="w-full min-w-[16rem]"><AttachmentPlayer sessionId={sessionId} attachment={attachment} onClose={() => setOpen(false)} /></div>
+  const label = t('attach.play', { name: attachment.name })
+  return (
+    <button type="button" disabled={!sessionId || !attachment.uri} onClick={() => setOpen(true)} className="attach-chip-play is-history" aria-label={label} title={label}>
+      <span className="attach-chip-play-icon" aria-hidden="true"><Play size={10} /></span>
+      {attachment.kind === 'audio' ? <Music size={13} aria-hidden="true" /> : <Film size={13} aria-hidden="true" />}
+      <span className="truncate">{attachment.name}</span>
+    </button>
+  )
+}
+
+/** Los adjuntos del mensaje: las imágenes se recorren juntas en el visor grande (#77). */
+function MessageAttachments({ attachments }: { attachments: NonNullable<ChatMessage['attachments']> }) {
+  const files = useFileWorkspace()
+  const viewer = useImageViewer()
+  const images = useMemo(() => attachmentViewerImages(attachments, files), [attachments, files])
+  return <>
+    {attachments.map((attachment) => isPlayableAttachment(attachment)
+      ? <PlayableAttachment key={attachment.id} attachment={attachment} />
+      : <PreviewAttachment key={attachment.id} attachment={attachment} onView={isImageAttachment(attachment) ? (from) => viewer.show(images, Math.max(0, images.findIndex((image) => image.key === attachment.id)), from) : undefined} />)}
+    <ImageViewer {...viewer.props} />
+  </>
+}
+
+function PreviewAttachment({ attachment, onView }: { attachment: NonNullable<ChatMessage['attachments']>[number]; onView?: (from: HTMLElement) => void }) {
   const { t } = useI18n()
   const [previewUrl, setPreviewUrl] = useState(attachment.previewUrl)
   const [previewText, setPreviewText] = useState<string>()
@@ -49,7 +85,7 @@ function HistoricalAttachment({ attachment }: { attachment: NonNullable<ChatMess
   }
 
   return <>
-    <button type="button" onClick={() => void showPreview()} className="inline-flex max-w-56 items-center gap-1.5 rounded-lg border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--text)]" title={t('attach.openPreview')}>
+    <button type="button" onClick={(event) => (onView ? onView(event.currentTarget) : void showPreview())} className="inline-flex max-w-56 items-center gap-1.5 rounded-lg border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--text)]" title={t('attach.openPreview')}>
       {previewUrl ? <img src={previewUrl} alt={attachment.name} className="size-8 rounded object-cover" /> : attachment.kind === 'image' ? <ImageIcon size={13} /> : <FileText size={13} />}
       <span className="truncate">{attachment.name}</span>
       <ReadingBadges attachment={attachment} />
@@ -89,6 +125,45 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
     return <PeerBubble message={message} />
   }
 
+  // Rinari Agency: what the Engine hands a post or an agent (an @mention from
+  // the office, an errand, a team's delivery) is not something the owner wrote.
+  if (message.role === 'user' && AGENCY_ORIGINS.has(String(message.origin?.kind ?? ''))) {
+    return <AgencyBubble message={message} />
+  }
+
+  // Implementar o ajustar un plan tampoco es algo que el dueño escribió (#55).
+  if (message.role === 'user' && (message.origin?.source === 'plan_implement' || message.origin?.source === 'plan_adjust')) {
+    return <PlanSeparator kind={message.origin.source === 'plan_adjust' ? 'adjust' : 'implement'} title={message.origin.plan_title ?? null} comment={message.origin.comment ?? null} />
+  }
+
+  // A child session's brief, from the conversation that opened it (plan-sesiones-hijas 5.5).
+  if (message.role === 'user' && (message.origin?.source === 'child_brief' || message.origin?.source === 'parent_message')) {
+    return <BriefBubble message={message} />
+  }
+  // The mother's report turn: which children reported back.
+  if (message.role === 'user' && message.origin?.source === 'child_report') {
+    const origin = message.origin as { children?: unknown; reports?: unknown }
+    return <ChildReportSeparator names={message.content} childIds={origin.children} reports={origin.reports} />
+  }
+
+  // Una corrida de una tarea programada tampoco: una línea con su nombre y la
+  // instrucción plegada, no una burbuja del dueño por cada corrida (22-oct).
+  if (message.role === 'user' && message.origin?.kind === 'schedule') {
+    return <ScheduledRun message={message} />
+  }
+
+  // Work that finished after its turn woke the conversation (Ideas-2): not the
+  // owner's words either, a separator that says what ended.
+  const woke = message.role === 'user' ? wakeKey(message.origin?.source) : null
+  if (woke) {
+    return <WakeSeparator labelKey={woke} name={message.origin?.source_label ?? ''} />
+  }
+
+  // A turn the goal started is not something the owner wrote: a separator.
+  if (message.role === 'user' && message.origin?.source === 'goal') {
+    return <GoalSeparator iteration={message.origin.iteration ?? null} />
+  }
+
   if (message.role === 'user') {
     // Solo el mensaje recién enviado entra con la transición de envío; el
     // historial (scroll, recarga) aparece en su sitio.
@@ -98,13 +173,12 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
     const text = command ? withoutCommand(message.content, command) : message.content
     const quotedSession = quoted && typeof quoted.session_id === 'string' ? quoted.session_id : null
     return (
-      <div data-testid="user-message-row" className="flex w-full min-w-0 flex-col items-end gap-1">
+      <div data-testid="user-message-row" className="group/user flex w-full min-w-0 flex-col items-end gap-1">
         {quotedSession && <ForwardedBadge sessionId={quotedSession} />}
-        {message.origin?.kind === 'schedule' && <ScheduledBadge />}
-        <div className="flex w-full min-w-0 justify-end">
+        <div className="flex w-full min-w-0 items-center justify-end gap-2">
         <div data-testid="user-message-bubble" className={`user-bubble w-fit min-w-0 max-w-[85%] px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] text-[var(--text)]${fresh ? ' is-fresh' : ''}`}>
           {message.attachments && message.attachments.length > 0 && <div className="mb-2 flex flex-wrap gap-1.5">
-            {message.attachments.map((attachment) => <HistoricalAttachment key={attachment.id} attachment={attachment} />)}
+            <MessageAttachments attachments={message.attachments} />
           </div>}
           {command && <><CommandChip name={command} kind={message.origin?.command_kind ?? 'command'} />{text && <br />}</>}
           {text}
@@ -153,17 +227,15 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
 }
 
 /**
- * Mensaje recibido del agente de otro panel. Va a la izquierda, con marco
- * propio y atribución: el usuario debe distinguirlo de su propio prompt. Es
- * dato no confiable para el modelo; el runtime del Engine ya lo limita.
+ * Mensaje recibido del agente de otro panel (historial: la mensajería entre
+ * paneles se retiró en 0.4.0). Va a la izquierda, con marco propio y
+ * atribución, para distinguirlo de un prompt del usuario.
  */
 function PeerBubble({ message }: { message: ChatMessage }) {
   const { t } = useI18n()
-  const navigation = usePeerNavigation()
   const origin = message.origin!
   const sourceId = origin.source_session_id ?? null
-  const label = (sourceId && navigation?.labelFor(sourceId)) || origin.source_label || sourceId || t('board.peers.unknown')
-  const canNavigate = Boolean(sourceId && navigation?.labelFor(sourceId))
+  const label = origin.source_label || sourceId || t('board.peers.unknown')
   return (
     <div className="flex w-full min-w-0 justify-start" data-testid="peer-bubble">
       <div className="w-fit min-w-0 max-w-[85%] [overflow-wrap:anywhere] rounded-2xl rounded-bl-md border border-[var(--accent-2)]/40 bg-[var(--accent-2)]/10 px-4 py-2.5 text-[15px] leading-relaxed text-[var(--text)]">
@@ -175,18 +247,41 @@ function PeerBubble({ message }: { message: ChatMessage }) {
               {t('board.peers.hop', { n: origin.hop })}
             </span>
           )}
-          {canNavigate && sourceId && (
-            <button
-              type="button"
-              onClick={() => navigation?.focusSession(sourceId)}
-              className="ml-auto inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 normal-case text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"
-            >
-              {t('board.peers.goToPane')} <ArrowUpRight size={11} aria-hidden="true" />
-            </button>
-          )}
         </div>
         <div className="whitespace-pre-wrap">{message.content}</div>
         <p className="mt-1.5 text-[10px] text-[var(--text-subtle)]">{t('board.peers.untrusted')}</p>
+      </div>
+    </div>
+  )
+}
+
+const AGENCY_ORIGINS = new Set(['agency_office', 'agency_errand', 'agency_delivery'])
+
+/**
+ * Lo que la Agency le pasa a un agente: una mención en la oficina, un recado
+ * o la entrega de otro equipo. Va a la izquierda, con su procedencia y sin
+ * las acciones del dueño (exportar, abrir un hijo): el dueño no lo escribió.
+ */
+function AgencyBubble({ message }: { message: ChatMessage }) {
+  const { t } = useI18n()
+  const origin = message.origin ?? { kind: 'user' }
+  const from = origin.from_label || null
+  const key: I18nKey = origin.kind === 'agency_errand'
+    ? (from ? 'agency.bubble.errandFrom' : 'agency.bubble.errand')
+    : origin.kind === 'agency_delivery'
+      ? (from ? 'agency.bubble.deliveryFrom' : 'agency.bubble.delivery')
+      : (from ? 'agency.bubble.officeFrom' : 'agency.bubble.office')
+  return (
+    <div className="flex w-full min-w-0 justify-start" data-testid="agency-bubble" data-origin={origin.kind}>
+      <div className="agency-bubble">
+        <div className="agency-bubble-head">
+          <ClipboardList size={13} aria-hidden="true" />
+          <span className="truncate">{t(key, { name: from ?? '' })}</span>
+        </div>
+        <details className="agency-bubble-body">
+          <summary>{t('agency.bubble.show')}</summary>
+          <div className="whitespace-pre-wrap">{message.content}</div>
+        </details>
       </div>
     </div>
   )
@@ -223,24 +318,168 @@ export function withoutCommand(content: string, name: string): string {
   return rest === '' || /^\s/.test(rest) ? rest.trimStart() : content
 }
 
-function ScheduledBadge() {
+/** El mensaje lo mandó una tarea; con su nombre si corre en su conversación («Repetir aquí»). */
+function ScheduledRun({ message }: { message: ChatMessage }) {
   const { t } = useI18n()
+  const name = scheduleTaskName(message.origin)
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] text-[var(--text-subtle)]">
-      <CalendarClock size={11} aria-hidden="true" />
-      {t('schedules.fromTask')}
-    </span>
+    <details data-testid="scheduled-run" className="scheduled-run">
+      <summary className="goal-separator">
+        <span><CalendarClock size={11} aria-hidden="true" />{name ? t('schedules.fromTaskNamed', { name }) : t('schedules.fromTask')}</span>
+      </summary>
+      <div className="scheduled-run-prompt">{message.content}</div>
+    </details>
   )
 }
 
 function ForwardedBadge({ sessionId }: { sessionId: string }) {
   const { t } = useI18n()
-  const navigation = usePeerNavigation()
-  const label = navigation?.labelFor(sessionId) ?? sessionId
+  const label = sessionId
   return (
     <span className="inline-flex items-center gap-1 text-[10px] text-[var(--text-subtle)]">
       <MessageSquareShare size={11} aria-hidden="true" />
       {t('board.peers.forwardedFrom', { label })}
     </span>
+  )
+}
+
+function PlanSeparator({ kind, title, comment }: { kind: 'implement' | 'adjust'; title: string | null; comment: string | null }) {
+  const { t } = useI18n()
+  const text = kind === 'adjust'
+    ? (comment ? t('plan.separator.adjust', { comment }) : t('plan.separator.adjustPlain'))
+    : (title ? t('plan.separator.implement', { title }) : t('plan.separator.implementPlain'))
+  return (
+    <div data-testid="plan-separator" data-kind={kind} className="goal-separator plan-separator" role="separator">
+      <span title={text}>{kind === 'adjust' ? <PencilLine size={11} aria-hidden="true" /> : <Hammer size={11} aria-hidden="true" />}<span className="plan-separator-text">{text}</span></span>
+    </div>
+  )
+}
+
+function useSessionTitle(sessionId: string | null): string | null {
+  const data = useOptionalEngineData()
+  return sessionId ? data?.sessionsById[sessionId]?.title ?? null : null
+}
+
+/** What the mother sent the child (its brief or a later message), folded like Claude Code's «Mensaje recibido de …». */
+function BriefBubble({ message }: { message: ChatMessage }) {
+  const motherId = (message.origin as { parent_session_id?: string } | undefined)?.parent_session_id ?? null
+  const brief = message.origin?.source === 'child_brief'
+  return (
+    <div data-testid={brief ? 'child-brief' : 'mother-message'} className="child-report-lines">
+      <ReceivedLine label={brief ? 'children.briefFrom' : 'children.messageFrom'} sessionId={motherId} fallback="children.fromMotherPlain" text={message.content} />
+    </div>
+  )
+}
+
+/**
+ * The children that reported back, one quiet line each, like Claude Code's
+ * «Mensaje recibido de …»: the title opens the child, the chevron unfolds
+ * what it said.
+ */
+export function ChildReportSeparator({ names, childIds, reports }: { names: string; childIds: unknown; reports?: unknown }) {
+  const { t } = useI18n()
+  const ids = Array.isArray(childIds) ? childIds.filter((id): id is string => typeof id === 'string') : []
+  if (ids.length === 0) {
+    return (
+      <div data-testid="child-report-separator" className="goal-separator" role="separator">
+        <span><ClipboardList size={11} aria-hidden="true" />{t('children.reportSeparator', { names })}</span>
+      </div>
+    )
+  }
+  return (
+    <div data-testid="child-report-separator" className="child-report-lines">
+      {ids.map((id) => <ChildReportLine key={id} childId={id} said={reportOf(reports, id)} />)}
+    </div>
+  )
+}
+
+/** Lo que dijo esa hija en ese informe (#100); los viejos no lo guardan. */
+function reportOf(reports: unknown, id: string): string | undefined {
+  if (!reports || typeof reports !== 'object') return undefined
+  const text = (reports as Record<string, unknown>)[id]
+  return typeof text === 'string' && text ? text : undefined
+}
+
+function ChildReportLine({ childId, said }: { childId: string; said?: string }) {
+  const child = useChildrenStore((state) => {
+    for (const list of Object.values(state.byParent)) {
+      const found = list.find((item) => item.child_session_id === childId)
+      if (found) return found
+    }
+    return undefined
+  })
+  return <ReceivedLine label="children.reportFrom" sessionId={childId} fallbackTitle={child?.title} fallback="children.untitled" text={said ?? (child?.report?.text || child?.report?.summary || '')} />
+}
+
+/** «<label> <session> ›»: the title opens that conversation, the chevron unfolds the text. */
+function ReceivedLine({ label, sessionId, fallbackTitle, fallback, text }: { label: I18nKey; sessionId: string | null; fallbackTitle?: string; fallback: I18nKey; text: string }) {
+  const { t } = useI18n()
+  const commands = useOptionalEngineCommands()
+  const title = useSessionTitle(sessionId) || fallbackTitle || t(fallback)
+  const [open, setOpen] = useState(false)
+  // El texto se despliega y se repliega con movimiento: al plegar sigue un
+  // instante montado mientras se cierra.
+  const [closing, setClosing] = useState(false)
+  const closeTimer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(closeTimer.current), [])
+  const toggle = () => {
+    window.clearTimeout(closeTimer.current)
+    if (!open) {
+      setClosing(false)
+      setOpen(true)
+      return
+    }
+    setOpen(false)
+    setClosing(true)
+    closeTimer.current = window.setTimeout(() => setClosing(false), 180)
+  }
+  return (
+    <div className="child-report-line" data-open={open || undefined}>
+      <p className="child-report-head">
+        <span>{t(label)}</span>
+        {sessionId
+          ? <button type="button" className="child-report-title" onClick={() => void commands?.selectSession(sessionId)}>{title}</button>
+          : <span className="child-report-title">{title}</span>}
+        {text && (
+          <button type="button" className="child-report-toggle" aria-expanded={open} aria-label={t(open ? 'children.reportHide' : 'children.reportShow')} title={t(open ? 'children.reportHide' : 'children.reportShow')} onClick={toggle}>
+            <ChevronRight size={13} aria-hidden="true" />
+          </button>
+        )}
+      </p>
+      {(open || closing) && text && (
+        <div className="child-report-fold" data-closing={closing || undefined} aria-hidden={closing || undefined}>
+          <div><div className="child-report-body"><Markdown>{text}</Markdown></div></div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+const WAKE_KEYS: Record<string, I18nKey> = {
+  process_exit: 'wake.process',
+  job_done: 'wake.jobDone',
+  job_timeout: 'wake.jobTimeout',
+  job_failed: 'wake.jobFailed',
+}
+
+function wakeKey(source: string | null | undefined): I18nKey | null {
+  return source ? WAKE_KEYS[source] ?? null : null
+}
+
+function WakeSeparator({ labelKey, name }: { labelKey: I18nKey; name: string }) {
+  const { t } = useI18n()
+  return (
+    <div data-testid="wake-separator" className="goal-separator" role="separator">
+      <span><BellRing size={11} aria-hidden="true" />{t(labelKey, { name })}</span>
+    </div>
+  )
+}
+
+function GoalSeparator({ iteration }: { iteration: number | null }) {
+  const { t } = useI18n()
+  return (
+    <div data-testid="goal-separator" className="goal-separator" role="separator">
+      <span><Flag size={11} aria-hidden="true" />{iteration === 1 ? t('goal.separatorStart') : iteration ? t('goal.separator', { n: iteration }) : t('goal.separatorPlain')}</span>
+    </div>
   )
 }

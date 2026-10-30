@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import type { TurnTimeline } from './types'
 import TurnTimelineView from './TurnTimelineView'
+import { createInitialTimelineState, engineEventAction, turnTimelineReducer } from './turnTimelineReducer'
 import { useActivityDisclosure } from '../../stores/activityDisclosure'
 import { engineApi } from '../../services/engine'
 
@@ -20,20 +21,66 @@ function view(timeline: TurnTimeline, now: number, resolve = vi.fn()) {
 }
 
 describe('TurnTimelineView', () => {
+  it('says the verification outcome it got, with its reasons (#66c)', async () => {
+    const verification = (id: string, outcome: string, reasons: string[]) => ({ id, type: 'verification' as const, activitySeq: 1, occurredAt: 1_500, status: 'completed' as const, outcome, reasons })
+    view({ ...base, items: [verification('verification:a', 'IMPLEMENTED_UNVERIFIED', ['no validation evidence recorded'])] }, 2_000)
+    const row = screen.getByTestId('verification-row')
+    expect(row.getAttribute('data-tone')).toBe('warn')
+    expect(screen.getByText('Sin evidencia de que funcione')).toBeTruthy()
+    expect(screen.queryByText('Verificación completada')).toBeNull()
+    await userEvent.click(screen.getByText('Sin evidencia de que funcione'))
+    expect(screen.getByText('no validation evidence recorded')).toBeTruthy()
+    cleanup()
+    view({ ...base, items: [verification('verification:b', 'DONE', [])] }, 2_000)
+    expect(screen.getByText('Verificado')).toBeTruthy()
+    expect(screen.getByTestId('verification-row').getAttribute('data-tone')).toBe('done')
+    // Without reasons there is nothing to unfold: the row does not open.
+    await userEvent.click(screen.getByText('Verificado'))
+    expect(screen.getByTestId('verification-row').hasAttribute('open')).toBe(false)
+    expect(screen.getByTestId('verification-row').querySelector('[data-activity-body]')).toBeNull()
+  })
   it('presents a completed plan in its own card', () => {
     view({ ...base, mode: 'plan', status: 'completed', completedAt: 2_000, items: [{ id: 'model:p', type: 'model', activitySeq: 1, occurredAt: 2_000, modelCallId: 'p', status: 'completed', content: '1. Revisar requisitos\n2. Implementar', outputKind: 'final' }] }, 2_000)
     expect(screen.getByRole('region', { name: 'Plan propuesto' })).toBeTruthy()
     expect(screen.getByText('Revisar requisitos')).toBeTruthy()
   })
   it('debounces thinking and keeps ordinary chat free of completion cards', () => {
-    const rendered = view(base, 1_299)
+    // #51: the live header waits for the sent message to finish arriving (500 ms).
+    const rendered = view({ ...base, items: [{ id: 'system:prep', type: 'system', activitySeq: 0, occurredAt: 1_010, kind: 'turn_preparing' }] }, 1_499)
     expect(screen.queryByText('Pensando…')).toBeNull()
-    rendered.rerender(<I18nProvider lang="es"><TurnTimelineView timeline={base} now={1_301} onResolveApproval={vi.fn()} onContinue={vi.fn()} /></I18nProvider>)
+    rendered.rerender(<I18nProvider lang="es"><TurnTimelineView timeline={base} now={1_501} onResolveApproval={vi.fn()} onContinue={vi.fn()} /></I18nProvider>)
     expect(screen.getByText('Pensando…')).toBeTruthy()
     rendered.rerender(<I18nProvider lang="es"><TurnTimelineView timeline={{ ...base, status: 'completed', completedAt: 2_000, items: [{ id: 'model:m1', type: 'model', activitySeq: 1, occurredAt: 2_000, modelCallId: 'm1', status: 'completed', content: 'Hola', outputKind: 'final' }] }} now={2_000} onResolveApproval={vi.fn()} onContinue={vi.fn()} /></I18nProvider>)
     expect(screen.getAllByText('Hola')).toHaveLength(2)
     expect(screen.queryByText(/acciones/)).toBeNull()
     expect(screen.queryByText('Completado')).toBeNull()
+  })
+
+  it('a pane shows no live header while the turn only prepares; the chat does (plan-boards C1)', () => {
+    const preparing: TurnTimeline = { ...base, items: [{ id: 'system:prep', type: 'system', activitySeq: 0, occurredAt: 1_010, kind: 'turn_preparing' }] }
+    const pane = (timeline: TurnTimeline, now: number) => <I18nProvider lang="es"><TurnTimelineView timeline={timeline} now={now} surface="pane" onResolveApproval={vi.fn()} onContinue={vi.fn()} /></I18nProvider>
+    // Long past the arrival and the 300 ms floor: a busy machine stays here.
+    const rendered = render(pane(preparing, 3_000))
+    expect(screen.queryByText('Preparando el turno…')).toBeNull()
+    expect(document.querySelector('[data-live-activity]')).toBeNull()
+    // Something to tell (an action) brings the header.
+    rendered.rerender(pane({ ...preparing, items: [...preparing.items, { id: 'tool:a', type: 'tool', activitySeq: 1, occurredAt: 2_900, toolCallId: 'a', tool: 'fs.read', status: 'running' }] }, 3_000))
+    expect(document.querySelector('[data-live-activity]')).not.toBeNull()
+    cleanup()
+    // The chat keeps «Preparando el turno…».
+    view(preparing, 3_000)
+    expect(screen.getByText('Preparando el turno…')).toBeTruthy()
+  })
+
+  it('#51: with reduced motion the live header does not wait for the arrival', async () => {
+    const { useUIStore } = await import('../../stores/ui')
+    useUIStore.setState({ reduceMotion: true })
+    try {
+      view(base, 1_301)
+      expect(screen.getByText('Pensando…')).toBeTruthy()
+    } finally {
+      useUIStore.setState({ reduceMotion: false })
+    }
   })
 
   it('resolves an approval from its chronological row', async () => {
@@ -52,10 +99,10 @@ describe('TurnTimelineView', () => {
   it('does not offer a reusable grant when the engine forbids it', () => {
     view({ ...base, status: 'approval', items: [{ id: 'approval:p1', type: 'approval', activitySeq: 1, occurredAt: 1_100, approvalId: 'p1', status: 'pending', capability: 'fs.write', risk: 'high', description: 'Archivo sensible', choices: ['deny', 'allow_once'], reusable: false }] }, 1_200)
     expect(screen.getByRole('button', { name: 'Permitir una vez' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Permitir en este chat' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'En este chat' })).toBeNull()
   })
 
-  it('offers «always here» only when the engine does, named for the project or the chats', async () => {
+  it('scopes follow the conversation: «in this chat» loose, «in this session» and «always» in a project (#56)', async () => {
     const resolve = vi.fn()
     const approval = { id: 'approval:p1', type: 'approval' as const, activitySeq: 1, occurredAt: 1_100, approvalId: 'p1', status: 'pending' as const, capability: 'network.outbound', target: 'api.example.com', risk: 'medium', description: 'Enviar datos' }
     const legacy = view({ ...base, status: 'approval', items: [approval] }, 1_200, resolve)
@@ -65,9 +112,18 @@ describe('TurnTimelineView', () => {
     const project = view({ ...base, status: 'approval', items: [offered] }, 1_200, resolve)
     await userEvent.click(screen.getByRole('button', { name: 'Siempre en este proyecto' }))
     expect(resolve).toHaveBeenCalledWith('p1', 'allow_project')
+    expect(screen.getByRole('button', { name: 'En esta sesión' })).toBeTruthy()
     project.unmount()
+    // A loose chat: «in this chat», never «always» (even from an older Engine).
     view({ ...base, status: 'approval', items: [{ ...offered, grantScope: 'chats' as const }] }, 1_200, resolve)
-    expect(screen.getByRole('button', { name: 'Siempre en los chats' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'En este chat' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Siempre/ })).toBeNull()
+  })
+
+  it('says why in the owner language, not the Engine text (#56)', () => {
+    view({ ...base, status: 'approval', items: [{ id: 'approval:p1', type: 'approval', activitySeq: 1, occurredAt: 1_100, approvalId: 'p1', status: 'pending', capability: 'shell.exec', target: 'npm test', risk: 'medium', description: 'shell.exec: read-only mode: a command could change files, so each one is asked', ruleId: 'read_only_command' }] }, 1_200)
+    expect(screen.getByText('Correr un comando en modo solo lectura (podría cambiar archivos)')).toBeTruthy()
+    expect(screen.queryByText(/read-only mode/)).toBeNull()
   })
 
   it('names the rule that asked in plain words, and warns after external content', () => {
@@ -97,7 +153,8 @@ describe('TurnTimelineView', () => {
       { id: 'model:m1', type: 'model', activitySeq: 1, occurredAt: 1_500, modelCallId: 'm1', status: 'completed', content: 'Listo', outputKind: 'final' },
       { id: 'changeset:c1', type: 'changeset', activitySeq: 2, occurredAt: 1_600, changesetId: 'c1', turnId: 't1', status: 'active', additions: 2, deletions: 1, undoable: true, attributionComplete: true, warnings: [], files: [{ path: 'a.ts', absolute_path: '/repo/a.ts', kind: 'modified', additions: 2, deletions: 1, ownership: 'agent', confidence: 'exact', binary: false, sensitive: false, diff: '+ok', diff_truncated: false, undoable: true }] },
     ] }, 2_000)
-    expect(screen.getByText('1 archivo(s) de este turno')).toBeTruthy()
+    expect(screen.getByText('1 archivo cambiado')).toBeTruthy()
+    expect(screen.getByText('modificado')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Revisar' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Deshacer' })).toBeTruthy()
   })
@@ -202,4 +259,61 @@ describe('agent activity follows its own end', () => {
     await new Promise((resolve) => setTimeout(resolve, 10))
     expect(box.scrollTop).toBe(0)
   })
+})
+
+describe('fallback model (#80)', () => {
+  it('says the turn went on with the fallback and why', () => {
+    view({ ...base, items: [{ id: 'system:f', type: 'system', activitySeq: 1, occurredAt: 1_100, kind: 'model_fallback', label: 'backup-model', status: 'QUOTA_EXHAUSTED' }] }, 1_200)
+    expect(screen.getByTestId('model-fallback').textContent).toBe('Seguí con backup-model porque se acabaron los límites del modelo principal.')
+  })
+})
+
+describe('learned protocol (#94)', () => {
+  it('says the model uses another protocol and the turn went on', () => {
+    view({ ...base, items: [{ id: 'system:p', type: 'system', activitySeq: 1, occurredAt: 1_100, kind: 'protocol_learned', label: 'gemini-4-argon-contributor', status: 'google' }] }, 1_200)
+    expect(screen.getByTestId('protocol-learned').textContent).toBe('gemini-4-argon-contributor usa el protocolo de Google; Rinari lo cambió y siguió.')
+  })
+})
+
+it('file.presented shows its card outside the folded activity and speech.setup_needed points to Dictation (#35, #36)', () => {
+  const NOW_P = 1_700_000_000_000
+  const ev = (name: string, payload: Record<string, unknown>) => engineEventAction({ type: 'event', event: name, payload: { session_id: 's', turn_id: 't', ...payload } }, NOW_P)!
+  let state = turnTimelineReducer(createInitialTimelineState(), ev('turn.started', { message: 'haz la canción' }))
+  state = turnTimelineReducer(state, ev('file.presented', { present_id: 'c1', activity_seq: 2, items: [
+    { kind: 'audio', name: 'cancion.mp3', path: 'C:/out/cancion.mp3', size_bytes: 2048, caption: 'versión final' },
+    { kind: 'folder', name: 'salida', path: 'C:/out/salida', entry_count: 2, entries: ['a.png', 'b.png'] },
+  ] }))
+  state = turnTimelineReducer(state, ev('speech.setup_needed', { reason: 'NOT_INSTALLED', tool: 'audio.transcribe', file: 'cancion.mp3', activity_seq: 3 }))
+  state = turnTimelineReducer(state, ev('turn.completed', { content: 'Listo', activity_seq: 4 }))
+  const timeline = state.timelines.t
+  render(<I18nProvider lang="es"><TurnTimelineView timeline={timeline} now={NOW_P} onResolveApproval={() => {}} /></I18nProvider>)
+  const card = screen.getByTestId('presented-files')
+  expect(card.textContent).toContain('cancion.mp3')
+  expect(card.textContent).toContain('versión final')
+  expect(card.textContent).toContain('2 elementos')
+  expect(card.querySelector('[data-present-kind="audio"] a')?.getAttribute('data-file-path')).toBe('C:/out/cancion.mp3')
+  expect(screen.getByTestId('speech-setup').textContent).toContain('Instalarlo en Ajustes → Dictado')
+})
+
+it('#30: checklist.update rows only show with technical names', async () => {
+  const { useUIStore } = await import('../../stores/ui')
+  const timeline: TurnTimeline = {
+    turnId: 't9', sessionId: 's1', status: 'running', startedAt: 1_000, userMessage: 'haz tres cosas',
+    items: [
+      { id: 'tool:c1', type: 'tool', activitySeq: 1, occurredAt: 1_100, toolCallId: 'c1', tool: 'checklist.update', status: 'completed' },
+      { id: 'tool:c2', type: 'tool', activitySeq: 2, occurredAt: 1_200, toolCallId: 'c2', tool: 'fs.read', status: 'completed', args: { path: 'a.txt' } },
+    ],
+  } as TurnTimeline
+  const draw = () => render(<I18nProvider lang="es"><TurnTimelineView timeline={timeline} now={3_000} onResolveApproval={vi.fn()} /></I18nProvider>)
+  useUIStore.setState({ showTechnicalActivityNames: false })
+  const plain = draw()
+  // Without technical names only the read counts: the list is in its dock.
+  expect(plain.container.textContent).not.toContain('· 2')
+  expect(plain.container.textContent).not.toContain('Herramientas')
+  plain.unmount()
+  useUIStore.setState({ showTechnicalActivityNames: true })
+  const technical = draw()
+  expect(technical.container.textContent).toContain('Herramientas · Lecturas · 2')
+  technical.unmount()
+  useUIStore.setState({ showTechnicalActivityNames: false })
 })

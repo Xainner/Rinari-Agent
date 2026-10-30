@@ -105,11 +105,15 @@ describe('aviso «Recordado» del modo automático', () => {
     bridge.mockCommand('memory_get', (args) => ({ scope: 'user', record: { id: args.id, topic: 'Idioma', text: 'Responde en español', kind: 'preference', scope: 'user', revision: 4 } }))
     bridge.mockCommand('memory_forget', (args) => ({ scope: 'user', id: args.id, forgotten: true }))
     view(rememberedItem)
-    expect(screen.getByTestId('memory-remembered').textContent).toContain('Recordado: Responde en español')
+    const card = screen.getByTestId('memory-remembered')
+    expect(card.textContent).toContain('Recordé esto')
+    expect(card.textContent).toContain('Responde en español')
+    expect(card.textContent).toContain('Guardado')
     await userEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
     await waitFor(() => expect(callsTo('memory_forget')).toEqual([{ id: 'm1', expected_revision: 4 }]))
     expect(callsTo('memory_get')).toEqual([{ id: 'm1' }])
-    expect((await screen.findByTestId('memory-remembered')).textContent).toContain('Olvidado: Responde en español')
+    await waitFor(() => expect(screen.getByTestId('memory-remembered').getAttribute('data-status')).toBe('forgotten'))
+    expect(screen.getByTestId('memory-remembered').textContent).toContain('Olvidado')
     expect(screen.queryByRole('button', { name: 'Deshacer' })).toBeNull()
   })
 
@@ -117,7 +121,7 @@ describe('aviso «Recordado» del modo automático', () => {
     bridge.mockCommand('memory_get', () => { throw { code: 'NOT_FOUND', message: 'Personal memory record not found.' } })
     view(rememberedItem)
     await userEvent.click(screen.getByRole('button', { name: 'Deshacer' }))
-    expect((await screen.findByText('Olvidado: Responde en español'))).toBeTruthy()
+    await waitFor(() => expect(screen.getByTestId('memory-remembered').getAttribute('data-status')).toBe('forgotten'))
     expect(callsTo('memory_forget')).toEqual([])
   })
 })
@@ -133,4 +137,23 @@ it('la línea del turno muestra la tarjeta fuera de la actividad plegada', () =>
   render(<I18nProvider lang="es"><TurnTimelineView timeline={timeline} now={2_000} onResolveApproval={vi.fn()} /></I18nProvider>)
   expect(screen.getByTestId('memory-candidate')).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Aprobar' })).toBeTruthy()
+})
+
+describe('«Recordado» dice dónde quedó y deja moverlo (#75)', () => {
+  it('muestra el lugar y «Mover» a este chat lo cambia', async () => {
+    bridge.mockCommand('memory_move', (args) => ({ record: { id: args.id, place: args.place } }))
+    const { TurnSessionContext } = await import('../activity/turnSession')
+    render(
+      <I18nProvider lang="es">
+        <TurnSessionContext.Provider value="ses_here">
+          <MemoryActivityCard item={{ ...rememberedItem, place: 'general' }} />
+        </TurnSessionContext.Provider>
+      </I18nProvider>,
+    )
+    expect(screen.getByTestId('memory-remembered-place').textContent).toBe('General')
+    await userEvent.click(screen.getByTestId('memory-remembered-move'))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /Chat/ }))
+    await waitFor(() => expect(callsTo('memory_move')).toEqual([{ id: 'm1', place: 'chat', place_ref: 'ses_here' }]))
+    expect(screen.getByTestId('memory-remembered-place').textContent).toBe('Chat')
+  })
 })

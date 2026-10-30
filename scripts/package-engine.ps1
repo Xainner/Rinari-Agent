@@ -18,17 +18,19 @@ param(
   [string]$CliRepo = (Join-Path (Split-Path $PSScriptRoot -Parent) "..\\..\\Rinari-CLI"),
   [string]$PythonVersion = "3.12.10",
   [switch]$Development,
+  # Rinari Agent Nightly: la punta de la rama del CLI, no el pin del manifest.
+  [switch]$Nightly,
   [string]$OutDir = (Join-Path $PSScriptRoot "..\\engine-dist")
 )
 
 $ErrorActionPreference = "Stop"
 $manifest = Get-Content (Join-Path $PSScriptRoot "..\engine-manifest.json") -Raw | ConvertFrom-Json
 $sourceSha = (git -C $CliRepo rev-parse HEAD).Trim()
-if ($LASTEXITCODE -ne 0 -or $sourceSha -ne $manifest.engine_git_sha) {
+if ($LASTEXITCODE -ne 0 -or (-not $Nightly -and $sourceSha -ne $manifest.engine_git_sha)) {
   throw "El checkout del engine no coincide con el pin. No se modificó el paquete existente."
 }
 $sourceDirty = [bool](git -C $CliRepo status --porcelain)
-if (($sourceDirty -or $manifest.development_build) -and -not $Development) {
+if (($sourceDirty -or ($manifest.development_build -and -not $Nightly)) -and -not $Development) {
   throw "La fuente contiene cambios locales. Usa -Development para un paquete identificado como desarrollo."
 }
 
@@ -53,7 +55,7 @@ $manifest = Get-Content (Join-Path $PSScriptRoot "..\engine-manifest.json") -Raw
 Push-Location $CliRepo
 try {
   $fullSha = (git rev-parse HEAD).Trim()
-  if ($fullSha -ne $manifest.engine_git_sha) {
+  if (-not $Nightly -and $fullSha -ne $manifest.engine_git_sha) {
     throw "CLI en $fullSha no coincide con engine-manifest.json ($($manifest.engine_git_sha)). Actualiza el pin o el checkout."
   }
   uv build --wheel
@@ -90,6 +92,7 @@ if ($LASTEXITCODE -ne 0) { $engineVersion = "unknown" }
 @{
   base_git_sha = $sourceSha
   development = [bool]$Development
+  nightly = [bool]$Nightly
   dirty = $sourceDirty
   wheel_sha256 = (Get-FileHash -LiteralPath $wheel.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
 } | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $OutDir "ENGINE_SOURCE.json")

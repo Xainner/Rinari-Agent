@@ -24,6 +24,9 @@ import {
   type BrowserSlotLease,
   type BackgroundPatch,
   type BackgroundSettings,
+  type HostSettings,
+  type ReviewExportRequest,
+  type HostSettingsPatch,
   type DiagnosticsExportResult,
   type DiagnosticsPreview,
   type OpenExternalFileRequest,
@@ -33,6 +36,7 @@ import {
   type OpenJsonResult,
   type SaveJsonRequest,
   type SaveJsonResult,
+  type NotificationActionId,
   type SystemNotificationRequest,
   type FlowScopeRequest,
 } from '../../shared/contracts'
@@ -48,6 +52,7 @@ import {
 } from '../../shared/validation'
 import type { SenderRegistry } from './validateSender'
 import { assertBackgroundPatch } from '../native/background'
+import { assertHostSettingsPatch } from '../native/hostSettings'
 import { assertIndicators, type AttentionIndicators } from '../native/indicators'
 import { assertOpenJson, assertSaveJson } from '../native/jsonFiles'
 import {
@@ -106,9 +111,14 @@ export interface HostServices {
     media(request: OpenExternalFileRequest): Promise<WorkspaceMedia>
   }
   clipboard: { writeText(text: string): void | Promise<void> }
+  images: {
+    copy(request: OpenExternalFileRequest): Promise<void>
+    save(request: OpenExternalFileRequest): Promise<{ saved: boolean }>
+  }
   diagnostics: {
     preview(): Promise<DiagnosticsPreview>
     export(): Promise<DiagnosticsExportResult>
+    exportReview(request: ReviewExportRequest): Promise<DiagnosticsExportResult>
   }
   /** Bandeja al cerrar e inicio con el sistema: preferencias que main necesita antes que el renderer. */
   app: {
@@ -118,6 +128,14 @@ export interface HostServices {
     setLanguage(language: 'es' | 'en'): void
     /** Número de chats pendientes y marca de la bandeja (indicators.ts). */
     setIndicators(state: AttentionIndicators): void
+    /** Abre un lugar conocido: la carpeta de Rinari, sus registros o el RINARI.md global. */
+    openFolder(place: 'home' | 'logs' | 'instructions'): Promise<void>
+    hostSettings(): HostSettings
+    setHostSettings(patch: HostSettingsPatch): HostSettings
+    relaunch(): Promise<void>
+    stableReturnPreview(): Promise<import('../../shared/contracts').StableReturnPreview>
+    /** Restaura la copia elegida con el Engine apagado, abre la normal y cierra la Nightly. */
+    stableReturnApply(name: string): Promise<void>
   }
   contextMenu: { show(request: ContextMenuRequest): Promise<void> }
   notifications: {
@@ -160,6 +178,9 @@ export interface HostServices {
     ): Promise<unknown>
     navigate(sessionId: string, url: string): Promise<unknown>
     history(sessionId: string, action: BrowserHistoryAction): Promise<unknown>
+    newTab(sessionId: string, url: string | undefined): Promise<unknown>
+    closeTab(sessionId: string, targetId: string): Promise<unknown>
+    clearData(): Promise<void>
     preview(sessionId: string): Promise<unknown>
     diagnostics(): { layoutSlots: number }
   }
@@ -249,6 +270,18 @@ function assertNotification(value: unknown): SystemNotificationRequest {
     throw new ValidationError('notification target must be an object')
   }
   const entry = (target ?? {}) as Record<string, unknown>
+  const actions = raw.actions === undefined ? undefined : (() => {
+    if (!Array.isArray(raw.actions) || raw.actions.length > 2) throw new ValidationError('notification actions must be a list of at most 2')
+    return raw.actions.map((item) => {
+      const action = (item ?? {}) as Record<string, unknown>
+      if (action.id !== 'open' && action.id !== 'review-plan') throw new ValidationError('unknown notification action')
+      return { id: action.id as NotificationActionId, label: assertString(action.label, 'label', 40) }
+    })
+  })()
+  const reply = raw.reply === undefined ? undefined : (() => {
+    const value = (raw.reply ?? {}) as Record<string, unknown>
+    return { placeholder: assertString(value.placeholder, 'placeholder', 80) }
+  })()
   return {
     title: assertString(raw.title, 'title', 120),
     body: assertString(raw.body, 'body', 400),
@@ -257,16 +290,25 @@ function assertNotification(value: unknown): SystemNotificationRequest {
       sessionId: entry.sessionId === undefined ? undefined : assertString(entry.sessionId, 'sessionId', 128),
       turnId: entry.turnId === undefined ? undefined : assertString(entry.turnId, 'turnId', 128),
     },
+    ...(actions ? { actions } : {}),
+    ...(reply ? { reply } : {}),
   }
 }
 
 /** La ruta no se valida aquí: la valida el Engine antes de abrirla. */
+/** Una ruta vacía nunca llega al Engine (#67): el renderer dice «Este enlace no apunta a un archivo». */
+function assertNonEmptyPath(value: unknown): string {
+  const path = assertString(value, 'path', 4096)
+  if (!path.trim()) throw new ValidationError('path must not be empty')
+  return path
+}
+
 function assertOpenExternal(value: unknown): OpenExternalFileRequest {
   if (!value || typeof value !== 'object') throw new ValidationError('request must be an object')
   const raw = value as Record<string, unknown>
   return {
     session_id: assertString(raw.session_id, 'session_id', 128),
-    path: assertString(raw.path, 'path', 4096),
+    path: assertNonEmptyPath(raw.path),
     turn_id: raw.turn_id === undefined || raw.turn_id === null ? undefined : assertString(raw.turn_id, 'turn_id', 128),
   }
 }
@@ -377,6 +419,25 @@ function assertExpectedRevision(value: unknown): number | undefined {
 }
 
 /** Registra todos los canales. Devuelve la función que los retira. */
+/** Lo que llega del renderer para el paquete de revisión: solo texto y un nombre de archivo. */
+function assertReviewExport(value: unknown): ReviewExportRequest {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ValidationError('review export must be an object')
+  const raw = value as Record<string, unknown>
+  const files = raw.files
+  if (!files || typeof files !== 'object' || Array.isArray(files)) throw new ValidationError('files must be an object')
+  const clean: Record<string, string> = {}
+  let size = 0
+  for (const [name, text] of Object.entries(files)) {
+    if (!/^[\w.-]{1,80}$/.test(name) || typeof text !== 'string') throw new ValidationError('files must map simple names to text')
+    size += text.length
+    clean[name] = text
+  }
+  if (size > 200 * 1024 * 1024) throw new ValidationError('review export is too large')
+  const stamp = (field: unknown) => (typeof field === 'string' && field.length <= 40 ? field : null)
+  const suggested = typeof raw.suggestedName === 'string' && /^[\w.-]{1,120}\.zip$/.test(raw.suggestedName) ? raw.suggestedName : 'rinari-revision.zip'
+  return { files: clean, from: stamp(raw.from), to: stamp(raw.to), includeLogs: raw.includeLogs === true, suggestedName: suggested }
+}
+
 export function registerIpc(registry: SenderRegistry, services: HostServices): () => void {
   const handlers: Array<[string, Parameters<typeof ipcMain.handle>[1]]> = [
     [CHANNEL.engineStatus, guarded(registry, () => services.engine.status())],
@@ -427,10 +488,22 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
       CHANNEL.clipboardWriteText,
       guarded(registry, (_event, value) => services.clipboard.writeText(assertClipboardText(value))),
     ],
+    [
+      CHANNEL.imagesCopy,
+      guarded(registry, (_event, request) => services.images.copy(assertOpenExternal(request))),
+    ],
+    [
+      CHANNEL.imagesSave,
+      guarded(registry, (_event, request) => services.images.save(assertOpenExternal(request))),
+    ],
     [CHANNEL.diagnosticsPreview, guarded(registry, () => services.diagnostics.preview())],
     [
       CHANNEL.diagnosticsExport,
       guarded(registry, () => services.diagnostics.export()),
+    ],
+    [
+      CHANNEL.diagnosticsExportReview,
+      guarded(registry, (_event, request) => services.diagnostics.exportReview(assertReviewExport(request))),
     ],
     [CHANNEL.appBackgroundGet, guarded(registry, () => services.app.background())],
     [
@@ -444,6 +517,23 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
         services.app.setLanguage(language)
       }),
     ],
+    [
+      CHANNEL.appOpenFolder,
+      guarded(registry, async (_event, place) => {
+        if (place !== 'home' && place !== 'logs' && place !== 'instructions') {
+          throw new ValidationError('place must be "home", "logs" or "instructions"')
+        }
+        await services.app.openFolder(place)
+      }),
+    ],
+    [CHANNEL.appHostSettingsGet, guarded(registry, () => services.app.hostSettings())],
+    [CHANNEL.appHostSettingsSet, guarded(registry, (_event, patch) => services.app.setHostSettings(assertHostSettingsPatch(patch)))],
+    [CHANNEL.appRelaunch, guarded(registry, () => services.app.relaunch())],
+    [CHANNEL.appStableReturnPreview, guarded(registry, () => services.app.stableReturnPreview())],
+    [CHANNEL.appStableReturnApply, guarded(registry, (_event, name) => {
+      if (typeof name !== 'string' || !/^antes-de-migrar-[\w-]+$/.test(name)) throw new Error('Invalid backup name')
+      return services.app.stableReturnApply(name)
+    })],
     [
       CHANNEL.appIndicatorsSet,
       guarded(registry, (_event, state) => {
@@ -565,6 +655,28 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
       guarded(registry, (_event, sessionId, action) =>
         services.browser.history(assertString(sessionId, 'session_id', 128), assertHistoryAction(action)),
       ),
+    ],
+    [
+      CHANNEL.browserNewTab,
+      guarded(registry, (_event, sessionId, url) =>
+        services.browser.newTab(
+          assertString(sessionId, 'session_id', 128),
+          url === undefined || url === null ? undefined : assertOpenableUrl(url),
+        ),
+      ),
+    ],
+    [
+      CHANNEL.browserCloseTab,
+      guarded(registry, (_event, sessionId, targetId) =>
+        services.browser.closeTab(
+          assertString(sessionId, 'session_id', 128),
+          assertString(targetId, 'target_id', 256),
+        ),
+      ),
+    ],
+    [
+      CHANNEL.browserClearData,
+      guarded(registry, () => services.browser.clearData()),
     ],
     [
       CHANNEL.browserPreview,

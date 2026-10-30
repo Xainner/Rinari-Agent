@@ -2,8 +2,8 @@ import type { ReactNode } from 'react'
 import {
   ArrowLeft,
   Bot,
+  Cable,
   Brain,
-  Boxes,
   ChevronRight,
   Cpu,
   Info,
@@ -21,6 +21,8 @@ import {
   Mic,
   Eye,
   Gauge,
+  Bell,
+  Globe,
 } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { useUIStore, type SettingsSection } from '../../stores/ui'
@@ -41,14 +43,16 @@ const GROUPS: Array<{ title: 'settings.group.rinari' | 'settings.group.models' |
     { id: 'context', icon: Gauge },
   ] },
   { title: 'settings.group.tools', items: [
-    { id: 'mcp', icon: Boxes },
+    { id: 'mcp', icon: Cable },
     { id: 'plugins', icon: Puzzle },
     { id: 'tools', icon: ShieldCheck },
     { id: 'terminal', icon: SquareTerminal },
     { id: 'dictation', icon: Mic },
+    { id: 'browser', icon: Globe },
   ] },
   { title: 'settings.group.app', items: [
     { id: 'general', icon: SlidersHorizontal },
+    { id: 'notifications', icon: Bell },
     { id: 'appearance', icon: Palette },
     { id: 'shortcuts', icon: Keyboard },
     { id: 'advanced', icon: Wrench },
@@ -149,7 +153,7 @@ export default function SettingsShell({
           {navList}
         </aside>
         <div className="min-w-0 flex-1 overflow-y-auto">
-          <div key={section} className={`settings-page mx-auto w-full space-y-6 px-4 py-6 ${section === 'about' ? 'max-w-4xl' : 'max-w-2xl'}`}>
+          <div key={section} className={`settings-page mx-auto w-full space-y-6 px-4 py-6 ${section === 'about' || section === 'advanced' ? 'max-w-4xl' : 'max-w-2xl'}`}>
             {children}
           </div>
         </div>

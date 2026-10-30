@@ -105,16 +105,6 @@ describe('terminals and reading', () => {
     expect(store.claimNotification('ses_a', 't1', 'k1')).toBe(false)
     expect(store.claimNotification('ses_a', 'unknown', 'k1')).toBe(false)
   })
-
-  it('tracks peer messages separately from results', () => {
-    const store = useBoardAttentionStore.getState()
-    store.observePeerMessage('ses_a', 'msg_1')
-    store.observePeerMessage('ses_a', 'msg_1')
-    store.observePeerMessage('ses_a', 'msg_2')
-    expect(useBoardAttentionStore.getState().sessions.ses_a.unreadPeerMessageIds).toEqual(['msg_1', 'msg_2'])
-    store.markPeerMessagesSeen('ses_a', ['msg_1'])
-    expect(useBoardAttentionStore.getState().sessions.ses_a.unreadPeerMessageIds).toEqual(['msg_2'])
-  })
 })
 
 describe('persistence', () => {
@@ -144,5 +134,79 @@ describe('persistence', () => {
     store.initializeSessionAttention('ses_b', [])
     store.forgetSession('ses_a')
     expect(Object.keys(useBoardAttentionStore.getState().sessions)).toEqual(['ses_b'])
+  })
+})
+
+describe('#84 receipts that can always be cleared', () => {
+  it('a turn without a result block (compaction, stopped without text) is born seen', () => {
+    const store = useBoardAttentionStore.getState()
+    store.initializeSessionAttention('ses_a', [])
+    store.observeTerminal('ses_a', 't_compact', 'completed', 'live', 1, { quiet: true })
+    store.observeTerminal('ses_a', 't_stop', 'stopped', 'live', 2, { quiet: true })
+    expect(unreadResultCount(useBoardAttentionStore.getState().sessions.ses_a)).toBe(0)
+  })
+
+  it('remembers that a result finished while away, and only for unread ones', () => {
+    const store = useBoardAttentionStore.getState()
+    store.initializeSessionAttention('ses_a', [])
+    store.observeTerminal('ses_a', 't1', 'completed', 'live', 1, { away: true })
+    store.observeTerminal('ses_a', 't2', 'cancelled', 'live', 2, { away: true })
+    const turns = useBoardAttentionStore.getState().sessions.ses_a!.turns
+    expect(turns.t1?.away).toBe(true)
+    expect(turns.t2?.away).toBeUndefined()
+    flushAttentionPersistence()
+    expect(readPersistedAttention(useBoardAttentionStore.getState().profileKey).ses_a?.turns.t1?.away).toBe(true)
+  })
+
+  it('markSeenThrough reads the turn and every earlier one, not later ones', () => {
+    const store = useBoardAttentionStore.getState()
+    store.initializeSessionAttention('ses_a', [])
+    store.observeTerminal('ses_a', 't1', 'completed', 'live', 100)
+    store.observeTerminal('ses_a', 't2', 'failed', 'live', 200)
+    store.observeTerminal('ses_a', 't3', 'completed', 'live', 300)
+    store.markSeenThrough('ses_a', 't2')
+    expect(unreadTurnIds(useBoardAttentionStore.getState().sessions.ses_a)).toEqual(['t3'])
+  })
+
+  it('markAllSeen clears the results of every session', () => {
+    const store = useBoardAttentionStore.getState()
+    store.initializeSessionAttention('ses_a', [])
+    store.initializeSessionAttention('ses_b', [])
+    store.observeTerminal('ses_a', 't1', 'completed', 'live', 1)
+    store.observeTerminal('ses_b', 't2', 'failed', 'live', 2)
+    store.markAllSeen()
+    const sessions = useBoardAttentionStore.getState().sessions
+    expect(unreadResultCount(sessions.ses_a) + unreadResultCount(sessions.ses_b)).toBe(0)
+  })
+})
+
+describe('per Engine home (plan-boards C12)', () => {
+  it('the first home adopts what was saved before; another home starts clean; going back restores it', () => {
+    const store = useBoardAttentionStore.getState()
+    const base = store.profileKey
+    store.observeTerminal('ses_a', 't1', 'completed', 'live', 1)
+    flushAttentionPersistence()
+    expect(unreadResultCount(useBoardAttentionStore.getState().sessions.ses_a)).toBe(1)
+
+    store.setHomeId('home_one')
+    expect(useBoardAttentionStore.getState().profileKey).toBe(`${base}@home_one`)
+    expect(unreadResultCount(useBoardAttentionStore.getState().sessions.ses_a)).toBe(1)
+    // Adopted: the receipts left the key without a home.
+    expect(readPersistedAttention(base)).toEqual({})
+    expect(unreadResultCount(readPersistedAttention(`${base}@home_one`).ses_a)).toBe(1)
+
+    store.setHomeId('home_two')
+    expect(useBoardAttentionStore.getState().sessions).toEqual({})
+    useBoardAttentionStore.getState().observeTerminal('ses_b', 't9', 'failed', 'live', 2)
+    flushAttentionPersistence()
+
+    useBoardAttentionStore.getState().setHomeId('home_one')
+    const back = useBoardAttentionStore.getState().sessions
+    expect(unreadResultCount(back.ses_a)).toBe(1)
+    expect(back.ses_b).toBeUndefined()
+    expect(JSON.parse(window.localStorage.getItem(ATTENTION_STORAGE_KEY) ?? '{}').profiles[`${base}@home_two`].ses_b).toBeTruthy()
+
+    useBoardAttentionStore.getState().setHomeId(null)
+    expect(useBoardAttentionStore.getState().profileKey).toBe(base)
   })
 })

@@ -51,6 +51,13 @@ Project headers collapse their sessions. Composer selectors close upon selection
   paleta, los atajos con un diálogo modal abierto.
 - `Ctrl+N` y `Ctrl+W` son contextuales: en Boards abren «Añadir panel» y quitan el
   panel enfocado sin cerrar su sesión; en Normal conservan su comportamiento.
+- Boards (plan-boards B.4.1): `Ctrl+1…9` va al panel N y pone el cursor en su
+  composer; si está plegado, lo enfoca sin desplegarlo y abre su vistazo.
+  `Ctrl+J` (configurable) va al siguiente panel que te necesita (aprobación,
+  pregunta o fallo) en orden de llegada, también con el vistazo si está
+  plegado; sin ninguno, avisa «Nada te necesita».
+- Una conversación de la barra lateral se arrastra al board (B.4.2): una guía
+  marca dónde cae, entre dos paneles o al final; si ya estaba, se mueve ahí.
 - Estado por sesión: el runtime del motor vive en un store con selectores por
   sesión (`sessionSelectors`), cada Composer trabaja sobre su propia clave de
   borrador y el razonamiento de la siguiente petición se guarda por sesión
@@ -69,14 +76,14 @@ Project headers collapse their sessions. Composer selectors close upon selection
   Un layout de una versión futura no se reescribe. Las escrituras se agrupan
   (250 ms) y se vuelcan al ocultar la ventana.
 - **Ajustar a la vista** reparte el espacio real entre los paneles expandidos,
-  descontando las tiras colapsadas y la columna Añadir panel. El layout flex
+  descontando los paneles plegados (columnas de 200 px o tiras de 48 px). El layout flex
   responde al tamaño del contenedor, la barra lateral y el zoom; no guarda
   mediciones ni cambia el foco, los borradores o las preferencias del dock.
   Mientras está activo se retiran los separadores manuales. Al apagarlo se
   recuperan los anchos guardados (480–1600 px); el reparto puede superar ese
   máximo. El modo persiste en schema 4 y los layouts anteriores abren en manual.
   Si no caben todos a una densidad compacta de 320 px, aparece un aviso y scroll
-  solo en la fila de paneles: Añadir panel permanece fuera del área desplazable.
+  solo en la fila de paneles; «Añadir panel» sigue en la barra.
   Colapsar todo y el modo foco conservan la preferencia de ajuste.
   Pulsar Ajustar a la vista expande todos los paneles y sale del modo foco,
   incluso si el ajuste ya estaba activo antes de colapsarlos. Solo vuelve al
@@ -97,10 +104,11 @@ Project headers collapse their sessions. Composer selectors close upon selection
 - **Un solo lugar editable por sesión.** Modelo, modo (PLAN/BUILD/REVIEW),
   razonamiento y permisos de la siguiente petición se editan únicamente en el
   `Composer` de esa sesión, en Normal y en Boards. El header del panel muestra
-  identidad, rama, estado, no leídos, peer, colapsar, dock y menú; su acción
-  «Configurar siguiente mensaje» enfoca el Composer existente (petición tipada
-  `rinari:focus-composer` con `sessionId`) en vez de abrir otro editor. La barra
-  superior no expone selectores de modelo ni de modo. El guard de sesión
+  la cara de Rinari (su estado), identidad, rama, estado, no leídos, plegar,
+  dock y un menú corto: «Abrir en vista única», «Mover a la izquierda /
+  derecha» y «Quitar del board» (plan-boards B.1b; sin punto de estado ni
+  «Configurar siguiente mensaje»). La barra superior no expone selectores de
+  modelo ni de modo. El guard de sesión
   ocupada aplica igual en ambas vistas y un cambio nunca reescribe la
   atribución de un turno ya iniciado.
 - Cada panel monta su propio `Composer` (clave de borrador = sesión, sin tocar
@@ -152,46 +160,18 @@ Validación: `stores/sessionDock.test.ts`, `features/session/SessionWorkspace.te
   (`usePendingQuestions`): una carga y una suscripción también cuando el header
   del panel muestra el badge.
 
-# Boards: mensajería entre paneles (`session_peer_messaging_v1`)
+# Boards: mensajería entre paneles (retirada en 0.4.0)
 
-- Los paneles de un board forman un **grupo de pares** que el Agent registra en
-  el motor (`session.peer_group.set`, idempotente por `boardId`, con
-  `expected_revision`). Cada cambio de paneles o de los toggles «Recibir» /
-  «Enviar» del menú del panel re-registra el grupo; un `CONFLICT` relee la
-  revisión y reintenta una vez. Si el motor no anuncia la capability, no hay
-  controles ni llamadas.
-- El agente de un panel puede usar `session.peers` y `session.send`. El envío
-  pide **aprobación por destino** (`session.message`, `binding_mode = "exact"`)
-  y el diálogo de aprobación muestra la etiqueta del panel destino.
-- El mensaje llega al otro panel como un turno con `origin.kind = "peer"`. La
-  burbuja se pinta a la izquierda con «De «X»», el número de salto y el aviso
-  de **dato no confiable**; «Ir al panel» enfoca el origen. El motor impide en
-  ese turno escribir archivos, ejecutar comandos, mutar el navegador, red con
-  efectos, MCP, git y subagentes; el usuario convierte el mensaje en tarea
-  propia con «Enviar al panel…» (reenvío manual, `origin.kind = "user"` con
-  `quoted_source`, sin techo ni aprobación).
-- **`@Panel mensaje` desde el compositor**: al escribir `@` al inicio del
-  mensaje aparece la lista de paneles del board (filtrada por lo tecleado;
-  ↑/↓, Enter/Tab para elegir, Esc para descartar). Con `@Docs revisá el
-  README` el texto va **directo al panel «Docs»** como reenvío manual
-  (`origin.kind = "user"`, cita del panel origen, sin aprobación ni techo) y
-  no inicia un turno en el panel actual. Solo cuenta la mención al inicio y
-  solo si coincide con la etiqueta de un panel (la más larga gana); cualquier
-  otra `@` sigue siendo una referencia de archivo del workspace. Un `@Panel` a
-  secas no se envía; los adjuntos se quedan en el borrador.
-- La cola del panel (`QueueBar`) lista las entradas tipadas: origen, estado
-  (`queued`/`paused`/`uncertain`), cancelar una entrega y **Reanudar** tras un
-  Stop (`session.queue.resume`). Un mensaje para un panel no enfocado muestra
-  un toast con «Ir al panel»; una entrega en pausa avisa también.
-- Ajustes › General › «Mensajería entre paneles» desactiva el grupo completo
-  (`enabled = false`) sin borrarlo; se persiste en `rinari.board.v1`.
-- Límites del motor: 32 000 caracteres, 5 envíos por turno, 3 saltos y 20
-  entregas por cadena. No es un canal de coordinación autónoma sostenida.
-
-Validación: `src/features/board/usePeerGroup.test.tsx`,
-`src/features/board/BoardView.peers.test.tsx`, `src/components/MessageBubble.test.tsx`
-y los casos de procedencia en `turnTimelineReducer.test.ts`. Regeneración del
-protocolo: `RINARI_ENGINE_SCHEMA=<ruta a Rinari-CLI/src/rinari/engine_protocol/schema/v1.json> npm run protocol:generate`.
+La mensajería entre paneles (`session_peer_messaging_v1`: grupos de pares,
+`session.peers` / `session.send`, «Enviar al panel…», `@Panel mensaje`, la
+cola con entregas en pausa y su opción en Ajustes) se retiró en 0.4.0, bloque
+25 ([plan-boards.md](planes/plan-boards.md) B.1). La comunicación entre agentes
+será de Rinari Agency. Lo que ya quedó en el historial se sigue viendo: un
+turno con `origin.kind = "peer"` se pinta a la izquierda con «De «X»», el
+salto y el aviso de dato no confiable, y un reenvío con su cita. «Quitar y
+cerrar sesión» también se fue: «Quitar del board» saca el panel sin tocar la
+conversación, y archivar se hace desde la barra lateral. En un panel, la
+confirmación de «Acceso completo» sale sobre ese panel (C14).
 
 # Boards: estado por panel y resultados sin leer
 
@@ -236,14 +216,17 @@ Validación: `src/stores/boardAttention.test.ts`, `sessionSelectors.test.ts`
 - `Ctrl+Alt+]` expande el enfocado; sin foco, el último expandido o la primera
   tira. Los atajos son configurables (Ajustes › Atajos) y no tienen acelerador
   nativo duplicado.
-- Toolbar del board: conteos por **sesión** (trabajando / te necesitan / con
-  resultados sin leer), «Colapsar todo», «Expandir todo», «Colapsar terminados»
-  (solo `done`/`idle`/`cancelled`, sin pendientes, con disponibilidad
-  confirmada y nunca el enfocado; deshabilitado en modo foco), «Modo foco»
-  (snapshot de la composición, un único panel expandido; el alta durante el
-  modo enfoca el nuevo; colapsar el foco a mano sale del modo sin restaurar)
-  y «Marcar todos los resultados como leídos». Las mismas acciones existen en
-  la paleta de comandos (`Boards: …`).
+- Toolbar del board (B.4.3): a la vista, los conteos por **sesión**
+  (trabajando / te necesitan / con resultados sin leer), «Ajustar a la vista»
+  y «Añadir panel» (ya no hay columna fija al final del board). En el menú
+  «⋯»: «Colapsar terminados» (solo `done`/`idle`/`cancelled`, sin pendientes,
+  con disponibilidad confirmada y nunca el enfocado; deshabilitado en modo
+  foco), «Modo foco» (snapshot de la composición, un único panel expandido;
+  el alta durante el modo enfoca el nuevo; colapsar el foco a mano sale del
+  modo sin restaurar; activo, queda también un botón a la vista para salir),
+  «Marcar todos los resultados como leídos», «Colapsar todo», «Expandir todo»
+  y «Quitar todos». Las mismas acciones existen en la paleta de comandos
+  (`Boards: …`). Que aparezca un contador nunca cambia la altura de la barra.
 - Los estados que usa la toolbar y `collapseFinished` salen de la caché
   efímera `boardStatus` publicada por `BoardActivityController`, nunca de un
   mapa inventado por el componente.

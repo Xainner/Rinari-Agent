@@ -21,18 +21,28 @@ function BlockNativeViews() {
   return null
 }
 
+/**
+ * `container`: dibuja el diálogo dentro de ese elemento (posicionado) en vez
+ * de sobre toda la ventana. Un panel de Boards lo usa para que la pregunta
+ * salga sobre el panel donde se pidió (plan-boards C14); el foco queda
+ * atrapado igual dentro del diálogo.
+ */
 function AlertDialogContent({
   className,
   children,
+  container,
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Content>) {
+}: React.ComponentProps<typeof AlertDialogPrimitive.Content> & { container?: HTMLElement | null }) {
+  const scoped = Boolean(container)
   return (
-    <AlertDialogPrimitive.Portal>
+    <AlertDialogPrimitive.Portal container={container ?? undefined}>
       <BlockNativeViews />
-      <AlertDialogPrimitive.Overlay className="r-overlay fixed inset-0 z-50" />
+      <AlertDialogPrimitive.Overlay className={cn('r-overlay inset-0 z-50', scoped ? 'absolute' : 'fixed')} />
       <AlertDialogPrimitive.Content
+        data-scope={scoped ? 'container' : undefined}
         className={cn(
-          'fixed top-1/2 left-1/2 z-50 grid max-h-[85vh] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-[var(--r-xl)] p-6 outline-none r-dialog',
+          'top-1/2 left-1/2 z-50 grid w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-[var(--r-xl)] p-6 outline-none r-dialog',
+          scoped ? 'absolute max-h-[calc(100%-2rem)]' : 'fixed max-h-[85vh]',
           className,
         )}
         {...props}

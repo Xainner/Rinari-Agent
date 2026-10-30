@@ -22,6 +22,7 @@ import type {
   NativeBrowserPreview,
   NativeBrowserSlotLayout,
   NotificationSupport,
+  NotificationReply,
   NotificationTarget,
   OpenFilesOptions,
   OpenJsonResult,
@@ -35,6 +36,8 @@ import type {
   FlowScopeRequest,
   BackgroundSettings,
   DiagnosticsPreview,
+  HostSettings,
+  ReviewExportRequest,
 } from './contract'
 
 export type CommandHandler = (args: Record<string, unknown>) => unknown
@@ -55,6 +58,7 @@ export interface TestBridge extends DesktopBridge {
   notificationSupport: NotificationSupport
   /** Simula el clic del usuario en una notificación. */
   activateNotification(target: NotificationTarget): void
+  replyNotification(reply: NotificationReply): void
   /** Operaciones de ciclo de vida pedidas, en orden. */
   readonly engineCalls: string[]
   engineStatus: EngineStatus
@@ -67,6 +71,8 @@ export interface TestBridge extends DesktopBridge {
   readonly mediaKinds: Record<string, WorkspaceMedia['kind']>
   /** Textos que el host de prueba confirmó en el portapapeles. */
   readonly copiedTexts: string[]
+  readonly copiedImages: Array<{ session_id: string; path: string; turn_id?: string }>
+  readonly savedImages: Array<{ session_id: string; path: string; turn_id?: string }>
   /** Paquete de diagnóstico que devolvería el host y exportaciones pedidas. */
   diagnosticsState: { preview: DiagnosticsPreview; exports: number; saved: boolean }
   /** Ajustes de segundo plano del host de prueba. */
@@ -75,8 +81,14 @@ export interface TestBridge extends DesktopBridge {
   hostLanguage: 'es' | 'en' | null
   /** Lo que el renderer mandó a la barra de tareas y la bandeja, en orden. */
   indicators: AttentionIndicators[]
+  openedFolders: string[]
+  hostSettings: HostSettings
+  reviewExports: ReviewExportRequest[]
+  relaunched: number
   /** Respuesta del próximo `dialog.openFiles`. `null` = el usuario canceló. */
   nextFileSelection: string[] | null
+  /** Ruta real que `files.pathFor` da a cada `File` (#57); sin entrada, `null`. */
+  readonly filePaths: Map<File, string>
   /** JSON guardados con `dialog.saveJson`, en orden. */
   readonly savedJsonFiles: SaveJsonRequest[]
   /** `false`: la persona cancela el próximo diálogo de guardar. */
@@ -107,6 +119,8 @@ export interface TestBridge extends DesktopBridge {
   readonly browserLayouts: NativeBrowserSlotLayout[]
   /** Empuja un cambio de contexto a los suscriptores. */
   emitBrowserContext(view: NativeBrowserContext): void
+  /** Empuja un atajo pulsado en la página (Ctrl+L). */
+  emitBrowserShortcut(event: { session_id: string; action: 'focus-address' }): void
   reset(): void
 }
 
@@ -130,8 +144,10 @@ export function createTestBridge(): TestBridge {
   const menuListeners = new Set<(action: string) => void>()
   const openListeners = new Set<(request: OpenRequest) => void>()
   const notificationListeners = new Set<(target: NotificationTarget) => void>()
+  const replyListeners = new Set<(reply: NotificationReply) => void>()
   const updateListeners = new Set<(state: UpdateState) => void>()
   const browserListeners = new Set<(view: NativeBrowserContext) => void>()
+  const shortcutListeners = new Set<(event: { session_id: string; action: 'focus-address' }) => void>()
 
 /** Un alcance sin etapas: lo honesto cuando el test no dijo otra cosa. */
 function emptyFlow(scope: FlowScopeRequest): FlowResult {
@@ -170,6 +186,9 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
     emitBrowserContext(view) {
       for (const listener of browserListeners) listener(view)
     },
+    emitBrowserShortcut(event) {
+      for (const listener of shortcutListeners) listener(event)
+    },
     engineStatus: {
       state: 'stopped',
       engine_version: null,
@@ -183,6 +202,8 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
     revealedFiles: [],
     mediaKinds: {},
     copiedTexts: [],
+    copiedImages: [],
+    savedImages: [],
     diagnosticsState: {
       preview: { files: [{ name: 'summary.json', bytes: null }, { name: 'logs/app.log', bytes: 2048 }], totalBytes: 2048 },
       exports: 0,
@@ -191,11 +212,19 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
     background: { backgroundMode: true, launchAtLogin: false, launchAtLoginSupported: true },
     hostLanguage: null,
     indicators: [],
+    openedFolders: [],
+    hostSettings: {
+      startupLimit: 'auto', startupLimitS: 45, lastStartupMs: 4200, startupTimeline: [], hardwareAcceleration: true, restartRequired: false,
+      detailedLogs: false, detailedLogsUntil: null, environment: [], channel: 'stable', packaged: false,
+    },
+    relaunched: 0,
+    reviewExports: [],
     menus: [],
     sentNotifications: [],
     notificationSupport: { canSend: true, canActivateTarget: true },
     openedUrls: [],
     nextFileSelection: null,
+    filePaths: new Map(),
     savedJsonFiles: [],
     nextJsonSave: true,
     nextJsonFile: null,
@@ -249,6 +278,9 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
     },
 
     files: {
+      pathFor(file: File) {
+        return bridge.filePaths.get(file) ?? null
+      },
       async openExternal(input) {
         bridge.openedFiles.push(input)
       },
@@ -275,9 +307,23 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
       },
     },
 
+    images: {
+      async copy(input) {
+        bridge.copiedImages.push(input)
+      },
+      async save(input) {
+        bridge.savedImages.push(input)
+        return { saved: true }
+      },
+    },
+
     diagnostics: {
       async preview() {
         return bridge.diagnosticsState.preview
+      },
+      async exportReview(request) {
+        bridge.reviewExports.push(request)
+        return { saved: true }
       },
       async export() {
         bridge.diagnosticsState.exports += 1
@@ -302,6 +348,26 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
       async setIndicators(state) {
         bridge.indicators.push(state)
       },
+      async openFolder(place) {
+        bridge.openedFolders.push(place)
+      },
+      async hostSettings() {
+        return structuredClone(bridge.hostSettings)
+      },
+      async setHostSettings(patch) {
+        const next = { ...bridge.hostSettings, ...patch }
+        if (patch.detailedLogs !== undefined) next.detailedLogsUntil = patch.detailedLogs ? new Date(Date.now() + 86_400_000).toISOString() : null
+        if (patch.hardwareAcceleration !== undefined) next.restartRequired = true
+        bridge.hostSettings = next
+        return structuredClone(next)
+      },
+      async relaunch() {
+        bridge.relaunched += 1
+      },
+      async stableReturnPreview() {
+        return { available: false, backup: null, stableInstalled: false }
+      },
+      async stableReturnApply() {},
     },
 
     events: {
@@ -372,12 +438,25 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
       async navigate(sessionId: string, url: string) {
         bridge.browserCalls.push({ kind: 'navigate', sessionId, url })
       },
+      async newTab(sessionId: string, url?: string) {
+        bridge.browserCalls.push({ kind: 'newTab', sessionId, ...(url ? { url } : {}) })
+      },
+      async closeTab(sessionId: string, targetId: string) {
+        bridge.browserCalls.push({ kind: 'closeTab', sessionId, targetId })
+      },
+      async clearData() {
+        bridge.browserCalls.push({ kind: 'clearData' })
+      },
       async preview() {
         return bridge.browserPreview
       },
       async onContextChanged(callback): Promise<Unsubscribe> {
         browserListeners.add(callback)
         return () => browserListeners.delete(callback)
+      },
+      async onShortcut(callback): Promise<Unsubscribe> {
+        shortcutListeners.add(callback)
+        return () => shortcutListeners.delete(callback)
       },
     },
 
@@ -421,6 +500,10 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
       async onActivated(callback) {
         notificationListeners.add(callback)
         return () => notificationListeners.delete(callback)
+      },
+      async onReplied(callback) {
+        replyListeners.add(callback)
+        return () => replyListeners.delete(callback)
       },
     },
 
@@ -472,6 +555,9 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
     activateNotification(target) {
       for (const listener of [...notificationListeners]) listener(target)
     },
+    replyNotification(reply) {
+      for (const listener of [...replyListeners]) listener(reply)
+    },
 
     reset() {
       handlers.clear()
@@ -493,14 +579,18 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
       bridge.revealedFiles.length = 0
       for (const key of Object.keys(bridge.mediaKinds)) delete bridge.mediaKinds[key]
       bridge.copiedTexts.length = 0
+      bridge.copiedImages.length = 0
+      bridge.savedImages.length = 0
       bridge.hostLanguage = null
       bridge.indicators = []
       bridge.menus.length = 0
       bridge.sentNotifications.length = 0
       bridge.notificationSupport = { canSend: true, canActivateTarget: true }
       notificationListeners.clear()
+      replyListeners.clear()
       bridge.openedUrls.length = 0
       bridge.nextFileSelection = null
+      bridge.filePaths.clear()
       bridge.savedJsonFiles.length = 0
       bridge.nextJsonSave = true
       bridge.nextJsonFile = null
@@ -512,6 +602,7 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
       bridge.browserCalls.length = 0
       bridge.browserLayouts.length = 0
       browserListeners.clear()
+      shortcutListeners.clear()
       slotCounter = 0
       bridge.desktop = true
       bridge.migrationStatus = { state: 'not_started', pending: false }

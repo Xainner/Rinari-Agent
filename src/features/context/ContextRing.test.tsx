@@ -3,7 +3,7 @@ import { act, cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import { engineApi, onEngineEvent, type EngineEventMsg } from '../../services/engine'
-import ContextRing, { ringFigures } from './ContextRing'
+import ContextRing, { nextResetDelay, ringFigures, windowReset } from './ContextRing'
 
 let emit: (event: EngineEventMsg) => void = () => {}
 vi.mock('../../services/engine', () => ({
@@ -85,4 +85,19 @@ it('after a compaction shows what it left, as an estimate, until the next measur
   ring()
   await flush()
   expect(screen.getByRole('img').getAttribute('aria-label')).toContain('estimado tras compactar')
+})
+
+it('a window whose reset passed is not shown with its old percentage (#27)', () => {
+  const now = Date.parse('2026-10-18T23:03:10Z')
+  expect(windowReset('2026-10-18T23:03:00Z', now)).toBe(true)
+  expect(windowReset('2026-10-19T23:03:00Z', now)).toBe(false)
+  expect(windowReset(null, now)).toBe(false)
+})
+
+it('reads the limits again a few seconds after the next reset (#27)', () => {
+  const now = Date.parse('2026-10-18T23:00:00Z')
+  expect(nextResetDelay([{ resets_at: '2026-10-18T23:03:00Z' }, { resets_at: '2026-10-25T00:00:00Z' }], now)).toBe(185_000)
+  expect(nextResetDelay([{ resets_at: '2026-10-18T22:59:30Z' }], now)).toBe(3_000)
+  expect(nextResetDelay([{ resets_at: '2026-10-18T20:00:00Z' }], now)).toBeNull()
+  expect(nextResetDelay([{ resets_at: null }], now)).toBeNull()
 })

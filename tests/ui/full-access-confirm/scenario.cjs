@@ -30,7 +30,7 @@ scenario(async () => {
   await wait(`Boolean(document.querySelector(${JSON.stringify(DIALOG)}))`)
   await settleAnimations()
   const body = await evaluate(`document.querySelector(${JSON.stringify(DIALOG)}).innerText`)
-  for (const part of ['Archivos y carpetas', 'Comandos de terminal', 'Internet y aplicaciones conectadas', 'forzar un push', 'chip de permisos']) {
+  for (const part of ['Archivos y carpetas', 'Comandos de terminal', 'Internet y aplicaciones conectadas', 'no te va a preguntar nada', 'destinos nuevos']) {
     assert(body.includes(part), `dialog explains: ${part}`)
   }
   await screenshot('dialog')
@@ -46,8 +46,8 @@ scenario(async () => {
   assert.equal(await profile(session), 'full-access')
   await screenshot('chip-full-access')
 
-  await choose('Workspace')
-  await wait(`document.querySelector(${JSON.stringify(CHIP)}).innerText.includes('Workspace')`)
+  await choose('Proyecto')
+  await wait(`document.querySelector(${JSON.stringify(CHIP)}).innerText.includes('Proyecto')`)
   assert.equal(await evaluate(`Boolean(document.querySelector(${JSON.stringify(DIALOG)}))`), false, 'lowering never asks')
   assert.equal(await profile(session), 'workspace')
   report({ passed: ['dialog before full access', 'explains groups, what still asks and how to undo', 'cancel keeps workspace', 'confirm applies full-access', 'lowering does not ask'] })

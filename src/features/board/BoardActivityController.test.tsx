@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { installMockPlatform } from '../../test/mockPlatform'
-installMockPlatform()
+const mockPlatform = installMockPlatform()
 import { act, cleanup, render } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
@@ -52,7 +52,7 @@ it('treats finished history as baseline and only live terminals as unread', () =
   })
   expect(useBoardAttentionStore.getState().sessions.ses_a.trackedActiveTurnIds).toEqual(['t2'])
   act(() => {
-    dispatch(event('turn.completed', { turn_id: 't2', session_id: 'ses_a' }))
+    dispatch(event('turn.completed', { turn_id: 't2', session_id: 'ses_a', content: 'ok' }))
   })
   session = useBoardAttentionStore.getState().sessions.ses_a
   expect(unreadTurnIds(session)).toEqual(['t2'])
@@ -78,7 +78,7 @@ it('does not turn live terminals seen before the history load into baseline', ()
   expect(useBoardAttentionStore.getState().sessions.ses_a).toBeUndefined()
   act(() => {
     dispatch(event('turn.started', { turn_id: 't1', session_id: 'ses_a' }))
-    dispatch(event('turn.completed', { turn_id: 't1', session_id: 'ses_a' }))
+    dispatch(event('turn.completed', { turn_id: 't1', session_id: 'ses_a', content: 'ok' }))
   })
   // History arrives later: t0 was already finished (baseline), t1 finished in front of us (unread).
   act(() => {
@@ -103,7 +103,7 @@ it('follows Normal chats too: a live result there counts as pending', () => {
   render(<BoardHarness engine={engine}><BoardActivityController /></BoardHarness>)
   act(() => {
     dispatch(event('turn.started', { turn_id: 't1', session_id: 'ses_a' }))
-    dispatch(event('turn.completed', { turn_id: 't1', session_id: 'ses_a' }))
+    dispatch(event('turn.completed', { turn_id: 't1', session_id: 'ses_a', content: 'ok' }))
   })
   expect(useBoardAttentionStore.getState().sessions.ses_a.turns.t1.state).toBe('unread')
 })
@@ -113,8 +113,76 @@ it('never counts the past of a chat whose history is not loaded', () => {
   const { dispatch } = engine.runtime.getState()
   render(<BoardHarness engine={engine}><BoardActivityController /></BoardHarness>)
   act(() => {
-    dispatch(event('turn.started', { turn_id: 't1', session_id: 'ses_a' }))
-    dispatch(event('turn.completed', { turn_id: 't1', session_id: 'ses_a' }))
+    dispatch({
+      type: 'timeline/loaded',
+      sessionId: 'ses_a',
+      turns: [{ turn_id: 't0', session_id: 'ses_a', turn_index: 0, status: 'completed', started_at: '2026-09-15T09:00:00Z', completed_at: '2026-09-15T09:00:05Z', user_message: 'a', items: [], final_response: 'ok' }],
+    })
   })
   expect(useBoardAttentionStore.getState().sessions.ses_a).toBeUndefined()
+})
+
+it('#103: follows a chat the app never opened (a child, a scheduled task) from its first live result', () => {
+  const engine = harness(false)
+  const { dispatch } = engine.runtime.getState()
+  render(<BoardHarness engine={engine}><BoardActivityController /></BoardHarness>)
+  act(() => {
+    dispatch({
+      type: 'timeline/loaded',
+      sessionId: 'ses_a',
+      turns: [{ turn_id: 't0', session_id: 'ses_a', turn_index: 0, status: 'completed', started_at: '2026-09-15T09:00:00Z', completed_at: '2026-09-15T09:00:05Z', user_message: 'a', items: [], final_response: 'ok' }],
+    })
+  })
+  act(() => {
+    dispatch(event('turn.started', { turn_id: 't1', session_id: 'ses_a' }))
+    dispatch(event('turn.completed', { turn_id: 't1', session_id: 'ses_a', content: 'ok' }))
+  })
+  const session = useBoardAttentionStore.getState().sessions.ses_a
+  expect(session.initialized).toBe(true)
+  expect(session.turns.t0.state).toBe('baseline')
+  expect(unreadTurnIds(session)).toEqual(['t1'])
+  // The next one is tracked like in any followed chat.
+  act(() => {
+    dispatch(event('turn.started', { turn_id: 't2', session_id: 'ses_a' }))
+    dispatch(event('turn.completed', { turn_id: 't2', session_id: 'ses_a', content: 'ok' }))
+  })
+  expect(unreadTurnIds(useBoardAttentionStore.getState().sessions.ses_a)).toEqual(['t1', 't2'])
+})
+
+it('#103: waits for a history that is loading instead of guessing', () => {
+  const engine = { ...harness(false), historyPhases: { ses_a: 'loading' as const } }
+  const { dispatch } = engine.runtime.getState()
+  render(<BoardHarness engine={engine}><BoardActivityController /></BoardHarness>)
+  act(() => {
+    dispatch(event('turn.started', { turn_id: 't1', session_id: 'ses_a' }))
+    dispatch(event('turn.completed', { turn_id: 't1', session_id: 'ses_a', content: 'ok' }))
+  })
+  expect(useBoardAttentionStore.getState().sessions.ses_a).toBeUndefined()
+})
+
+it('#84: a turn that only compacted the context is not an unread result', () => {
+  const engine = harness(true)
+  const { dispatch } = engine.runtime.getState()
+  dispatch({ type: 'timeline/loaded', sessionId: 'ses_a', turns: [] })
+  useBoardStore.getState().addPane('ses_a')
+  render(<BoardHarness engine={engine}><BoardActivityController /></BoardHarness>)
+  act(() => {
+    dispatch(event('turn.started', { turn_id: 't_compact', session_id: 'ses_a' }))
+    dispatch(event('turn.completed', { turn_id: 't_compact', session_id: 'ses_a', kind: 'compaction', content: '' }))
+  })
+  const receipt = useBoardAttentionStore.getState().sessions.ses_a?.turns.t_compact
+  expect(receipt?.state).toBe('seen')
+})
+
+it('#64: «Responder» from a system notification sends the text to that conversation, or steers it while it works', async () => {
+  const steerTo = vi.fn(async () => true)
+  const isBusy = vi.fn(() => false)
+  const engine = engineFixture({ sessions, historyInfo: { ses_a: { total: 0, hasMore: false } }, steerTo, isBusy } as never)
+  render(<BoardHarness engine={engine}><BoardActivityController /></BoardHarness>)
+  await act(async () => { await Promise.resolve() })
+  act(() => { mockPlatform.bridge.replyNotification({ target: { sessionId: 'ses_a', turnId: 't1' }, text: 'sí, adelante' }) })
+  expect(engine.sendTo).toHaveBeenCalledWith('ses_a', 'sí, adelante')
+  isBusy.mockReturnValue(true)
+  act(() => { mockPlatform.bridge.replyNotification({ target: { sessionId: 'ses_a' }, text: 'y el logo en SVG' }) })
+  expect(steerTo).toHaveBeenCalledWith('ses_a', 'y el logo en SVG')
 })

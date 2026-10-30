@@ -19,13 +19,16 @@
  */
 
 import type { AttentionIndicators } from '../shared/indicators'
-import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'electron'
 
 import {
   CHANNEL,
   PUSH,
   type BackgroundPatch,
   type BackgroundSettings,
+  type HostSettings,
+  type ReviewExportRequest,
+  type HostSettingsPatch,
   type BridgeResult,
   type BrowserContextView,
   type BrowserPreviewView,
@@ -37,6 +40,7 @@ import {
   type DiagnosticsPreview,
   type EngineStatus,
   type NotificationSupport,
+  type NotificationReply,
   type NotificationTarget,
   type OpenExternalFileRequest,
   type WorkspaceMedia,
@@ -79,15 +83,50 @@ async function call<T>(channel: string, ...args: unknown[]): Promise<T> {
   })
 }
 
+/**
+ * Un solo `ipcRenderer.on` por canal, que reparte a los suscriptores de la
+ * app (plan 0.4.0 #58): unas 20 partes escuchan `engineEvent` y cada una
+ * sumaba su oyente (MaxListenersExceededWarning). El oyente se quita cuando
+ * se va el último suscriptor.
+ */
+const fanouts = new Map<string, Set<(payload: unknown) => void>>()
+const fanoutListeners = new Map<string, (event: IpcRendererEvent, payload: unknown) => void>()
+
 /** Suscripción que entrega solo la carga y cuya baja es idempotente. */
 function subscribe<T>(channel: string, callback: (payload: T) => void): () => void {
-  const listener = (_event: IpcRendererEvent, payload: T) => callback(payload)
-  ipcRenderer.on(channel, listener)
+  let callbacks = fanouts.get(channel)
+  if (!callbacks) {
+    const set = new Set<(payload: unknown) => void>()
+    callbacks = set
+    fanouts.set(channel, set)
+    const listener = (_event: IpcRendererEvent, payload: unknown) => {
+      // Una copia: un suscriptor que se da de baja al recibir no salta a otro.
+      for (const each of [...set]) {
+        try {
+          each(payload)
+        } catch (error) {
+          console.error(`[rinari] ${channel} subscriber failed`, error)
+        }
+      }
+    }
+    fanoutListeners.set(channel, listener)
+    ipcRenderer.on(channel, listener)
+  }
+  const entry = (payload: unknown) => callback(payload as T)
+  callbacks.add(entry)
   let removed = false
   return () => {
     if (removed) return
     removed = true
-    ipcRenderer.removeListener(channel, listener)
+    const set = fanouts.get(channel)
+    if (!set) return
+    set.delete(entry)
+    if (set.size === 0) {
+      fanouts.delete(channel)
+      const listener = fanoutListeners.get(channel)
+      fanoutListeners.delete(channel)
+      if (listener) ipcRenderer.removeListener(channel, listener)
+    }
   }
 }
 
@@ -139,6 +178,14 @@ const api = {
   },
 
   files: {
+    /** Ruta real de un `File` de la página (arrastrado o elegido); `null` sin ruta (#57). */
+    pathFor: (file: File): string | null => {
+      try {
+        return webUtils.getPathForFile(file) || null
+      } catch {
+        return null
+      }
+    },
     /** El Engine valida raíz y procedencia; el host solo abre lo que aprobó. */
     openExternal: (request: OpenExternalFileRequest) => call<void>(CHANNEL.filesOpenExternal, request),
     revealInFolder: (request: OpenExternalFileRequest) => call<void>(CHANNEL.filesRevealInFolder, request),
@@ -149,9 +196,16 @@ const api = {
     writeText: (text: string) => call<void>(CHANNEL.clipboardWriteText, text),
   },
 
+  /** La imagen la resuelve el Engine; el host copia o guarda ese archivo. */
+  images: {
+    copy: (request: OpenExternalFileRequest) => call<void>(CHANNEL.imagesCopy, request),
+    save: (request: OpenExternalFileRequest) => call<{ saved: boolean }>(CHANNEL.imagesSave, request),
+  },
+
   diagnostics: {
     preview: () => call<DiagnosticsPreview>(CHANNEL.diagnosticsPreview),
     export: () => call<DiagnosticsExportResult>(CHANNEL.diagnosticsExport),
+    exportReview: (request: ReviewExportRequest) => call<DiagnosticsExportResult>(CHANNEL.diagnosticsExportReview, request),
   },
 
   app: {
@@ -159,6 +213,12 @@ const api = {
     setBackground: (patch: BackgroundPatch) => call<BackgroundSettings>(CHANNEL.appBackgroundSet, patch),
     setLanguage: (language: 'es' | 'en') => call<void>(CHANNEL.appLanguageSet, language),
     setIndicators: (state: AttentionIndicators) => call<void>(CHANNEL.appIndicatorsSet, state),
+    openFolder: (place: 'home' | 'logs' | 'instructions') => call<void>(CHANNEL.appOpenFolder, place),
+    hostSettings: () => call<HostSettings>(CHANNEL.appHostSettingsGet),
+    setHostSettings: (patch: HostSettingsPatch) => call<HostSettings>(CHANNEL.appHostSettingsSet, patch),
+    relaunch: () => call<void>(CHANNEL.appRelaunch),
+    stableReturnPreview: () => call<import('../shared/contracts').StableReturnPreview>(CHANNEL.appStableReturnPreview),
+    stableReturnApply: (name: string) => call<void>(CHANNEL.appStableReturnApply, name),
   },
 
   contextMenu: {
@@ -198,6 +258,9 @@ const api = {
     /** Clic en una notificación: solo el destino, nunca una acción. */
     onActivated: (callback: (target: NotificationTarget) => void) =>
       subscribe<NotificationTarget>(PUSH.notificationActivated, callback),
+    /** «Responder» desde la notificación (#64). */
+    onReplied: (callback: (reply: NotificationReply) => void) =>
+      subscribe<NotificationReply>(PUSH.notificationReplied, callback),
   },
 
   updates: {
@@ -265,11 +328,21 @@ const api = {
       call<{ url: string }>(CHANNEL.browserNavigate, sessionId, url),
     history: (sessionId: string, action: 'back' | 'forward' | 'reload' | 'stop') =>
       call<{ url: string }>(CHANNEL.browserHistory, sessionId, action),
+    /** Pestaña nueva del usuario, en blanco (la página de inicio) o con una dirección. */
+    newTab: (sessionId: string, url?: string) =>
+      call<{ target_id: string }>(CHANNEL.browserNewTab, sessionId, url),
+    closeTab: (sessionId: string, targetId: string) =>
+      call<{ closed: string }>(CHANNEL.browserCloseTab, sessionId, targetId),
+    /** Borra el perfil del navegador: sesiones iniciadas, cookies y caché. */
+    clearData: () => call<void>(CHANNEL.browserClearData),
     preview: (sessionId: string) =>
       call<BrowserPreviewView | null>(CHANNEL.browserPreview, sessionId),
     /** Cambios de pestañas, control o estado, empujados por main. */
     onContextChanged: (callback: (view: BrowserContextView) => void) =>
       subscribe<BrowserContextView>(PUSH.browserContextChanged, callback),
+    /** Un atajo pulsado en la página que atiende la barra (Ctrl+L). */
+    onShortcut: (callback: (event: { session_id: string; action: 'focus-address' }) => void) =>
+      subscribe<{ session_id: string; action: 'focus-address' }>(PUSH.browserShortcut, callback),
   },
 
   /**

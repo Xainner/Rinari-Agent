@@ -10,13 +10,17 @@ import { join } from 'node:path'
 
 import { Menu, Tray, app, nativeImage, type NativeImage } from 'electron'
 
+import { PRODUCT_NAME } from '../channel'
 import type { HostText } from './hostText'
 
 export interface TrayDeps {
   /** Muestra y enfoca la ventana principal (o la revela si nunca se mostró). */
   onOpen(): void
-  /** Acciones existentes del renderer, después de mostrar la ventana. */
-  onAction(action: 'settings' | 'updates' | 'report-bug'): void
+  /**
+   * Acciones existentes del renderer. Las de una pantalla muestran antes la
+   * ventana; «Marcar todo como leído» no la abre (#84).
+   */
+  onAction(action: 'settings' | 'updates' | 'report-bug' | 'mark-all-read'): void
   onQuit(): void
   /** Etiquetas en el idioma actual de la interfaz. */
   text(): HostText
@@ -37,6 +41,7 @@ export function trayMenuEntries(deps: TrayDeps): TrayEntry[] {
   }
   return [
     { label: text.trayOpen, run: deps.onOpen },
+    { label: text.trayMarkAllRead, run: () => deps.onAction('mark-all-read') },
     { label: '', separator: true },
     { label: text.menuSettings, run: action('settings') },
     { label: text.menuUpdates, run: action('updates') },
@@ -53,7 +58,7 @@ export function createTrayController(deps: TrayDeps) {
   // Indicador de atención vigente: se recuerda aunque la bandeja no exista,
   // para que aparezca al día cuando se active (o termine de cargar).
   let face: NativeImage | null = null
-  let tooltip = 'Rinari Agent'
+  let tooltip = PRODUCT_NAME
   const paint = () => {
     if (!tray) return
     tray.setImage(face ?? base ?? nativeImage.createEmpty())
@@ -110,7 +115,7 @@ export function createTrayController(deps: TrayDeps) {
     /** Marca de atención y texto; `null` vuelve a la cara de siempre. */
     setIndicator(image: NativeImage | null, text: string): void {
       face = image
-      tooltip = text || 'Rinari Agent'
+      tooltip = text || PRODUCT_NAME
       paint()
     },
 

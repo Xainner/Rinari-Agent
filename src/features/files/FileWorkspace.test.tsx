@@ -328,3 +328,45 @@ it('the context menu of a file link reveals it with its own session and turn', a
   act(() => { menu(screen.getByText('Web')) })
   expect(bridge.menus.length).toBe(before)
 })
+
+it('#67: empty links are text, sandbox paths become the file name, relative and artifact links open', async () => {
+  expect(localFileTarget('')).toBe(null)
+  expect(localFileTarget('   ')).toBe(null)
+  expect(localFileTarget('sandbox:/mnt/data/ventas.csv')).toBe('ventas.csv')
+  expect(localFileTarget('artifact://ses/media/a.png')).toBe('artifact://ses/media/a.png')
+  expect(localFileTarget('out/informe.pdf')).toBe('out/informe.pdf')
+  expect(fileUrlTransform('sandbox:/mnt/data/ventas.csv')).toBe('sandbox:/mnt/data/ventas.csv')
+  render(
+    <Files>
+      <FileTurnContext.Provider value="turn-9">
+        <FileLink href="">Vacío</FileLink>
+        <FileLink href="sandbox:/mnt/data/ventas.csv">Ventas</FileLink>
+      </FileTurnContext.Provider>
+    </Files>,
+  )
+  expect(screen.getByText('Vacío').closest('a')).toBeNull()
+  const sales = screen.getByText('Ventas').closest('a')!
+  expect(sales.getAttribute('data-file-path')).toBe('ventas.csv')
+})
+
+it('#35: a local path written as code becomes a link only when the file exists', async () => {
+  const { default: Markdown } = await import('../../components/Markdown')
+  const { looksLikeLocalPath, resetPathChecksForTests } = await import('./FileWorkspace')
+  resetPathChecksForTests()
+  expect(looksLikeLocalPath(String.raw`C:\Música\donde-esta-omar.mp3`)).toBe(true)
+  expect(looksLikeLocalPath('/home/ana/informe.pdf')).toBe(true)
+  expect(looksLikeLocalPath('npm run build')).toBe(false)
+  expect(looksLikeLocalPath('src/app.ts')).toBe(false)
+  const { platform } = await import('../../platform')
+  const real = platform().files.media
+  vi.spyOn(platform().files, 'media').mockImplementation((input) =>
+    input.path.endsWith('falta.mp3') ? Promise.reject(new Error('missing')) : real(input))
+  render(
+    <Files>
+      <Markdown>{'Listo: `C:/out/existe.mp3` y `C:/out/falta.mp3`.'}</Markdown>
+    </Files>,
+  )
+  await waitFor(() => expect(screen.getByText('C:/out/existe.mp3').closest('a')).not.toBeNull())
+  expect(screen.getByText('C:/out/existe.mp3').closest('a')!.getAttribute('data-file-path')).toBe('C:/out/existe.mp3')
+  expect(screen.getByText('C:/out/falta.mp3').closest('a')).toBeNull()
+})

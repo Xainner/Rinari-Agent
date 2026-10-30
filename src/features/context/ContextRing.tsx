@@ -1,9 +1,10 @@
+import { showUsageReport } from '../usage/usageReport'
+import { toast } from 'sonner'
 import { useEffect, useState } from 'react'
 import { useI18n } from '../../i18n'
-import { engineApi, onEngineEvent } from '../../services/engine'
+import { commandMessage, engineApi, onEngineEvent } from '../../services/engine'
 import type { ContextStatus, ProviderUsageSnapshot } from '../../types/protocol.generated'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
-import { useSessionDockStore } from '../../stores/sessionDock'
 import { lastCompaction, lastRequest } from './contextStatus'
 
 /** Events after which the session's context may have grown or shrunk. */
@@ -55,6 +56,31 @@ export function ringFigures(status: ContextStatus | null | undefined): RingFigur
  * provider's own limits when it reports them, and a way to the full detail.
  * A figure nobody measured is never shown as zero.
  */
+/** A window whose reset time already passed: its old percentage is not true anymore. */
+export function windowReset(resetsAt: string | null | undefined, now = Date.now()): boolean {
+  if (!resetsAt) return false
+  const at = Date.parse(resetsAt)
+  return Number.isFinite(at) && at <= now
+}
+
+/**
+ * When to read the limits again: a few seconds after the next reset, or soon
+ * when one already passed and the snapshot still shows it (#27).
+ */
+export function nextResetDelay(windows: readonly { resets_at?: string | null }[], now: number): number | null {
+  let next: number | null = null
+  for (const item of windows) {
+    if (!item.resets_at) continue
+    const at = Date.parse(item.resets_at)
+    if (!Number.isFinite(at)) continue
+    // A reset long past that the provider still reports would only loop.
+    if (at <= now && now - at > 120_000) continue
+    const delay = at <= now ? 3_000 : at - now + 5_000
+    next = next === null ? delay : Math.min(next, delay)
+  }
+  return next === null ? null : Math.min(next, 2 ** 31 - 1)
+}
+
 export default function ContextRing({ sessionId, modelId, providerAlias }: { sessionId?: string | null; modelId?: string | null; providerAlias?: string | null }) {
   const { t, lang } = useI18n()
   const [status, setStatus] = useState<ContextStatus | null>(null)
@@ -84,13 +110,22 @@ export default function ContextRing({ sessionId, modelId, providerAlias }: { ses
     return () => { alive = false; window.clearTimeout(timer); stop?.() }
   }, [sessionId, modelId])
 
-  // The provider's limits are read only when the panel opens: no polling.
+  // The provider's limits are read when the panel opens, and again when a
+  // window it shows resets while it stays open (plan 0.4.0 #27): no polling.
+  const [reload, setReload] = useState(0)
   useEffect(() => {
     if (!open || !providerAlias || !engineApi.providerUsage) return
     let alive = true
     void engineApi.providerUsage(providerAlias).then((next) => { if (alive) setUsage(next) }).catch(() => { if (alive) setUsage(null) })
     return () => { alive = false }
-  }, [open, providerAlias])
+  }, [open, providerAlias, reload])
+  useEffect(() => {
+    if (!open || !usage) return
+    const delay = nextResetDelay(usage.windows, Date.now())
+    if (delay === null) return
+    const timer = window.setTimeout(() => setReload((value) => value + 1), delay)
+    return () => window.clearTimeout(timer)
+  }, [open, usage])
 
   const figures = ringFigures(status)
   if (!figures) return null
@@ -153,15 +188,19 @@ export default function ContextRing({ sessionId, modelId, providerAlias }: { ses
             return <div key={window.id}>
               <div className="mb-1 flex justify-between gap-2 text-[11.5px] text-[var(--text-muted)]">
                 <span>{window.id === 'rolling' ? t('providers.windowRolling') : window.id === 'weekly' ? t('providers.windowWeekly') : window.id === 'monthly' ? t('providers.windowMonthly') : window.label}</span>
-                <span className="tabular-nums">{used === null ? '—' : t('context.usedPercent', { n: Math.round(used) })}{window.resets_at ? ` · ${t('context.resets', { date: when(window.resets_at) })}` : ''}</span>
+                <span className="tabular-nums">{windowReset(window.resets_at) ? t('context.resetDone') : <>{used === null ? '—' : t('context.usedPercent', { n: Math.round(used) })}{window.resets_at ? ` · ${t('context.resets', { date: when(window.resets_at) })}` : ''}</>}</span>
               </div>
-              {used !== null && <div className="context-limit"><i style={{ width: `${Math.min(100, Math.max(0, used))}%` }} data-high={used >= 85 || undefined} /></div>}
+              {used !== null && !windowReset(window.resets_at) && <div className="context-limit"><i style={{ width: `${Math.min(100, Math.max(0, used))}%` }} data-high={used >= 85 || undefined} /></div>}
             </div>
           })}
           {balances.map((balance, index) => <p key={index} className="flex justify-between text-[11.5px] text-[var(--text-muted)]"><span>{balance.label}</span><span className="font-mono">{balance.unlimited ? t('providers.keyUnlimited') : `${balance.remaining ?? '—'} ${balance.currency}`}</span></p>)}
         </div>}
         <div className="mt-4 flex flex-wrap gap-2">
-          {sessionId && <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setOpen(false); useSessionDockStore.getState().reveal(sessionId, 'workspace', { workspaceTab: 'insight' }) }}>{t('context.details')}</button>}
+          {/* «Detalles» pinta el informe de uso en el chat (#78). */}
+          {sessionId && <button type="button" className="btn btn-secondary btn-sm" onClick={() => {
+            setOpen(false)
+            void showUsageReport(sessionId).catch((err) => toast.error(commandMessage(err)))
+          }}>{t('context.details')}</button>}
           {sessionId && <button type="button" className="btn btn-quiet btn-sm" disabled={compacting} onClick={() => void compactNow()}>{t('context.compactNow')}</button>}
         </div>
       </PopoverContent>

@@ -6,14 +6,22 @@
  * herramientas y proveedores siguen siendo del Engine Python.
  */
 
-import { app, protocol, BrowserWindow, Menu, clipboard, crashReporter, dialog, shell } from 'electron'
-import { readFile, writeFile } from 'node:fs/promises'
-import { release as osRelease } from 'node:os'
+import { app, protocol, BrowserWindow, ClipboardItem, Menu, clipboard, crashReporter, dialog, nativeImage, shell } from 'electron'
+import { spawn } from 'node:child_process'
+import { statSync } from 'node:fs'
+import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { homedir, release as osRelease } from 'node:os'
 import { join } from 'node:path'
 
 import { APP_ORIGIN, APP_SCHEME, contentTypeFor, resolveAppUrl } from './appScheme'
-import { BrowserRegistry } from './browser/BrowserRegistry'
+import { APP_USER_MODEL_ID, IS_NIGHTLY, NIGHTLY_USER_DATA_DIR, PRODUCT_NAME } from './channel'
+import { listBackups, pickBackup, restoreBackup, stableExecutable } from './native/backToStable'
+import { OTHER_EXECUTABLE, isImageRunning } from './otherChannel'
+import { BrowserRegistry, type ContextEntry } from './browser/BrowserRegistry'
 import { isHostChannelEvent, isNavigableUrl } from './browser/operations'
+import { loadPage } from './browser/loadPage'
+import { withTargetStates } from './browser/tabs'
+import { browserShortcut, type BrowserShortcut } from '../shared/browserShortcuts'
 import { ViewLayoutCoordinator } from './browser/ViewLayoutCoordinator'
 import { ENGINE_BROKER_CAPABILITY, NativeBrowserHost } from './browser/NativeBrowserHost'
 import { bundleFileName, createDiagnostics, logsDirFor } from './diagnostics'
@@ -27,6 +35,7 @@ import { defaultMigrationDirectory, MigrationService } from './migration/Migrati
 import { createBackground, HIDDEN_START_ARG, type Background } from './native/background'
 import { HandoffQueue, openRequestFromData, parseOpenRequest } from './native/handoff'
 import { runRequestedUpdate, updateRequestFromData, wantsUpdate } from './updates/cliRequest'
+import { markAllReadFromData, markAllReadTask, wantsMarkAllRead } from './native/jumpList'
 import { buildApplicationMenu } from './native/menu'
 import { createNotifications } from './native/notifications'
 import { createMediaRegistry, mediaToken, serveMedia } from './native/mediaFiles'
@@ -34,9 +43,20 @@ import { createContextMenu, createDialogs, createOpener } from './native/service
 import { createTrayController } from './native/tray'
 import { createIndicators, indicatorsDir } from './native/indicators'
 import { hostLanguageFromLocale, hostText, type HostText } from './native/hostText'
+import { createImages } from './native/images'
 import { createUpdates } from './updates/createUpdates'
 import { clampToWorkArea, createMainWindow, presentWindow } from './window'
-import { PUSH, type EngineStatus, type OpenRequest } from '../shared/contracts'
+import { installSpellMenu } from './native/spellMenu'
+import { buildReviewZip } from './diagnostics/reviewExport'
+import {
+  activeEnvironment,
+  applyHostSettingsPatch,
+  detailedLogsActive,
+  handshakeLimitMs,
+  loadHostSettings,
+  saveHostSettings,
+} from './native/hostSettings'
+import { PUSH, type EngineStatus, type HostSettings, type OpenRequest } from '../shared/contracts'
 
 const DEV_SERVER = process.env.RINARI_DEV_SERVER_URL
 const isDev = Boolean(DEV_SERVER)
@@ -55,6 +75,13 @@ if (app.isPackaged) {
 }
 const updateE2EProfile = UPDATE_E2E_ENABLED ? process.env.RINARI_UPDATE_E2E_PROFILE : undefined
 if (updateE2EProfile) app.setPath('userData', updateE2EProfile)
+// La Nightly guarda sus datos de la app (ventana, registros, ajustes de
+// escritorio, candado de instancia única) aparte de la normal, antes de que
+// nada los lea. `~/.rinari` sigue siendo el mismo.
+else if (IS_NIGHTLY) {
+  app.setName(PRODUCT_NAME)
+  app.setPath('userData', join(app.getPath('appData'), NIGHTLY_USER_DATA_DIR))
+}
 
 // Registros persistentes y volcados de fallo, solo en este equipo: «Exportar
 // diagnóstico» los empaqueta si la persona lo pide. Nada se sube.
@@ -70,9 +97,42 @@ const diagnostics = createDiagnostics({
     diagnostics: () => engine.request('engine.diagnostics', {}),
   },
   extraLogFiles: [join(logsDirFor(app.getPath('userData')), 'updater.log')],
+  // `hostSettings` se carga justo después; hasta entonces, normal.
+  detailed: () => detailedLogsActive(hostSettings),
 })
 diagnostics.captureConsole()
 diagnostics.watchProcess()
+
+// Lo que main necesita antes de la ventana (#70, #91, #96). La aceleración por
+// hardware solo se puede apagar antes de `ready`: cambiarla pide reiniciar.
+const hostSettingsPath = join(app.getPath('userData'), 'host-settings.json')
+let hostSettings = loadHostSettings(hostSettingsPath)
+const hardwareAccelerationAtStart = hostSettings.hardwareAcceleration
+if (!hardwareAccelerationAtStart) app.disableHardwareAcceleration()
+
+function persistHostSettings(): void {
+  try {
+    saveHostSettings(hostSettingsPath, hostSettings)
+  } catch (error) {
+    console.error('[rinari] no se pudieron guardar los ajustes del host:', error)
+  }
+}
+
+/**
+ * Línea de tiempos del arranque (#91.6), en ms desde que abrió el proceso.
+ * Se escribe en `app.log` cuando el Engine saluda y se ve en Avanzado.
+ */
+const startupTimeline: Array<{ step: string; ms: number }> = []
+let startupLogged = false
+function markStartup(step: string): void {
+  if (startupTimeline.some((entry) => entry.step === step)) return
+  startupTimeline.push({ step, ms: Math.round(performance.now()) })
+  if (step === 'engine-hello' && !startupLogged) {
+    startupLogged = true
+    diagnostics.log('info', `startup ${startupTimeline.map((entry) => `${entry.step} ${entry.ms}ms`).join(' · ')}`)
+  }
+}
+markStartup('process')
 
 /** Raíz del renderer construido: en los recursos si está empaquetado. */
 function rendererRoot(): string {
@@ -84,7 +144,7 @@ function rendererRoot(): string {
 // `Electron.lnk` para el `electron.exe` con la identidad que reciba, y si fuese
 // la de la app instalada, la barra mostraría el icono de Electron para ambas.
 if (process.platform === 'win32') {
-  app.setAppUserModelId(app.isPackaged ? 'com.rinari.agent' : 'com.rinari.agent.dev')
+  app.setAppUserModelId(app.isPackaged ? APP_USER_MODEL_ID : 'com.rinari.agent.dev')
 }
 
 // El esquema propio debe declararse antes de que la app esté lista.
@@ -115,6 +175,16 @@ function showMainWindow(): void {
  */
 function currentHostText(): HostText {
   return hostText(background?.language ?? hostLanguageFromLocale(app.getLocale()))
+}
+
+/** Tarea de la barra de tareas (#84); solo instalada, en Windows. */
+function installJumpList(): void {
+  if (process.platform !== 'win32' || !app.isPackaged) return
+  try {
+    app.setUserTasks([markAllReadTask(process.execPath, currentHostText())])
+  } catch (error) {
+    console.warn('[rinari] jump list:', error)
+  }
 }
 
 /** Menú de aplicación; se rehace cuando la interfaz cambia de idioma. */
@@ -177,6 +247,15 @@ let layoutCoordinator: ViewLayoutCoordinator | null = null
 const engineEventTaps = new Set<(event: Record<string, unknown>) => void>()
 
 const engine = new EngineSupervisor({
+  // El plazo del saludo se adapta a lo que tardó la última vez (#70).
+  handshakeTimeoutMs: () => handshakeLimitMs(hostSettings),
+  // Registros detallados: el Engine también escribe sus avisos de detalle.
+  engineEnv: (): Record<string, string> => (detailedLogsActive(hostSettings) ? { RINARI_LOG_LEVEL: 'DEBUG' } : {}),
+  onStarted: (ms) => {
+    markStartup('engine-hello')
+    hostSettings = { ...hostSettings, lastStartupMs: ms }
+    persistHostSettings()
+  },
   onEvent: (event) => {
     // El canal privado del broker se descarta **antes** de mirar si hay host.
     // El §5.4 prohíbe entregar esas solicitudes a `runtimeStore`/React, y eso
@@ -194,6 +273,9 @@ const engine = new EngineSupervisor({
       const state = frame.payload.control_state
       if (typeof sessionId === 'string' && typeof state === 'string') {
         browserHost?.applyControl(sessionId, state)
+        // La barra del navegador relee quién manda y si Rinari espera a que
+        // termines (#46): el cambio lo decidió el Engine, no un botón.
+        publishBrowserContext(sessionId)
       }
     }
     for (const tap of engineEventTaps) tap(event as unknown as Record<string, unknown>)
@@ -230,6 +312,7 @@ const engine = new EngineSupervisor({
 
 const notifications = createNotifications({
   onActivate: (target) => send(PUSH.notificationActivated, target),
+  onReply: (reply) => send(PUSH.notificationReplied, reply),
   focusWindow: () => {
     if (mainWindow && !mainWindow.isDestroyed()) presentWindow(mainWindow)
   },
@@ -304,10 +387,55 @@ function registerAppScheme(root: string | null): void {
 function publishBrowserContext(sessionId: string): void {
   void engine
     .request('browser.context.get', { session_id: sessionId })
-    .then((view) => send(PUSH.browserContextChanged, view))
+    .then((view) => send(PUSH.browserContextChanged, withHostState(sessionId, view)))
     .catch(() => {
       // Un Engine que aún no responde no puede tumbar la UI.
     })
+}
+
+/** El contexto del Engine con lo que solo sabe el host: carga e historial de cada pestaña. */
+function withHostState(sessionId: string, view: unknown): unknown {
+  const context = browserRegistry?.contextForSession(sessionId)
+  return context ? withTargetStates(view, browserRegistry!.targetStates(context)) : view
+}
+
+/** Las intenciones del navegador, para que los atajos de la página usen las mismas. */
+let browserIntents: HostServices['browser'] | null = null
+
+/**
+ * Un atajo pulsado con el foco en la página (la barra no ve esas teclas).
+ * Hace lo mismo que el botón de la barra, con el mismo arbitraje: tomar el
+ * navegador antes de cambiar la pestaña activa o navegar.
+ */
+async function runBrowserShortcut(context: ContextEntry, action: BrowserShortcut): Promise<void> {
+  const intents = browserIntents
+  if (!intents) return
+  const sessionId = context.sessionId
+  const active = context.activeTargetId
+  switch (action) {
+    case 'new-tab':
+      await intents.newTab(sessionId, undefined)
+      return
+    case 'close-tab':
+      if (active) await intents.closeTab(sessionId, active)
+      return
+    case 'next-tab':
+    case 'previous-tab': {
+      if (!active || context.order.length < 2) return
+      const index = context.order.indexOf(active)
+      const step = action === 'next-tab' ? 1 : -1
+      await intents.selectTarget(sessionId, context.order[(index + step + context.order.length) % context.order.length])
+      return
+    }
+    case 'reload':
+    case 'back':
+    case 'forward':
+      await intents.history(sessionId, action)
+      return
+    case 'focus-address':
+      mainWindow?.webContents.focus()
+      send(PUSH.browserShortcut, { session_id: sessionId, action })
+  }
 }
 
 /**
@@ -356,12 +484,23 @@ function browserServices(): HostServices['browser'] {
    * lado que se puede modificar. El estado que se mira es el que el Engine
    * confirmó, que es el mismo que hace cumplir el arbitraje del otro lado.
    */
-  const requireUserControl = (context: { control: string }, what: string) => {
+  // Usar la barra del navegador es tomarlo (plan 0.4.0 #46): ya no hay un
+  // botón «Tomar control» antes. Se pide al Engine y se espera a que lo
+  // confirme —termina lo que el agente tuviera en vuelo—; solo entonces se
+  // toca la página.
+  const takeUserControl = async (context: { control: string; sessionId: string }, what: string) => {
     if (context.control === 'user') return
-    throw Object.assign(
-      new Error(`${what} needs manual control of this browser; take control first`),
-      { code: 'BROWSER_CONTROL_REQUIRED' },
-    )
+    if (!browserHost) throw new Error('the browser host is not ready')
+    await browserHost.setControl(context.sessionId, 'user')
+    const deadline = Date.now() + 12_000
+    while (context.control !== 'user') {
+      if (Date.now() > deadline) {
+        throw Object.assign(new Error(`${what} has to wait: Rinari is finishing a step on this page`), {
+          code: 'BROWSER_CONTROL_REQUIRED',
+        })
+      }
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
   }
 
   const requireContext = (sessionId: string) => {
@@ -372,31 +511,34 @@ function browserServices(): HostServices['browser'] {
     return context
   }
 
+  // Creación explícita. La vista nace en blanco; la primera navegación la
+  // pide el usuario o una herramienta.
+  const prepareContext = async (sessionId: string) => {
+    const view = await engine.request('browser.context.prepare', { session_id: sessionId })
+    const context = browserRegistry?.ensureContext(sessionId)
+    if (!context) return view
+    // Preparar no le pide nada al host, así que el id del Engine sólo se
+    // conocía con la primera operación del agente. Sin él la lista de
+    // pestañas no llega al Engine y el panel se quedaba en «Preparando el
+    // navegador…» sin dejar escribir una dirección.
+    browserHost?.adoptEngineContext(context, (view as { context_id?: unknown }).context_id)
+    if (context.order.length === 0) {
+      const target = browserRegistry!.createTarget(context)
+      await target.view.webContents.loadURL('about:blank')
+      await browserRegistry!.attach(target)
+    }
+    // La vista de arriba se leyó sin pestañas: se devuelve la de después de
+    // que el Engine las tenga.
+    await browserHost?.publishTargets(context.contextId)
+    return await engine.request('browser.context.get', { session_id: sessionId })
+  }
+
   return {
     // Consulta sin efectos: mirar el estado desde la UI no abre un navegador.
-    context: (sessionId) => engine.request('browser.context.get', { session_id: sessionId }),
+    context: async (sessionId) =>
+      withHostState(sessionId, await engine.request('browser.context.get', { session_id: sessionId })),
 
-    // Creación explícita. La vista nace en blanco; la primera navegación la
-    // pide el usuario o una herramienta.
-    prepare: async (sessionId) => {
-      const view = await engine.request('browser.context.prepare', { session_id: sessionId })
-      const context = browserRegistry?.ensureContext(sessionId)
-      if (!context) return view
-      // Preparar no le pide nada al host, así que el id del Engine sólo se
-      // conocía con la primera operación del agente. Sin él la lista de
-      // pestañas no llega al Engine y el panel se quedaba en «Preparando el
-      // navegador…» sin dejar escribir una dirección.
-      browserHost?.adoptEngineContext(context, (view as { context_id?: unknown }).context_id)
-      if (context.order.length === 0) {
-        const target = browserRegistry!.createTarget(context)
-        await target.view.webContents.loadURL('about:blank')
-        await browserRegistry!.attach(target)
-      }
-      // La vista de arriba se leyó sin pestañas: se devuelve la de después de
-      // que el Engine las tenga.
-      await browserHost?.publishTargets(context.contextId)
-      return await engine.request('browser.context.get', { session_id: sessionId })
-    },
+    prepare: async (sessionId) => withHostState(sessionId, await prepareContext(sessionId)),
 
     attachSlot: async (sessionId) => {
       if (!layoutCoordinator) throw new Error('the window is not ready')
@@ -413,6 +555,7 @@ function browserServices(): HostServices['browser'] {
         layoutRevision: request.layout_revision,
         overlayDepth: request.overlay_depth,
         occlusions: request.occlusions,
+        cornerRadius: request.corner_radius,
       })
       // Una geometría rechazada —atrasada, fuera de la ventana, imposible— se
       // descarta en silencio: es una actualización perdida, no un error que
@@ -442,7 +585,7 @@ function browserServices(): HostServices['browser'] {
       // `target_id` va a la **activa**: cambiarla mientras manda el agente le
       // redirige la siguiente herramienta a otra página sin que nadie lo
       // arbitre. Eso es una mutación concurrente aunque no lo parezca.
-      requireUserControl(context, 'switching tabs')
+      await takeUserControl(context, 'switching tabs')
       if (!browserRegistry!.setActiveTarget(context, targetId)) {
         throw Object.assign(new Error('no such page in this context'), { code: 'NOT_FOUND' })
       }
@@ -465,10 +608,14 @@ function browserServices(): HostServices['browser'] {
           code: 'INVALID_ARGUMENT',
         })
       }
+      // Desde la página de inicio (una dirección o un reciente) puede no haber
+      // contexto todavía: navegar lo prepara primero, en vez de fallar con
+      // «this session has no browser context» (plan 0.4.0 #99.2).
+      if (!browserRegistry?.contextForSession(sessionId)) await prepareContext(sessionId)
       const context = requireContext(sessionId)
       // Navegar la página que el agente está usando es la mutación más grande
       // que hay: se lleva por delante el DOM entero. Requiere el control.
-      requireUserControl(context, 'navigating')
+      await takeUserControl(context, 'navigating')
       // Un contexto recién preparado no tiene página (nace en blanco hasta
       // la primera navegación): escribir una dirección la crea.
       let entry = browserRegistry!.target(context.contextId, null)
@@ -477,7 +624,7 @@ function browserServices(): HostServices['browser'] {
         await entry.view.webContents.loadURL('about:blank')
       }
       await browserRegistry!.attach(entry)
-      await entry.view.webContents.loadURL(url)
+      await loadPage(entry.view.webContents, url)
       await browserHost?.publishTargets(context.contextId)
       publishBrowserContext(sessionId)
       return { url }
@@ -487,7 +634,7 @@ function browserServices(): HostServices['browser'] {
     // usuario sobre la pestaña visible y requieren que tenga el control.
     history: async (sessionId, action) => {
       const context = requireContext(sessionId)
-      requireUserControl(context, 'navigating')
+      await takeUserControl(context, 'navigating')
       const entry = browserRegistry!.target(context.contextId, null)
       if (!entry) return { url: '' }
       const contents = entry.view.webContents
@@ -499,6 +646,54 @@ function browserServices(): HostServices['browser'] {
       await browserHost?.publishTargets(context.contextId)
       publishBrowserContext(sessionId)
       return { url: contents.getURL() }
+    },
+
+    // Pestaña nueva del usuario (botón «+» o Ctrl+T). En blanco enseña la
+    // página de inicio. Cambia la pestaña activa, que es a la que va una
+    // operación del agente sin `target_id`: como elegir pestaña, requiere el
+    // control.
+    newTab: async (sessionId, url) => {
+      const fresh = !browserRegistry?.contextForSession(sessionId)
+      // Sin navegador todavía, prepararlo ya deja su primera pestaña en blanco.
+      if (fresh) await prepareContext(sessionId)
+      const context = requireContext(sessionId)
+      await takeUserControl(context, 'opening a tab')
+      let entry = fresh ? browserRegistry!.target(context.contextId, null) : undefined
+      if (!entry) {
+        entry = browserRegistry!.createTarget(context)
+        await entry.view.webContents.loadURL('about:blank')
+      }
+      try {
+        if (url) {
+          await browserRegistry!.attach(entry)
+          await loadPage(entry.view.webContents, url)
+        }
+      } finally {
+        // La pestaña existe aunque la carga falle.
+        await browserHost?.publishTargets(context.contextId)
+        publishBrowserContext(sessionId)
+      }
+      return { target_id: entry.targetId }
+    },
+
+    // Cerrar una pestaña (su «×» o Ctrl+W). La última también: entonces se ve
+    // la página de inicio, y escribir una dirección abre otra.
+    closeTab: async (sessionId, targetId) => {
+      const context = requireContext(sessionId)
+      await takeUserControl(context, 'closing a tab')
+      if (!browserRegistry!.closeTarget(context, targetId)) {
+        throw Object.assign(new Error('no such page in this context'), { code: 'NOT_FOUND' })
+      }
+      await browserHost?.publishTargets(context.contextId)
+      publishBrowserContext(sessionId)
+      return { closed: targetId }
+    },
+
+    // «Borrar datos del navegador»: el perfil es uno para todas las
+    // conversaciones, así que se borra entero.
+    clearData: async () => {
+      if (!browserRegistry) throw new Error('the browser host is not ready')
+      await browserRegistry.clearProfile()
     },
     preview: (sessionId) => browserHost?.preview(sessionId) ?? Promise.resolve(null),
     diagnostics: () => ({ layoutSlots: layoutCoordinator?.size ?? 0 }),
@@ -513,7 +708,7 @@ function requireBackground(): Background {
 function buildServices(): HostServices {
   const getWindow = () => mainWindow
   return {
-    browser: browserServices(),
+    browser: (browserIntents = browserServices()),
     flow: flowServices(),
     engine: {
       status: () => engine.status(),
@@ -524,9 +719,12 @@ function buildServices(): HostServices {
       // del protocolo y con otras claves. Sin traducir, ninguna llamada de
       // dominio llegaría a su destino.
       request: async (name, params) => {
+        const started = performance.now()
         try {
           const call = translateCommand(name, params ?? {})
-          return await engine.request(call.method, call.params)
+          const result = await engine.request(call.method, call.params)
+          diagnostics.commandDone(name, performance.now() - started)
+          return result
         } catch (error) {
           diagnostics.commandFailed(name, error instanceof EngineCommandError ? error.code : 'HOST_ERROR')
           throw error
@@ -585,6 +783,19 @@ function buildServices(): HostServices {
     clipboard: {
       writeText: (text) => clipboard.writeText(text),
     },
+    images: createImages({
+      resolve: resolveWorkspaceFile,
+      imageFromPath: (path) => nativeImage.createFromPath(path),
+      writePng: (png) => clipboard.write([new ClipboardItem({ 'image/png': new Blob([png], { type: 'image/png' }) })]),
+      showSaveDialog: (options) => {
+        const window = getWindow()
+        return window ? dialog.showSaveDialog(window, options) : dialog.showSaveDialog(options)
+      },
+      copyFile: (from, to) => copyFile(from, to),
+      downloadsDir: () => app.getPath('downloads'),
+      saveTitle: () => currentHostText().imageSaveTitle,
+      join,
+    }),
     diagnostics: {
       preview: () => diagnostics.preview(),
       /** La persona elige dónde guardarlo; después se muestra en su carpeta. */
@@ -601,6 +812,23 @@ function buildServices(): HostServices {
         shell.showItemInFolder(choice.filePath)
         return { saved: true }
       },
+      /** «Exportar para revisión» (#79): la parte del Engine y los registros de esas horas. */
+      async exportReview(request) {
+        const window = getWindow()
+        const options = {
+          title: currentHostText().diagnosticsSaveTitle,
+          defaultPath: join(app.getPath('downloads'), request.suggestedName),
+          filters: [{ name: 'ZIP', extensions: ['zip'] }],
+        }
+        const choice = window ? await dialog.showSaveDialog(window, options) : await dialog.showSaveDialog(options)
+        if (choice.canceled || !choice.filePath) return { saved: false }
+        await diagnostics.app.flush()
+        await diagnostics.engine.flush()
+        const logs = [...diagnostics.app.files(), ...diagnostics.engine.files()]
+        await writeFile(choice.filePath, await buildReviewZip(request, logs))
+        shell.showItemInFolder(choice.filePath)
+        return { saved: true }
+      },
     },
     app: {
       background: () => requireBackground().settings(),
@@ -610,10 +838,64 @@ function buildServices(): HostServices {
         if (requireBackground().setLanguage(language)) {
           installApplicationMenu()
           tray.refresh()
+          installJumpList()
         }
       },
       setIndicators: (state) => {
         indicators.apply(state)
+      },
+      openFolder: async (place) => {
+        // Solo lugares conocidos: la carpeta de Rinari, los registros de la
+        // app o el RINARI.md global (que se crea vacío si no existe).
+        const home = rinariHome()
+        if (place === 'logs') {
+          const failure = await shell.openPath(logsDirFor(app.getPath('userData')))
+          if (failure) throw new Error(failure)
+          return
+        }
+        if (place === 'instructions') {
+          const file = join(home, 'RINARI.md')
+          await mkdir(home, { recursive: true })
+          await writeFile(file, '', { flag: 'a' })
+          const failure = await shell.openPath(file)
+          if (failure) throw new Error(failure)
+          return
+        }
+        const failure = await shell.openPath(home)
+        if (failure) throw new Error(failure)
+      },
+      hostSettings: () => currentHostSettings(),
+      setHostSettings: (patch) => {
+        hostSettings = applyHostSettingsPatch(hostSettings, patch)
+        persistHostSettings()
+        diagnostics.log('info', `host settings changed: ${Object.keys(patch).join(', ')}`)
+        return currentHostSettings()
+      },
+      relaunch: async () => {
+        app.relaunch()
+        await quitCoordinator.requestQuit('menu')
+      },
+      stableReturnPreview: async () => {
+        if (!IS_NIGHTLY) return { available: false, backup: null, stableInstalled: false }
+        const backup = pickBackup(listBackups(rinariHome()), statSync(app.getPath('userData')).birthtime)
+        return {
+          available: true,
+          backup: backup && { name: backup.name, createdAt: backup.createdAt.toISOString(), from: backup.from, to: backup.to },
+          stableInstalled: stableExecutable() !== null,
+        }
+      },
+      stableReturnApply: async (name) => {
+        if (!IS_NIGHTLY) throw new Error('Only the Nightly can go back to the normal version')
+        const backup = listBackups(rinariHome()).find((item) => item.name === name)
+        if (!backup) throw new Error(`Backup not found: ${name}`)
+        // La base no se toca con el Engine abierto.
+        await engine.shutdown()
+        const kept = await restoreBackup(rinariHome(), backup)
+        diagnostics.log('warn', `back to the normal version: restored ${backup.name}; the Nightly state is kept in ${kept}`)
+        const stable = stableExecutable()
+        if (stable) spawn(stable, [], { detached: true, stdio: 'ignore', windowsHide: false }).unref()
+        else await shell.openExternal('https://github.com/Xainner/Rinari-Agent/releases/latest')
+        await quitCoordinator.requestQuit('menu')
       },
     },
     contextMenu: createContextMenu(getWindow, (id) => send(PUSH.contextMenuAction, id)),
@@ -622,6 +904,11 @@ function buildServices(): HostServices {
     migration,
     handoff: { initial: () => parseOpenRequest(process.argv, app.isPackaged ? 1 : 2) },
   }
+}
+
+/** La carpeta de Rinari que usa el Engine (`~/.rinari`, o `RINARI_HOME`). */
+function rinariHome(): string {
+  return process.env.RINARI_HOME?.trim() || join(homedir(), '.rinari')
 }
 
 /**
@@ -634,6 +921,43 @@ function buildServices(): HostServices {
  * Engine. Antes había dos rutas y la de `before-quit` cerraba el Engine antes
  * del diálogo.
  */
+/**
+ * Al salir del todo se detiene lo que el modelo dejó corriendo (#90),
+ * salvo lo que pidió mantener (`persist`): eso se pregunta, una vez, con la
+ * lista. Sin Engine o si la consulta falla, se sale sin preguntar.
+ */
+async function askAboutPersistentProcesses(): Promise<void> {
+  if (engine.status().state !== 'ready') return
+  let processes: Array<{ name?: string | null; command?: string; port?: number | null }> = []
+  try {
+    const result = (await engine.request('process.persistent.list', {}, 3_000)) as { processes?: typeof processes } | null
+    processes = Array.isArray(result?.processes) ? result.processes : []
+  } catch {
+    return
+  }
+  if (processes.length === 0) return
+  const text = currentHostText()
+  const list = processes
+    .map((item) => `• ${item.name || item.command || '?'}${typeof item.port === 'number' ? ` · :${item.port}` : ''}`)
+    .join('\n')
+  const target = mainWindow && !mainWindow.isDestroyed() ? mainWindow : null
+  const options = {
+    type: 'question' as const,
+    buttons: [text.keepRunningKeep, text.keepRunningStop],
+    defaultId: 0,
+    cancelId: 0,
+    message: text.keepRunningQuestion,
+    detail: text.keepRunningDetail.replace('{list}', list),
+  }
+  const { response } = target ? await dialog.showMessageBox(target, options) : await dialog.showMessageBox(options)
+  if (response !== 1) return
+  try {
+    await engine.request('process.persistent.stop', {}, 10_000)
+  } catch (error) {
+    console.error('[rinari] no se pudieron detener los procesos persistentes:', error)
+  }
+}
+
 const quitCoordinator = new QuitCoordinator({
   shouldConfirm: (reason) => confirmsQuit(reason, engine.status().state === 'ready'),
   async confirm() {
@@ -652,8 +976,16 @@ const quitCoordinator = new QuitCoordinator({
       : await dialog.showMessageBox(options)
     return response === 0
   },
-  shutdown: () => engine.shutdown().then(() => undefined),
+  async shutdown() {
+    await askAboutPersistentProcesses()
+    await engine.shutdown()
+  },
   commit(reason) {
+    // La ventana se va antes que los canales: viva, seguía pidiendo, y cada
+    // pedido sin canal quedaba como ERROR en app.log (#91).
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed()) window.destroy()
+    }
     unregisterIpc?.()
     unregisterIpc = null
     if (reason !== 'update') {
@@ -682,6 +1014,24 @@ const updates = createUpdates({
   onState: (state) => send(PUSH.updateState, state),
   text: currentHostText,
 })
+
+/** Lo que ve Avanzado → Motor y Diagnóstico (#70, #91, #96). */
+function currentHostSettings(): HostSettings {
+  const detailed = detailedLogsActive(hostSettings)
+  return {
+    startupLimit: hostSettings.startupLimit,
+    startupLimitS: Math.round(handshakeLimitMs(hostSettings) / 1000),
+    lastStartupMs: hostSettings.lastStartupMs,
+    startupTimeline: [...startupTimeline],
+    hardwareAcceleration: hostSettings.hardwareAcceleration,
+    restartRequired: hostSettings.hardwareAcceleration !== hardwareAccelerationAtStart,
+    detailedLogs: detailed,
+    detailedLogsUntil: detailed && hostSettings.detailedLogsUntil ? new Date(hostSettings.detailedLogsUntil).toISOString() : null,
+    environment: activeEnvironment(process.env),
+    channel: IS_NIGHTLY ? 'nightly' : 'stable',
+    packaged: app.isPackaged,
+  }
+}
 
 /** Ensayo instalado y sin UI del canal local 0.2.0 → 0.2.1. */
 async function runUpdateE2E(resultPath: string): Promise<void> {
@@ -744,11 +1094,16 @@ function openWindow(): void {
       void quitCoordinator.requestQuit('window-close')
     },
     isQuitCommitted: () => quitCoordinator.isCommitted(),
+    onRevealed: () => markStartup('window'),
     // Solo la primera ventana: el sistema la abrió al iniciar sesión.
     startHidden: !mainWindow && (background?.startsHidden(process.argv) ?? false),
   })
 
   registry.trust(mainWindow.webContents.id)
+  const spellWindow = mainWindow
+  installSpellMenu(spellWindow, currentHostText, (template) => {
+    Menu.buildFromTemplate(template).popup({ window: spellWindow })
+  })
   handoff.open((request: OpenRequest) => send(PUSH.openRequest, request))
   // Ventana nueva: el overlay vive en su botón de la barra; se repone lo último.
   mainWindow.once('ready-to-show', () => indicators.reapply())
@@ -766,6 +1121,22 @@ function openWindow(): void {
     window: mainWindow,
     onEvent: (event) =>
       browserHost?.notify(event.kind, event.contextId, event.targetId, event.detail),
+    onInput: (context, entry, kind) => browserHost?.ownerInput(context, entry, kind),
+    // Una carga, un título o un enlace de la propia página: la barra y el
+    // Engine se enteran sin que nadie lo pida.
+    onTargetsChanged: (context) => void browserHost?.publishTargets(context.contextId),
+    onShortcut: (context, _entry, input) => {
+      const action = browserShortcut(input, process.platform === 'darwin')
+      // Las teclas que despacha el agente pasan por el mismo sitio: un Ctrl+W
+      // suyo es una tecla para la página, no cerrar la pestaña.
+      if (!action || browserHost?.agentInputActive(context.contextId)) return false
+      if (!input.isAutoRepeat) {
+        void runBrowserShortcut(context, action).catch((error) =>
+          console.error('[rinari-browser] shortcut failed', error),
+        )
+      }
+      return true
+    },
   })
   browserHost = new NativeBrowserHost({
     registry: browserRegistry,
@@ -776,6 +1147,7 @@ function openWindow(): void {
       if (!mainWindow || mainWindow.isDestroyed()) return
       mainWindow.webContents.focus()
     },
+    windowFocused: () => Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isFocused()),
   })
 
   // La autorización es del contenido: si navega fuera, se revoca hasta que
@@ -1062,6 +1434,32 @@ function attachSmoke(window: BrowserWindow): void {
   })
 }
 
+/**
+ * Espera a que la otra (normal o Nightly) esté cerrada antes de arrancar el
+ * Engine sobre el mismo `~/.rinari`. `false` si la persona prefiere salir.
+ */
+async function otherChannelClosed(): Promise<boolean> {
+  while (await isImageRunning(OTHER_EXECUTABLE)) {
+    const text = currentHostText()
+    const { response } = await dialog.showMessageBox({
+      type: 'warning',
+      title: PRODUCT_NAME,
+      message: text.otherChannelTitle,
+      detail: text.otherChannelBody,
+      buttons: [text.otherChannelRetry, text.trayQuit],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true,
+    })
+    // Nada arrancó todavía: se sale sin pasar por la confirmación de cierre.
+    if (response === 1) {
+      app.exit(0)
+      return false
+    }
+  }
+  return true
+}
+
 // Una sola instancia: la segunda entrega su handoff y enfoca a la primera.
 // La segunda lo manda ya leído: el argv que recibe `second-instance` llega
 // reordenado por Chromium (ver `openRequestFromData`).
@@ -1069,22 +1467,29 @@ const launchRequest = parseOpenRequest(process.argv, app.isPackaged ? 1 : 2)
 // `rinari update` con la app abierta la arranca con `--update`: esa segunda
 // instancia se lo entrega a esta, que se actualiza con su propio diálogo.
 const launchUpdate = wantsUpdate(process.argv, app.isPackaged ? 1 : 2)
-if (!app.requestSingleInstanceLock({ handoff: launchRequest, update: launchUpdate })) {
+const launchMarkAllRead = wantsMarkAllRead(process.argv, app.isPackaged ? 1 : 2)
+if (!app.requestSingleInstanceLock({ handoff: launchRequest, update: launchUpdate, markAllRead: launchMarkAllRead })) {
   app.quit()
 } else {
   app.on('second-instance', (_event, argv, _workingDirectory, additionalData) => {
+    // «Marcar todo como leído» desde la barra de tareas: sin traer la ventana.
+    if (markAllReadFromData(additionalData)) {
+      send(PUSH.menuAction, 'mark-all-read')
+      return
+    }
     handoff.push(openRequestFromData(additionalData) ?? parseOpenRequest(argv, app.isPackaged ? 1 : 2))
     if (mainWindow) presentWindow(mainWindow)
     if (updateRequestFromData(additionalData)) void runRequestedUpdate(updates)
   })
 
-  void app.whenReady().then(() => {
+  void app.whenReady().then(async () => {
     const updateE2EResult = UPDATE_E2E_ENABLED ? process.env.RINARI_UPDATE_E2E_RESULT : undefined
     if (updateE2EResult) {
       void runUpdateE2E(updateE2EResult)
       return
     }
     registerAppScheme(isDev ? null : rendererRoot())
+    if (app.isPackaged && !(await otherChannelClosed())) return
     background = createBackground({
       settingsPath: join(app.getPath('userData'), 'desktop-settings.json'),
       // En desarrollo se registraría el electron.exe de la worktree.
@@ -1098,9 +1503,18 @@ if (!app.requestSingleInstanceLock({ handoff: launchRequest, update: launchUpdat
     })
     // Después de los ajustes: el menú sale ya en el idioma guardado.
     installApplicationMenu()
+    installJumpList()
     if (background.backgroundMode) void tray.show()
     unregisterIpc = registerIpc(registry, buildServices())
     handoff.push(launchRequest)
+    markStartup('ready')
+    // El Engine arranca a la vez que carga la ventana (#91): antes esperaba a
+    // que el renderer montara y lo pidiera. `engine_start` del renderer se
+    // une a este arranque (el supervisor los serializa).
+    markStartup('engine-spawn')
+    void engine.start().catch(() => {
+      // El estado «failed» llega al renderer, que muestra el error y reintenta.
+    })
     openWindow()
     if (launchUpdate) void runRequestedUpdate(updates)
 

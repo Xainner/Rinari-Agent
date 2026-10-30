@@ -1,7 +1,8 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { ArrowLeft, Bot, CircleAlert, LoaderCircle } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import Markdown from '../../components/Markdown'
+import LiveText from '../activity/LiveText'
 import { useOptionalRuntimeStore } from '../engine/EngineContext'
 import type { RuntimeStore } from '../engine/runtimeStore'
 import { useSessionTimelines } from '../engine/sessionSelectors'
@@ -11,6 +12,8 @@ import type { AgentTimelineItem, TimelineItem, TurnTimeline } from '../activity/
 import { useAgentFocusStore } from '../../stores/agentFocus'
 import { art } from '../rinari/art'
 import { cn } from '../../lib/utils'
+import { AgentInstruction, useAgentLabel } from './agentLabel'
+import { agentStepNodes, useRailTrack } from '../activity/railTrack'
 
 interface AgentEntry {
   item: AgentTimelineItem
@@ -66,8 +69,12 @@ function AgentsPanelBody({ store, sessionId }: { store: RuntimeStore; sessionId:
   const agents = useMemo(() => sessionAgents(timelines), [timelines])
   const focused = useAgentFocusStore((state) => state.bySession[sessionId] ?? null)
   const focus = useAgentFocusStore((state) => state.focus)
+  const label = useAgentLabel()
   const selected = agents.find((entry) => entry.item.agentId === focused) ?? null
   const counts = agents.reduce((acc, entry) => { acc[statusOf(entry)]++; return acc }, { running: 0, done: 0, failed: 0, stopped: 0 })
+  // La línea de sus pasos, de la primera bolita a la última (#21), como el timeline del chat.
+  const steps = useRef<HTMLOListElement>(null)
+  useRailTrack(steps, agentStepNodes, selected?.item.agentId ?? null)
 
   if (agents.length === 0) return <AgentsEmpty />
 
@@ -79,15 +86,16 @@ function AgentsPanelBody({ store, sessionId }: { store: RuntimeStore; sessionId:
         <div className="agent-entry is-selected" data-state={state}>
           <AgentGlyph state={state} />
           <div className="min-w-0 flex-1">
-            <div className="text-[13.5px] font-semibold text-[var(--text)]">{selected.item.agent}</div>
+            <div className="text-[13.5px] font-semibold text-[var(--text)]" data-testid="agent-name">{label(selected.item)}</div>
             {selected.item.objective && <div className="mt-0.5 text-[12px] leading-snug text-[var(--text-muted)]">{selected.item.objective}</div>}
             {(selected.item.profile || selected.item.cwd) && <div className="mt-1 break-all font-mono text-[10.5px] text-[var(--text-subtle)]">{[selected.item.profile, selected.item.cwd].filter(Boolean).join(' · ')}</div>}
           </div>
           <span className="agent-state">{t(`agents.state.${state}`)}</span>
         </div>
-        <ol className="agent-steps">
+        <ol ref={steps} className="agent-steps">
           {(selected.item.items ?? []).map((child) => {
-            if (child.type === 'model') return child.content ? <li key={child.id} className="agent-step is-text"><Markdown>{child.content}</Markdown></li> : null
+            if (child.type === 'model') return child.content ? <li key={child.id} className="agent-step is-text"><LiveText id={child.id} content={child.content} streaming={child.status === 'streaming'} live={selected.live} /></li> : null
+            if (child.type === 'steer') return <li key={child.id} className="agent-step is-instruction"><AgentInstruction item={child} /></li>
             if (child.type === 'tool') {
               const running = selected.live && (child.status === 'running' || child.status === 'requested')
               const failed = child.status === 'failed' || child.status === 'cancelled'
@@ -112,17 +120,19 @@ function AgentsPanelBody({ store, sessionId }: { store: RuntimeStore; sessionId:
         {agents.map((entry) => {
           const state = statusOf(entry)
           const steps = (entry.item.items ?? []).filter((child) => child.type === 'tool').length
+          const instructions = (entry.item.items ?? []).filter((child) => child.type === 'steer').length
           return (
             <li key={`${entry.turnId}:${entry.item.agentId}`}>
               <button type="button" className="agent-entry" data-state={state} onClick={() => focus(sessionId, entry.item.agentId)}>
                 <AgentGlyph state={state} />
                 <span className="min-w-0 flex-1 text-left">
-                  <span className="block truncate text-[13.5px] font-semibold text-[var(--text)]">{entry.item.agent}</span>
+                  <span className="block truncate text-[13.5px] font-semibold text-[var(--text)]" data-testid="agent-name">{label(entry.item)}</span>
                   {entry.item.objective && <span className="block truncate text-[12px] text-[var(--text-muted)]">{entry.item.objective}</span>}
                 </span>
                 <span className="text-right">
                   <span className="agent-state block">{t(`agents.state.${state}`)}</span>
                   {steps > 0 && <span className="block font-mono text-[10.5px] text-[var(--text-subtle)]">{t('agents.steps', { n: steps })}</span>}
+                  {instructions > 0 && <span className="block font-mono text-[10.5px] text-[var(--text-subtle)]">{t(instructions === 1 ? 'agents.instructionsOne' : 'agents.instructions', { n: instructions })}</span>}
                 </span>
               </button>
             </li>

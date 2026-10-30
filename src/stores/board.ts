@@ -40,8 +40,6 @@ export interface BoardPane {
   sessionId: string
   width: number
   collapsed: boolean
-  peerReceive: boolean
-  peerSend: boolean
   /**
    * Conversación nueva pendiente: el panel tiene composer, pero la sesión se
    * crea con su primer mensaje. Un borrador nunca viaja al Engine como sesión.
@@ -86,7 +84,6 @@ export interface PersistedBoard {
   fitToView: boolean
   focusModeSnapshot: Record<string, boolean> | null
   softLimit: number
-  messagingEnabled: boolean
   notifications: BoardNotificationPrefs
 }
 
@@ -109,7 +106,7 @@ interface BoardState extends PersistedBoard {
   paneErrors: Record<string, string>
   /** Última vez que no se pudo persistir (cuota/storage). */
   persistError: string | null
-  addPane: (sessionId: string, options?: { focus?: boolean; afterPaneId?: string }) => BoardPane
+  addPane: (sessionId: string, options?: { focus?: boolean; afterPaneId?: string; atIndex?: number }) => BoardPane
   /** Panel de una conversación nueva que aún no existe (se crea al enviar). */
   addDraftPane: (projectId: string | null, options?: { focus?: boolean; afterPaneId?: string }) => BoardPane
   updatePaneDraft: (paneId: string, patch: Partial<PaneDraft>) => void
@@ -120,11 +117,14 @@ interface BoardState extends PersistedBoard {
   removeAllPanes: () => void
   movePane: (paneId: string, toIndex: number) => void
   focusPane: (paneId: string | null) => void
+  /**
+   * Enfoca un panel sin desplegarlo (Ctrl+1…9 y Ctrl+J sobre uno plegado:
+   * plan-boards B.4.1). En modo foco no cambia nada: ahí enfocar es desplegar.
+   */
+  selectPane: (paneId: string) => void
   setPaneWidth: (paneId: string, width: number) => void
   setFitToView: (enabled: boolean) => void
   setSoftLimit: (limit: number) => void
-  setPeerFlags: (paneId: string, flags: Partial<Pick<BoardPane, 'peerReceive' | 'peerSend'>>) => void
-  setMessagingEnabled: (enabled: boolean) => void
   // -- colapso y modo foco (§7.6): presentación, nunca la vida de la sesión --
   setCollapsed: (paneId: string, collapsed: boolean) => void
   /** Expande sin robar foco (fuera de modo foco); en modo foco equivale a enfocar. */
@@ -208,8 +208,6 @@ function normalizePane(raw: unknown, seen: Set<string>): BoardPane | null {
       sessionId: '',
       width: clamp(item.width, PANE_MIN_WIDTH, PANE_MAX_WIDTH, PANE_DEFAULT_WIDTH),
       collapsed: bool(item.collapsed, false),
-      peerReceive: bool(item.peerReceive, true),
-      peerSend: bool(item.peerSend, true),
       draft,
     }
   }
@@ -222,8 +220,6 @@ function normalizePane(raw: unknown, seen: Set<string>): BoardPane | null {
     sessionId: item.sessionId,
     width: clamp(item.width, PANE_MIN_WIDTH, PANE_MAX_WIDTH, PANE_DEFAULT_WIDTH),
     collapsed: bool(item.collapsed, false),
-    peerReceive: bool(item.peerReceive, true),
-    peerSend: bool(item.peerSend, true),
   }
 }
 
@@ -254,7 +250,6 @@ export function defaultBoard(): PersistedBoard {
     fitToView: true,
     focusModeSnapshot: null,
     softLimit: SOFT_LIMIT_DEFAULT,
-    messagingEnabled: true,
     notifications: { ...DEFAULT_NOTIFICATIONS },
   }
 }
@@ -313,7 +308,6 @@ export function normalizeBoard(raw: unknown): PersistedBoard {
     fitToView: bool(input.fitToView, base.fitToView),
     focusModeSnapshot,
     softLimit: clamp(input.softLimit, 0, 100, SOFT_LIMIT_DEFAULT),
-    messagingEnabled: bool(input.messagingEnabled, true),
     notifications: {
       toasts: bool(notificationsInput.toasts, DEFAULT_NOTIFICATIONS.toasts),
       system: bool(notificationsInput.system, DEFAULT_NOTIFICATIONS.system),
@@ -338,7 +332,6 @@ export function serializeBoardLayout(state: PersistedBoard): PersistedBoard {
     fitToView: state.fitToView,
     focusModeSnapshot: state.focusModeSnapshot ? { ...state.focusModeSnapshot } : null,
     softLimit: state.softLimit,
-    messagingEnabled: state.messagingEnabled,
     notifications: { ...state.notifications },
   }
 }
@@ -405,11 +398,13 @@ function nearestNeighbor(panes: BoardPane[], paneId: string): string | null {
 
 export const useBoardStore = create<BoardState>((set, get) => {
   /** Inserta un panel (tras `afterPaneId` o al final) respetando foco y modo foco. */
-  function insertPane(pane: BoardPane, options: { focus?: boolean; afterPaneId?: string }): BoardPane {
+  function insertPane(pane: BoardPane, options: { focus?: boolean; afterPaneId?: string; atIndex?: number }): BoardPane {
     set((state) => {
       const panes = [...state.panes]
       const at = options.afterPaneId ? panes.findIndex((item) => item.paneId === options.afterPaneId) : -1
-      if (at >= 0) panes.splice(at + 1, 0, pane)
+      // Soltar desde la barra lateral (B.4.2): en la posición exacta.
+      if (typeof options.atIndex === 'number') panes.splice(Math.max(0, Math.min(panes.length, options.atIndex)), 0, pane)
+      else if (at >= 0) panes.splice(at + 1, 0, pane)
       else panes.push(pane)
       const focus = options.focus !== false
       let next: Partial<BoardState> = { panes }
@@ -444,12 +439,10 @@ export const useBoardStore = create<BoardState>((set, get) => {
       sessionId,
       width: PANE_DEFAULT_WIDTH,
       collapsed: false,
-      peerReceive: true,
-      peerSend: true,
     }
     // Sin preferencias, el lateral empieza cerrado. Una sesión con layout
     // propio (Normal o un panel anterior) lo conserva, abierto o cerrado.
-    useSessionDockStore.getState().adoptIfAbsent(sessionId, { visible: false, surface: 'workspace' })
+    useSessionDockStore.getState().adoptIfAbsent(sessionId, { visible: false })
     return insertPane(pane, options)
   },
 
@@ -467,8 +460,6 @@ export const useBoardStore = create<BoardState>((set, get) => {
       sessionId: '',
       width: PANE_DEFAULT_WIDTH,
       collapsed: false,
-      peerReceive: true,
-      peerSend: true,
       draft: { projectId, mode: 'build', permissionProfile: 'workspace' },
     }
     return insertPane(pane, options)
@@ -489,7 +480,7 @@ export const useBoardStore = create<BoardState>((set, get) => {
       get().focusPane(existing.paneId)
       return
     }
-    useSessionDockStore.getState().adoptIfAbsent(sessionId, { visible: false, surface: 'workspace' })
+    useSessionDockStore.getState().adoptIfAbsent(sessionId, { visible: false })
     set({
       panes: state.panes.map((item) => {
         if (item.paneId !== paneId) return item
@@ -569,6 +560,11 @@ export const useBoardStore = create<BoardState>((set, get) => {
     return { panes, focusedPaneId: paneId, lastExpandedPaneId: paneId }
   }),
 
+  selectPane: (paneId) => set((state) => {
+    if (state.focusMode || state.focusedPaneId === paneId || !state.panes.some((item) => item.paneId === paneId)) return state
+    return { focusedPaneId: paneId }
+  }),
+
   setFitToView: (enabled) => set({ fitToView: enabled }),
   setPaneWidth: (paneId, width) => set((state) => state.fitToView ? state : ({
     panes: state.panes.map((pane) => pane.paneId === paneId
@@ -576,10 +572,6 @@ export const useBoardStore = create<BoardState>((set, get) => {
       : pane),
   })),
   setSoftLimit: (limit) => set({ softLimit: clamp(limit, 0, 100, SOFT_LIMIT_DEFAULT) }),
-  setPeerFlags: (paneId, flags) => set((state) => ({
-    panes: state.panes.map((pane) => (pane.paneId === paneId ? { ...pane, ...flags } : pane)),
-  })),
-  setMessagingEnabled: (enabled) => set({ messagingEnabled: enabled }),
   setNotifications: (patch) => set((state) => ({ notifications: { ...state.notifications, ...patch } })),
 
   setCollapsed: (paneId, collapsed) => set((state) => {

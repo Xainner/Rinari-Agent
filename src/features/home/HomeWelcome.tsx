@@ -9,18 +9,35 @@ import { applicableSuggestions, suggestionPage, type HomeContext } from './sugge
 const icons = { code: Code2, plan: Route, concept: Lightbulb, file: FileCode2 }
 export type HomeWelcomeVariant = 'home' | 'pane'
 
+/**
+ * Quién recibe una conversación vacía que no es de Rinari (un agente de la
+ * Agency): su arte, su nombre y una línea propia, sin las sugerencias de
+ * Rinari ni su lema.
+ */
+export interface HomePersona {
+  art: string
+  title: string
+  subtitle: string
+}
+
 /** Un solo shell conserva el composer al pasar de sesión vacía a conversación. */
-export default function HomeWelcome({ sessionId, context, engineReady, children, conversationActive = false, transcript, variant = 'home' }: {
+export default function HomeWelcome({ sessionId, draftKey: explicitDraftKey, context, engineReady, children, conversationActive = false, transcript, variant = 'home', persona }: {
   sessionId: string
+  /**
+   * Borrador del composer de una conversación nueva: el de un proyecto o un
+   * panel no es el general, y una sugerencia escrita en `draft` no se veía.
+   */
+  draftKey?: string
   context: Omit<HomeContext, 'attachmentCount'>
   engineReady: boolean
   children: ReactNode
   conversationActive?: boolean
   transcript?: ReactNode
   variant?: HomeWelcomeVariant
+  persona?: HomePersona
 }) {
   const { t } = useI18n()
-  const draftKey = sessionId || 'draft'
+  const draftKey = sessionId || explicitDraftKey || 'draft'
   const draft = useComposerStore(selectDraft(draftKey))
   const attachmentCount = draft.attachments.length
   const showSuggestions = useUIStore((state) => state.showSuggestions)
@@ -47,6 +64,7 @@ export default function HomeWelcome({ sessionId, context, engineReady, children,
       className={`conversation-shell ${conversationActive ? 'is-conversation' : 'is-empty'}${pane ? ' variant-pane' : ''}`}
       ref={container}
       data-presentation={conversationActive ? 'conversation' : 'empty'}
+      data-persona={persona ? 'agency' : undefined}
     >
       <div className="conversation-content">
         <div className="conversation-visual-slot">
@@ -70,8 +88,8 @@ export default function HomeWelcome({ sessionId, context, engineReady, children,
             exit={{ opacity: 0 }}
             transition={{ duration: reducedMotion ? 0 : 0.18 }}
           >
-            <div className="home-art" aria-hidden="true"><img src="/brand/home.webp" alt="" draggable={false} /></div>
-            <div className="home-greeting"><h1>{t('home.title')}</h1><p>{t('home.subtitle')}</p></div>
+            <div className="home-art" aria-hidden="true"><img src={persona?.art ?? '/brand/home.webp'} alt="" draggable={false} /></div>
+            <div className="home-greeting" data-testid={persona ? 'agency-chat-greeting' : undefined}><h1>{persona?.title ?? t('home.title')}</h1><p>{persona?.subtitle ?? t('home.subtitle')}</p></div>
           </motion.div>
         )}
         </AnimatePresence>
@@ -79,7 +97,7 @@ export default function HomeWelcome({ sessionId, context, engineReady, children,
 
         <div key="composer" className="conversation-composer-slot">{children}</div>
 
-        {!conversationActive && showSuggestions && (
+        {!conversationActive && showSuggestions && !persona && (
           <motion.section
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -113,7 +131,7 @@ export default function HomeWelcome({ sessionId, context, engineReady, children,
       {!conversationActive && !pane && (
         <footer className="home-footer">
           {!engineReady && <p className="home-unavailable" role="status">{t('home.unavailable')}</p>}
-          <p>“Better tools for brighter minds.”</p>
+          {!persona && <p>“Better tools for brighter minds.”</p>}
         </footer>
       )}
     </div>

@@ -44,7 +44,7 @@ afterEach(cleanup)
 
 const sessions = [sessionFixture('ses_a', 'Backend API', 'proj_a')]
 
-it('shows the derived status, a NEW badge for unread results and clears it on "mark as read"', async () => {
+it('shows the derived status and a NEW badge for unread results until they are seen', async () => {
   const engine = engineFixture({ sessions, historyInfo: { ses_a: { total: 0, hasMore: false } } })
   const { dispatch } = engine.runtime.getState()
   useBoardStore.getState().addPane('ses_a')
@@ -63,7 +63,7 @@ it('shows the derived status, a NEW badge for unread results and clears it on "m
   expect(within(pane).getByTestId('pane-status').dataset.kind).toBe('needs_you')
   act(() => {
     dispatch(event('approval.resolved', { turn_id: 't1', session_id: 'ses_a', approval_id: 'apr_1', decision: 'allow_once' }))
-    dispatch(event('turn.completed', { turn_id: 't1', session_id: 'ses_a' }))
+    dispatch(event('turn.completed', { turn_id: 't1', session_id: 'ses_a', content: 'ok' }))
   })
   expect(within(pane).getByTestId('pane-status').dataset.kind).toBe('done')
   expect(within(pane).getByTestId('pane-unread').textContent).toContain('Nuevo')
@@ -76,8 +76,13 @@ it('shows the derived status, a NEW badge for unread results and clears it on "m
   expect(within(pane).getByTestId('pane-status').dataset.kind).toBe('working')
   expect(within(pane).getByTestId('pane-unread')).toBeTruthy()
 
+  // The pane menu no longer has «Marcar resultados como leídos» (plan-boards
+  // B.1b): seeing the result marks it, as in the chat.
   const user = userEvent.setup()
   await user.click(within(pane).getByRole('button', { name: 'Opciones del panel' }))
-  await user.click(await screen.findByRole('menuitem', { name: 'Marcar resultados como leídos' }))
+  await screen.findByRole('menuitem', { name: 'Abrir en vista única' })
+  expect(screen.queryByRole('menuitem', { name: 'Marcar resultados como leídos' })).toBeNull()
+  await user.keyboard('{Escape}')
+  act(() => useBoardAttentionStore.getState().markAllSeen())
   expect(within(pane).queryByTestId('pane-unread')).toBeNull()
 })

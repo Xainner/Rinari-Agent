@@ -68,6 +68,8 @@ export const CONTEXT_OPERATIONS = new Set([
   'context.close',
   'context.setControl',
   'context.selectTarget',
+  // El ancho de la página, aparte del panel (plan 0.4.0 #44b).
+  'context.setViewport',
 ])
 
 export type Resolution =
@@ -316,4 +318,56 @@ export function isNavigableUrl(url: string): boolean {
   // `file:` sería lectura de disco desde contenido remoto; `javascript:` y los
   // esquemas del sistema, ejecución encubierta.
   return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+}
+
+
+/**
+ * Por qué no hay pestaña donde operar (P6). Sin `target_id` y sin pestañas no
+ * es que «la página ya no exista»: nunca se abrió ninguna, y quien llama tiene
+ * que saber que la abre con `browser.open`. Con un id que ya no está, se le
+ * dice cómo listar las que hay.
+ */
+export function missingTargetMessage(targetId: string | null, openTabs: number): string {
+  if (targetId === null && openTabs === 0) {
+    return 'no tab is open in this browser yet; open one with browser.open'
+  }
+  return targetId === null
+    ? 'there is no active tab; list them with browser.tabs or open one with browser.open'
+    : 'no tab with that id here; list them with browser.tabs or open one with browser.open'
+}
+
+/** Intentos de una captura ante un fallo pasajero del compositor (P5). */
+export const CAPTURE_ATTEMPTS = 3
+export const CAPTURE_RETRY_MS = 150
+
+/**
+ * Reintenta una captura. Chromium rechaza a veces la copia de la superficie
+ * por un motivo pasajero (la página repinta, la vista oculta aún no entregó un
+ * cuadro) y el siguiente intento sale bien. Antes de cada reintento se pide un
+ * repintado y se espera un poco más que la vez anterior. Si todos fallan,
+ * devuelve el último error con `transient` para que quien llama lo diga así.
+ */
+export async function withCaptureRetries<T>(
+  capture: () => Promise<T>,
+  options: {
+    repaint: () => void
+    stillThere: () => boolean
+    wait?: (ms: number) => Promise<void>
+    attempts?: number
+  },
+): Promise<{ ok: true; value: T } | { ok: false; error: unknown }> {
+  const wait = options.wait ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)))
+  const attempts = options.attempts ?? CAPTURE_ATTEMPTS
+  let last: unknown
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return { ok: true, value: await capture() }
+    } catch (error) {
+      last = error
+      if (!options.stillThere() || attempt === attempts - 1) break
+      options.repaint()
+      await wait(CAPTURE_RETRY_MS * (attempt + 1))
+    }
+  }
+  return { ok: false, error: last }
 }

@@ -20,7 +20,7 @@
 
 import type { AttentionIndicators } from '../../electron/shared/indicators'
 import type { EngineBackedCommand } from './commands.generated'
-import type { BackgroundPatch, BackgroundSettings, DiagnosticsExportResult, DiagnosticsPreview, FlowScopeRequest, OpenJsonRequest, OpenJsonResult, SaveJsonRequest, SaveJsonResult, WorkspaceMedia } from '../../electron/shared/contracts'
+import type { BackgroundPatch, BackgroundSettings, HostSettings, HostSettingsPatch, ReviewExportRequest, DiagnosticsExportResult, DiagnosticsPreview, FlowScopeRequest, OpenJsonRequest, OpenJsonResult, SaveJsonRequest, SaveJsonResult, WorkspaceMedia } from '../../electron/shared/contracts'
 import type { FlowResult } from '../types/protocol.generated'
 import type { EngineStatus } from './engineStatus'
 import type { Language } from '../types'
@@ -36,7 +36,7 @@ export {
   ENGINE_BACKED_COMMANDS,
   HOST_ONLY_COMMANDS,
 } from './commands.generated'
-export type { BackgroundPatch, BackgroundSettings, DiagnosticsExportResult, DiagnosticsPreview, FlowScopeRequest, OpenJsonRequest, OpenJsonResult, SaveJsonRequest, SaveJsonResult, WorkspaceMedia } from '../../electron/shared/contracts'
+export type { BackgroundPatch, BackgroundSettings, HostSettings, HostSettingsPatch, ReviewExportRequest, StartupLimit, DiagnosticsExportResult, DiagnosticsPreview, FlowScopeRequest, OpenJsonRequest, OpenJsonResult, SaveJsonRequest, SaveJsonResult, WorkspaceMedia } from '../../electron/shared/contracts'
 export { JSON_FILE_MAX_BYTES } from '../../electron/shared/contracts'
 export type { EngineStatus, EngineState } from './engineStatus'
 export type { MigrationState, MigrationStatus } from '../../electron/shared/migration'
@@ -98,6 +98,17 @@ export interface NotificationSupport {
 export interface NotificationTarget {
   sessionId?: string
   turnId?: string
+  /** Botón pulsado (#64); sin él, fue un clic. */
+  action?: NotificationActionId
+}
+
+/** Botones de una notificación: abrir, o abrir en el plan. Aprobar, nunca (#64). */
+export type NotificationActionId = 'open' | 'review-plan'
+
+/** Lo escrito en «Responder» de una notificación (#64). */
+export interface NotificationReply {
+  target: NotificationTarget
+  text: string
 }
 
 export interface SystemNotification {
@@ -105,6 +116,10 @@ export interface SystemNotification {
   body: string
   /** Qué abrir al pulsarla. Es una referencia, no una acción. */
   target?: NotificationTarget
+  /** Botones (Windows y macOS), en orden; como mucho dos. */
+  actions?: Array<{ id: NotificationActionId; label: string }>
+  /** Caja «Responder» (Windows y macOS). */
+  reply?: { placeholder: string }
   /** Sin sonido del sistema: la app reproduce su propio tono. */
   silent?: boolean
 }
@@ -142,6 +157,12 @@ export interface DesktopBridge {
 
   files: {
     /**
+     * Ruta real de un archivo arrastrado o elegido en la página (plan 0.4.0
+     * #57): así viaja por ruta y no entero dentro del mensaje. `null` si no
+     * tiene (una captura pegada del portapapeles).
+     */
+    pathFor(file: File): string | null
+    /**
      * Abre un archivo del workspace con la aplicación del sistema. La ruta la
      * valida el Engine (raíz y procedencia del turno) **antes** de abrirla:
      * no se abre lo que diga el renderer sin pasar por ahí.
@@ -162,6 +183,18 @@ export interface DesktopBridge {
   }
 
   /**
+   * «Copiar» y «Descargar» del visor de imágenes (#77). `path` es un
+   * `artifact://` o una ruta del workspace: el Engine la resuelve y valida
+   * antes de que el host lea nada.
+   */
+  images: {
+    /** La imagen entera al portapapeles del sistema. */
+    copy(input: { session_id: string; path: string; turn_id?: string }): Promise<void>
+    /** Diálogo de guardar; `saved: false` si la persona cancela. */
+    save(input: { session_id: string; path: string; turn_id?: string }): Promise<{ saved: boolean }>
+  }
+
+  /**
    * «Exportar diagnóstico»: registros del host, volcados de fallo y un resumen
    * del Engine (tamaños y estado, nunca contenido) en un ZIP que la persona
    * guarda donde quiera. Nada se envía desde aquí.
@@ -169,6 +202,8 @@ export interface DesktopBridge {
   diagnostics: {
     preview(): Promise<DiagnosticsPreview>
     export(): Promise<DiagnosticsExportResult>
+    /** «Exportar para revisión» (#79): elige dónde guardar el .zip. */
+    exportReview(request: ReviewExportRequest): Promise<DiagnosticsExportResult>
   }
 
   app: {
@@ -179,6 +214,17 @@ export interface DesktopBridge {
     setLanguage(language: Language): Promise<void>
     /** Número de chats pendientes en la barra de tareas y marca en la bandeja. */
     setIndicators(state: AttentionIndicators): Promise<void>
+    /** Abre un lugar conocido con el sistema: la carpeta de Rinari, los registros o el RINARI.md global. */
+    openFolder(place: 'home' | 'logs' | 'instructions'): Promise<void>
+    /** Avanzado → Motor y Diagnóstico: límite de arranque, aceleración, registros detallados, entorno (#70, #91, #96). */
+    hostSettings(): Promise<HostSettings>
+    setHostSettings(patch: HostSettingsPatch): Promise<HostSettings>
+    /** Cierra y vuelve a abrir la app (para aplicar la aceleración por hardware). */
+    relaunch(): Promise<void>
+    /** Nightly → «Volver a la versión normal» (#96): la copia de la base a la que se vuelve. */
+    stableReturnPreview(): Promise<import('../../electron/shared/contracts').StableReturnPreview>
+    /** Restaura esa copia, abre la versión normal y cierra la Nightly. */
+    stableReturnApply(name: string): Promise<void>
   }
 
   events: {
@@ -249,11 +295,21 @@ export interface DesktopBridge {
     navigate(sessionId: string, url: string): Promise<void>
     /** Atrás, adelante, recargar o detener la pestaña visible (requiere el control). */
     history(sessionId: string, action: 'back' | 'forward' | 'reload' | 'stop'): Promise<void>
+    /** Pestaña nueva del usuario: en blanco (la página de inicio) o con una dirección. */
+    newTab(sessionId: string, url?: string): Promise<void>
+    /** Cerrar una pestaña. La última también: se ve la página de inicio. */
+    closeTab(sessionId: string, targetId: string): Promise<void>
+    /** Borra el perfil del navegador (uno para todo): sesiones iniciadas, cookies y caché. */
+    clearData(): Promise<void>
     /** Captura del mismo target mientras la superficie física está retirada. */
     preview(sessionId: string): Promise<NativeBrowserPreview | null>
     /** Cambios de pestañas, control o estado. Sin sondeo. */
     onContextChanged(
       callback: (view: NativeBrowserContext) => void,
+    ): Promise<Unsubscribe>
+    /** Un atajo pulsado con el foco en la página que atiende la barra (Ctrl+L). */
+    onShortcut(
+      callback: (event: { session_id: string; action: 'focus-address' }) => void,
     ): Promise<Unsubscribe>
   }
 
@@ -293,6 +349,8 @@ export interface DesktopBridge {
     send(notification: SystemNotification): Promise<boolean>
     /** Clic del usuario: el renderer resuelve el destino y no envía nada. */
     onActivated(callback: (target: NotificationTarget) => void): Promise<Unsubscribe>
+    /** «Responder» desde la notificación: el texto va a esa conversación (#64). */
+    onReplied(callback: (reply: NotificationReply) => void): Promise<Unsubscribe>
   }
 
   updates: {
@@ -334,6 +392,10 @@ export interface NativeBrowserTarget {
   url: string
   title: string
   active: boolean
+  /** Lo añade el host (el Engine no lo guarda): la página está cargando. */
+  loading?: boolean
+  can_go_back?: boolean
+  can_go_forward?: boolean
 }
 
 /**
@@ -354,6 +416,12 @@ export interface NativeBrowserContext {
   control?: 'agent' | 'user'
   control_state?: 'agent' | 'taking-user-control' | 'user' | 'uncertain'
   control_revision?: number
+  /** Rinari necesita la página y espera a que dejes de usarla (plan 0.4.0 #46). */
+  agent_waiting?: boolean
+  /** La sesión sigue en un Chrome/Edge de verdad, en otra ventana (#45). */
+  external?: boolean
+  /** Ancho de página que pidió el agente; `null`: ajustarla al panel (#44b). */
+  viewport_width?: number | null
   active_target_id?: string | null
   targets?: NativeBrowserTarget[]
 }
@@ -390,6 +458,9 @@ export interface NativeBrowserSlotLayout {
   overlayDepth: number
   /** Regiones DOM temporales que una vista nativa no puede tapar. */
   occlusions?: Array<{ x: number; y: number; width: number; height: number }>
+  /** Radio de las esquinas del hueco (su `border-radius`): main redondea la vista nativa igual. */
+  cornerRadius?: number
 }
 
 export type { AttentionCategory, AttentionIndicators } from '../../electron/shared/indicators'
+export { browserShortcut, type BrowserShortcut } from '../../electron/shared/browserShortcuts'

@@ -1,0 +1,87 @@
+// Desactivar un proveedor (plan 0.4.0 #97). Desde Ajustes > Proveedores, el
+// interruptor de la tarjeta abre un diálogo que dice qué depende de él (es el
+// activo y lo usa un agente) y deja elegir el reemplazo. Al confirmar, el
+// agente y el modelo activo pasan al reemplazo, sus modelos salen de la lista
+// y la tarjeta queda al final como «Desactivado». Una conversación que lo
+// seguía usando no falla a ciegas: la tarjeta lo dice y «Activar» lo vuelve a
+// encender.
+const assert = require('node:assert/strict')
+const { click, clickText, command, evaluate, input, key, menuShortcut, reload, report, scenario, screenshot, settleAnimations, useLocalModel, wait } = require('../harness.cjs')
+
+scenario(async () => {
+  await useLocalModel()
+  await command('provider_create', { alias: 'reserva', provider_type: 'custom', auth_method: 'none', endpoint: 'http://127.0.0.1:9/v1' })
+  const spare = (await command('model_add', { provider: 'reserva', provider_model_id: 'reserva-modelo', alias: 'reserva-modelo' })).model
+  const local = (await command('model_list', {})).models.find((m) => m.provider === 'prueba-local')
+  const agent = (await command('agent_list')).agents[0].name
+  await command('agent_config_set', { agent, model: local.id })
+  const sessionId = (await command('session_create', { chat: true, title: 'Proveedor apagado' })).session.id
+  await command('session_model_set', { reference: sessionId, model: local.id, provider: 'prueba-local' })
+  await reload()
+
+  await menuShortcut('settings', 'CmdOrCtrl+,')
+  await clickText('Proveedores', 'nav button')
+  await wait(`document.querySelectorAll('[data-testid="provider-enabled"]').length===2`)
+  await click('[data-anchor="provider:' + (await command('provider_get', { reference: 'prueba-local' })).provider.id + '"] [data-testid="provider-enabled"]')
+  await wait(`Boolean(document.querySelector('[data-testid="disable-provider-deps"]'))`)
+  const deps = await evaluate(`document.querySelector('[data-testid="disable-provider-deps"]').innerText`)
+  assert.match(deps, /Es el proveedor activo/)
+  assert.match(deps, new RegExp(`Lo usan 1 agentes: ${agent}`))
+  assert.equal(await evaluate(`document.querySelector('#provider-replacement').dataset.value`), spare.id)
+  await settleAnimations()
+  await screenshot('disable-dialog')
+  await clickText('Desactivar', '[data-testid="disable-provider-dialog"] button')
+  await wait(`!document.querySelector('[data-testid="disable-provider-dialog"]')`)
+
+  const providers = (await command('provider_list')).providers
+  assert.equal(providers.find((p) => p.alias === 'prueba-local').enabled, false)
+  assert.equal((await command('provider_list')).active_alias, 'reserva')
+  assert.deepEqual((await command('model_list', {})).models.map((m) => m.alias), ['reserva-modelo'])
+  assert.equal((await command('agent_config_get', { agent })).agent.assignment.model, spare.id)
+  await wait(`(() => { const h = [...document.querySelectorAll('[data-anchor^="provider:"] h2')].at(-1); return h?.innerText.includes('prueba-local') && [...h.querySelectorAll('.provider-chip')].some(c => c.textContent === 'Desactivado') })()`)
+  await settleAnimations()
+  await screenshot('providers-with-one-off')
+
+  // #97 B: a card opens into its panel, with the tabs and the canonical actions.
+  const spareCard = `[data-anchor="provider:${providers.find((p) => p.alias === 'reserva').id}"]`
+  await click(`${spareCard} .provider-card-open`)
+  await wait(`Boolean(document.querySelector('${spareCard} [role="tablist"]'))`)
+  assert.equal(await evaluate(`document.querySelector('${spareCard} [role="tab"][aria-selected="true"]').textContent`), 'Resumen')
+  assert.ok(await evaluate(`[...document.querySelectorAll('${spareCard} .provider-actions button')].some(b => b.textContent.includes('Probar'))`))
+  await settleAnimations()
+  await screenshot('provider-open')
+
+  // #97 C: «Agregar proveedor» is the onboarding wizard: the grid, then only that type's fields.
+  await clickText('Agregar proveedor', 'button')
+  await wait(`document.querySelectorAll('[role="dialog"] .provider-picker-card').length > 5`)
+  await settleAnimations()
+  await screenshot('add-grid')
+  await click('[role="dialog"] .provider-picker-card[data-preset="openai"]')
+  await wait(`Boolean(document.querySelector('#provider-secret'))`)
+  assert.equal(await evaluate(`Boolean(document.querySelector('#provider-endpoint'))`), false, 'the endpoint waits in the advanced options')
+  await settleAnimations()
+  await screenshot('add-fields')
+  await key('Escape')
+  await wait(`!document.querySelector('[role="dialog"]')`)
+
+  await click('button[aria-label="Volver"]')
+  await clickText('Proveedor apagado', 'aside button', { includes: true })
+  await wait('Boolean(document.querySelector(".composer-surface"))')
+  await input('.composer-surface textarea', 'Hola')
+  await click('.composer-surface button[aria-label="Enviar mensaje"]')
+  await wait(`Boolean(document.querySelector('[data-failure="disabled"]'))`)
+  const alert = await evaluate(`document.querySelector('[data-failure="disabled"]').innerText`)
+  assert.match(alert, /prueba-local está desactivado/)
+  await screenshot('disabled-failure')
+  await click('[data-testid="failure-enable-provider"]')
+  await wait(`document.body.innerText.includes('prueba-local activado.')`)
+  assert.equal((await command('provider_list')).providers.find((p) => p.alias === 'prueba-local').enabled, true)
+  report({ passed: [
+    'the dialog names the active provider and the agent that use it',
+    'confirming moves the agent and the active model to the replacement',
+    'its models leave model.list and the card goes last as Off',
+    'an open card has its tabs and actions',
+    'Agregar proveedor is the grid and then only the fields of that type',
+    'an old conversation says the provider is off and turns it back on',
+  ] })
+}, { width: 1400, height: 900 })

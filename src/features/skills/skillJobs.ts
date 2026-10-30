@@ -23,6 +23,7 @@ export async function runSkillJob<T>(input: {
   name?: string
   expectedHash?: string
   force?: boolean
+  allowLarge?: boolean
 }): Promise<SkillJobOutcome<T>> {
   const started = await engineApi.skillJobStart(input)
   return new Promise((resolve) => {

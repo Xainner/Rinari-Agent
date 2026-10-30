@@ -94,9 +94,5 @@ describe('alcance de Flujos por Engine home', () => {
     expect(useUIStore.getState().flowScopeExplicit).toBe(false)
     useUIStore.getState().setFlowScope({ kind: 'project', id: 'proj_mano' })
     expect(useUIStore.getState().flowScopeExplicit).toBe(true)
-    // «Ver flujo» también es una elección de una persona.
-    useUIStore.setState({ flowScopeExplicit: false })
-    useUIStore.getState().goFlows({ kind: 'session', id: 'ses_1' })
-    expect(useUIStore.getState().flowScopeExplicit).toBe(true)
   })
 })

@@ -27,6 +27,11 @@ describe('narrative activity timeline', () => {
     state = turnTimelineReducer(state, event('agent.failed', { ...ids, agent_id: 'a1' }))
     expect(state.busySessions.has('s1')).toBe(true)
   })
+  it.each(['agency_errand', 'agency_office', 'agency_delivery'])('keeps the live turn origin %s, so the bubble is not the owner\'s', (kind) => {
+    const origin = { kind, team_id: 'team_1', from_label: 'Ana' }
+    const state = turnTimelineReducer(createInitialTimelineState(), event('turn.started', { turn_id: 't1', session_id: 's1', message: 'Recado', origin }))
+    expect(state.timelines.t1.origin).toEqual(origin)
+  })
   it('retains the mode of the turn independently of later session changes', () => {
     let state = turnTimelineReducer(createInitialTimelineState(), event('turn.started', { turn_id: 'plan', session_id: 's1', mode: 'plan' }))
     state = turnTimelineReducer(state, event('turn.completed', { turn_id: 'plan', session_id: 's1' }))
@@ -227,5 +232,30 @@ describe('peer provenance', () => {
     })
     expect(state.timelines.t1.origin?.kind).toBe('peer')
     expect(state.timelines.t2.origin).toBeUndefined()
+  })
+})
+
+it('a stored page says its ids once per turn; each row gets them back (#91)', () => {
+  const state = turnTimelineReducer(createInitialTimelineState(), { type: 'timeline/loaded', sessionId: 's9', turns: [{
+    turn_id: 't9', session_id: 's9', turn_index: 0, status: 'completed', started_at: '2026-10-17T10:00:00Z', completed_at: '2026-10-17T10:01:00Z',
+    user_message: 'Hola', final_response: '',
+    items: [{ event: 'governor.compact', activity_seq: 1, compaction_id: 'k1', status: 'completed', occurred_at: '2026-10-17T10:00:30Z' }],
+  }] })
+  const row = state.timelines.t9.items.find((item) => item.type === 'context') as { sessionId?: string } | undefined
+  expect(row?.sessionId).toBe('s9')
+})
+
+
+describe('long tool calls being written (F26, plan 0.4.0 v2)', () => {
+  it('says what the model is writing and how much, then goes back to normal', async () => {
+    const { liveActionLabel } = await import('./ActivityHeader')
+    const t = (key: string, vars?: Record<string, string | number>) => `${key}:${JSON.stringify(vars ?? {})}`
+    const ids = { turn_id: 't1', session_id: 's1' }
+    let state = turnTimelineReducer(createInitialTimelineState(), event('turn.started', ids))
+    state = turnTimelineReducer(state, event('model.started', { ...ids, model_call_id: 'm1', activity_seq: 1 }))
+    state = turnTimelineReducer(state, event('model.tool_input', { ...ids, model_call_id: 'm1', activity_seq: 1, tool: 'fs.write', chars: 12_400, path: String.raw`C:\proj\calc\parser.py` }))
+    expect(liveActionLabel(state.timelines.t1, t as never)).toBe('activity.live.writingInput:{"target":"calc/parser.py","size":"12 KB"}')
+    state = turnTimelineReducer(state, event('model.tool_input', { ...ids, model_call_id: 'm1', activity_seq: 1, tool: 'shell.exec', chars: 3000 }))
+    expect(liveActionLabel(state.timelines.t1, t as never)).toBe('activity.live.writingInput:{"target":"shell.exec","size":"3 KB"}')
   })
 })

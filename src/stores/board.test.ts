@@ -25,14 +25,14 @@ beforeEach(() => {
 describe('board layout store', () => {
   it('persists a closed side panel for a session without preferences', () => {
     useBoardStore.getState().addPane('ses_new')
-    expect(useSessionDockStore.getState().layoutFor('ses_new')).toMatchObject({ visible: false, activeSurface: 'workspace' })
+    expect(useSessionDockStore.getState().layoutFor('ses_new')).toMatchObject({ visible: false, views: [] })
     const stored = JSON.parse(localStorage.getItem(SESSION_DOCK_STORAGE_KEY)!)
     expect(stored[dockNamespaceKey(null, 'ses_new')].visible).toBe(false)
   })
 
   it.each([true, false])('keeps a saved visible=%s layout on add, focus and remove/re-add', (visible) => {
     const dock = useSessionDockStore.getState()
-    dock.update('ses_saved', { visible, activeSurface: 'files', widthPx: 430, workspaceTab: 'tasks' })
+    dock.adoptIfAbsent('ses_saved', { visible, surface: 'files', widthPx: 430 })
     const saved = dock.layoutFor('ses_saved')
     const board = useBoardStore.getState()
     const pane = board.addPane('ses_saved')
@@ -51,7 +51,6 @@ describe('board layout store', () => {
     const a = store.addPane('ses_a')
     store.addPane('ses_b')
     store.setSoftLimit(4)
-    store.setMessagingEnabled(true)
     store.setNotifications({ toasts: false })
     if (mode === 'collapsed') store.collapseAll()
     if (mode === 'focus') store.setFocusMode(true)
@@ -68,7 +67,7 @@ describe('board layout store', () => {
     store.removeAllPanes()
     unsubscribe()
     expect(transitions).toEqual([0])
-    expect(useBoardStore.getState()).toMatchObject({ panes: [], focusedPaneId: null, lastExpandedPaneId: null, focusMode: false, focusModeSnapshot: null, paneErrors: {}, boardId: before.boardId, softLimit: 4, messagingEnabled: true, notifications: before.notifications })
+    expect(useBoardStore.getState()).toMatchObject({ panes: [], focusedPaneId: null, lastExpandedPaneId: null, focusMode: false, focusModeSnapshot: null, paneErrors: {}, boardId: before.boardId, softLimit: 4, notifications: before.notifications })
     expect(useSessionDockStore.getState().layoutFor('ses_a')).toEqual(dock)
     expect(useComposerStore.getState().getDraft('ses_a').text).toBe('draft to keep')
     expect(useBoardAttentionStore.getState().sessions).toBe(attention)
@@ -193,7 +192,7 @@ describe('board layout store', () => {
     expect(layout.panes.map((pane) => pane.sessionId)).toEqual(['ses_a', 'ses_b'])
     expect(new Set(layout.panes.map((pane) => pane.paneId)).size).toBe(2)
     expect(layout.panes[1].width).toBe(PANE_DEFAULT_WIDTH)
-    expect(layout.panes[0]).toMatchObject({ collapsed: false, peerReceive: true, peerSend: true })
+    expect(layout.panes[0]).toMatchObject({ collapsed: false })
     expect(layout.focusedPaneId).toBe('p1')
     expect(layout.focusMode).toBe(false)
     expect(layout.focusModeSnapshot).toBeNull()
@@ -202,7 +201,7 @@ describe('board layout store', () => {
 
   it('migrates the schema-2 per-pane dock into the per-session layout without overwriting an existing one', () => {
     resetSessionDockForTests()
-    useSessionDockStore.getState().update('ses_kept', { visible: false, activeSurface: 'browser', widthPx: 500, workspaceTab: 'tasks' })
+    useSessionDockStore.getState().adoptIfAbsent('ses_kept', { visible: false, surface: 'browser', widthPx: 500 })
     normalizeBoard({
       version: 2,
       panes: [
@@ -213,9 +212,9 @@ describe('board layout store', () => {
       ],
     })
     const dock = useSessionDockStore.getState()
-    expect(dock.layoutFor('ses_a')).toMatchObject({ visible: false, widthPx: 420, activeSurface: 'files', workspaceTab: 'verification' })
+    expect(dock.layoutFor('ses_a')).toMatchObject({ visible: false, widthPx: 420, views: [], lastView: 'files' })
     // Una sesión que ya tenía layout propio no se reescribe con el del panel.
-    expect(dock.layoutFor('ses_kept')).toMatchObject({ visible: false, activeSurface: 'browser', widthPx: 500, workspaceTab: 'tasks' })
+    expect(dock.layoutFor('ses_kept')).toMatchObject({ visible: false, lastView: 'browser', widthPx: 500 })
     expect(dock.layoutFor('ses_open')).toMatchObject({ visible: true, widthPx: 390 })
     // Sin campos de dock no se inventa un layout.
     expect(Object.keys(dock.layouts).some((key) => key.includes('ses_plain'))).toBe(false)

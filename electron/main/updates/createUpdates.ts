@@ -1,11 +1,13 @@
 import { spawn } from 'node:child_process'
+import { EventEmitter } from 'node:events'
 import { appendFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { app } from 'electron'
 import { autoUpdater } from 'electron-updater'
 
-import { UpdateService, type UpdateText } from './UpdateService'
+import { IS_NIGHTLY } from '../channel'
+import { UpdateService, type UpdateText, type UpdaterLike } from './UpdateService'
 import type { UpdateState } from '../../shared/contracts'
 
 const UPDATE_E2E_ENABLED = process.env.RINARI_BUILD_UPDATE_E2E === '1'
@@ -19,33 +21,14 @@ export interface CreateUpdatesOptions {
 /** Canal separado del `latest.json` de Tauri 0.1.x. */
 export function createUpdates(options: CreateUpdatesOptions): UpdateService {
   const testFeed = UPDATE_E2E_ENABLED ? process.env.RINARI_UPDATE_FEED_URL?.trim() : undefined
-  const enabled = app.isPackaged || Boolean(testFeed)
-  autoUpdater.setFeedURL(
-    testFeed
-      ? { provider: 'generic', url: testFeed }
-      : { provider: 'github', owner: 'Xainner', repo: 'Rinari-Agent' },
-  )
-  if (!app.isPackaged && testFeed) autoUpdater.forceDevUpdateConfig = true
-  // Persistente: en la app instalada la consola no se ve, y un «no hizo nada»
-  // al aplicar no dejaba ningún rastro.
-  const logFile = join(app.getPath('userData'), 'logs', 'updater.log')
-  const log = (level: string, message?: unknown) => {
-    const text = message instanceof Error ? message.stack ?? message.message : String(message)
-    try {
-      mkdirSync(join(logFile, '..'), { recursive: true })
-      appendFileSync(logFile, `${new Date().toISOString()} ${level} ${text}\n`)
-    } catch {
-      // Sin disco para el log, el actualizador sigue igual.
-    }
-  }
-  autoUpdater.logger = {
-    info: (message?: unknown) => { console.log('[rinari-updater]', message); log('info', message) },
-    warn: (message?: unknown) => { console.warn('[rinari-updater]', message); log('warn', message) },
-    error: (message?: unknown) => { console.error('[rinari-updater]', message); log('error', message) },
-    debug: (message?: unknown) => console.debug('[rinari-updater]', message),
-  }
+  // La Nightly local se actualiza volviendo a correr `npm run nightly`: el
+  // feed de las versiones normales la cambiaría por la estable.
+  const enabled = (app.isPackaged && !IS_NIGHTLY) || Boolean(testFeed)
+  // Sin actualizador no se toca `autoUpdater`: leerlo ya crea el NsisUpdater,
+  // que tumba el proceso principal si la versión no es semver válida.
+  const updater = enabled ? configuredUpdater(testFeed) : (new EventEmitter() as UpdaterLike)
   return new UpdateService({
-    updater: autoUpdater,
+    updater,
     currentVersion: app.getVersion(),
     enabled,
     requestApply: options.requestApply,
@@ -58,4 +41,33 @@ export function createUpdates(options: CreateUpdatesOptions): UpdateService {
       child.unref()
     },
   })
+}
+
+// Persistente: en la app instalada la consola no se ve, y un «no hizo nada»
+// al aplicar no dejaba ningún rastro.
+function log(level: string, message?: unknown): void {
+  const logFile = join(app.getPath('userData'), 'logs', 'updater.log')
+  const text = message instanceof Error ? message.stack ?? message.message : String(message)
+  try {
+    mkdirSync(join(logFile, '..'), { recursive: true })
+    appendFileSync(logFile, `${new Date().toISOString()} ${level} ${text}\n`)
+  } catch {
+    // Sin disco para el log, el actualizador sigue igual.
+  }
+}
+
+function configuredUpdater(testFeed: string | undefined): UpdaterLike {
+  autoUpdater.setFeedURL(
+    testFeed
+      ? { provider: 'generic', url: testFeed }
+      : { provider: 'github', owner: 'Xainner', repo: 'Rinari-Agent' },
+  )
+  if (!app.isPackaged && testFeed) autoUpdater.forceDevUpdateConfig = true
+  autoUpdater.logger = {
+    info: (message?: unknown) => { console.log('[rinari-updater]', message); log('info', message) },
+    warn: (message?: unknown) => { console.warn('[rinari-updater]', message); log('warn', message) },
+    error: (message?: unknown) => { console.error('[rinari-updater]', message); log('error', message) },
+    debug: (message?: unknown) => console.debug('[rinari-updater]', message),
+  }
+  return autoUpdater
 }

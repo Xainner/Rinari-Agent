@@ -175,6 +175,9 @@ jobs:
       - name: UI scenarios against the pinned Engine
         env:
           RINARI_CLI: ${{ github.workspace }}\Rinari-CLI
+          # The runner has the system animations off (prefers-reduced-motion):
+          # the scenarios have to expect it, or they look for motion that never runs.
+          RINARI_UI_REDUCED_MOTION: '1'
         run: npm run ui:e2e -- --all
       - name: Keep the evidence of a failed run
         if: failure()

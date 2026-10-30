@@ -1,18 +1,7 @@
 import type { ChatMessage, PendingApproval, TurnStopReason } from '../../types'
 import { mergeTokenUsage, newestUsage, legacyTokenUsage } from './tokenUsage'
 import type { EngineEventMsg, MessageOrigin, TimelineTurn, TurnChangedFile } from '../../services/engine'
-import type {
-  ApprovalTimelineItem,
-  ModelChange,
-  ModelLabel,
-  SkillSimilar,
-  TimelineItem,
-  TimelineStatus,
-  ToolTimelineItem,
-  ToolPresentation,
-  TurnTimeline,
-  TurnTimelineState,
-} from './types'
+import type { ApprovalTimelineItem, ModelChange, ModelLabel, SkillSimilar, TimelineItem, TimelineStatus, ToolTimelineItem, ToolPresentation, TurnTimeline, TurnTimelineState, PresentedFile } from './types'
 
 // Releen la lista de sesiones. Todo final de turno cuenta (también fallido o
 // cancelado), y `session.renamed` trae el título automático en cuanto el
@@ -26,6 +15,10 @@ export const TRIGGERS_SESSION_REFRESH = new Set([
   'session.mode.changed',
   'session.model.changed',
   'session.renamed',
+  // A child session was born or changed: the sidebar nests it.
+  'session.child.updated',
+  // La confianza de un proyecto cambió en el turno (#38): la barra lateral la muestra.
+  'project.trust.changed',
 ])
 
 export type TimelineAction =
@@ -33,9 +26,11 @@ export type TimelineAction =
   | { type: 'message/sent'; sessionId: string; message: ChatMessage }
   | { type: 'turn/ack'; turnId: string; sessionId: string; now: number }
   | { type: 'turn/cancelling'; sessionId: string }
-  | { type: 'steer/sent'; sessionId: string; turnId: string; steerId: string; content: string; now: number }
+  | { type: 'steer/sent'; sessionId: string; turnId: string; steerId: string; content: string; now: number; interrupted?: boolean }
   | { type: 'busy/set'; sessionId: string; busy: boolean }
   | { type: 'history/loaded'; sessionId: string; messages: ChatMessage[] }
+  /** «Cargar anteriores» (#70): una página más vieja delante de lo cargado. */
+  | { type: 'history/prepended'; sessionId: string; messages: ChatMessage[] }
   | { type: 'timeline/loaded'; sessionId: string; turns: TimelineTurn[] }
   | { type: 'snapshot/restored'; snapshot: unknown; now: number }
   | { type: 'approval/resolving'; approvalId: string }
@@ -55,10 +50,13 @@ function text(value: unknown): string {
   return typeof value === 'string' ? value : ''
 }
 
+/** Los orígenes que cambian cómo se ve la burbuja del turno en vivo (la Agency: el texto no es del dueño). */
+const LIVE_ORIGINS = new Set(['peer', 'user', 'automation', 'schedule', 'agency_office', 'agency_errand', 'agency_delivery'])
+
 function originOf(value: unknown): MessageOrigin | undefined {
   if (!value || typeof value !== 'object') return undefined
   const kind = (value as { kind?: unknown }).kind
-  if (kind !== 'peer' && kind !== 'user' && kind !== 'automation' && kind !== 'schedule') return undefined
+  if (typeof kind !== 'string' || !LIVE_ORIGINS.has(kind)) return undefined
   return value as MessageOrigin
 }
 
@@ -86,11 +84,27 @@ function defaultTimeline(turnId: string, sessionId: string, now: number): TurnTi
   }
 }
 
+/** Un hash corto y estable de un texto (FNV-1a), para ids sin clave propia. */
+function shortHash(value: string): string {
+  let hash = 0x811c9dc5
+  for (let index = 0; index < value.length; index++) {
+    hash ^= value.charCodeAt(index)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return (hash >>> 0).toString(36)
+}
+
 function itemId(event: string, payload: Record<string, unknown>): string {
   if (event.startsWith('memory.candidate.')) return `memory:candidate:${payload.candidate_id}`
   if (event === 'memory.remembered') return `memory:remembered:${payload.memory_id}`
   if (event === 'skill.proposed' || event === 'skill.proposal.resolved') return `skill:${payload.name}`
-  if (event.startsWith('steer.')) return `steer:${payload.steer_id}`
+  if (event === 'instructions.proposed' || event === 'instructions.proposal.resolved') return `instructions:${payload.proposal_id}`
+  if (event === 'file.presented') return `present:${payload.present_id}`
+  if (event === 'speech.setup_needed') return `speech-setup:${payload.reason}`
+  // Sin `steer_id` (instrucciones a un subagente de sesiones viejas, #25), el
+  // id sale de su posición y su texto: antes todas compartían `steer:undefined`
+  // y cada una pisaba a la anterior.
+  if (event.startsWith('steer.')) return payload.steer_id ? `steer:${payload.steer_id}` : `steer:${payload.activity_seq ?? 0}:${shortHash(text(payload.content))}`
   if (event.startsWith('vision.')) return `vision:${payload.vision_id}:${payload.attempt_id ?? 1}`
   if (event.startsWith('turn.changes.')) return `changeset:${payload.id || payload.changeset_id || 'turn'}`
   if (event.startsWith('question.')) return `question:${payload.request_id}`
@@ -166,6 +180,7 @@ function presentation(value: unknown): ToolPresentation | undefined {
     stderr: text(raw.stderr),
     running: typeof raw.running === 'boolean' ? raw.running : undefined,
     truncated: raw.truncated === true,
+    page_truncated: raw.page_truncated === true || undefined,
     capture_truncated: raw.capture_truncated === true,
     artifacts: Array.isArray(raw.artifacts) ? raw.artifacts.filter((item): item is string => typeof item === 'string') : undefined,
     stream_sequences: raw.stream_sequences && typeof raw.stream_sequences === 'object'
@@ -216,6 +231,8 @@ function mergeMemoryItem(
     scope: text(payload.scope) || prior?.scope,
     reason: text(payload.reason) || prior?.reason,
     sensitive: payload.sensitive === true || prior?.sensitive === true,
+    place: text(payload.place) || prior?.place,
+    placeRef: text(payload.place_ref) || prior?.placeRef,
     // Un `created` repetido (snapshot, recarga) no deshace una resolución ya vista.
     status: candidate ? prior?.status ?? 'pending' : 'remembered',
   }
@@ -233,6 +250,40 @@ function similarList(value: unknown): SkillSimilar[] {
     const name = text(raw.name)
     return name ? [{ name, score: number(raw.score), shared: strings(raw.shared), reason: text(raw.reason) || undefined }] : []
   })
+}
+
+/** La propuesta de RINARI.md de `/init` (#81) y su resolución. */
+function mergeInstructionsItem(
+  current: TimelineItem | undefined,
+  event: string,
+  payload: Record<string, unknown>,
+  id: string,
+  activitySeq: number,
+  occurredAt: number,
+): TimelineItem | null {
+  const prior = current?.type === 'instructions' ? current : undefined
+  if (event === 'instructions.proposal.resolved') {
+    if (!prior) return null
+    const status = text(payload.status)
+    return { ...prior, status: status === 'saved' || status === 'discarded' ? status : prior.status }
+  }
+  const proposalId = text(payload.proposal_id)
+  const content = text(payload.content)
+  if (!proposalId || !content) return null
+  return {
+    id,
+    type: 'instructions',
+    activitySeq: prior?.activitySeq ?? activitySeq,
+    occurredAt: prior?.occurredAt ?? occurredAt,
+    proposalId,
+    path: text(payload.path),
+    content,
+    previous: typeof payload.previous === 'string' ? payload.previous : null,
+    summary: text(payload.summary),
+    reuses: strings(payload.reuses),
+    // Un `instructions.proposed` repetido (recarga) no deshace una resolución ya vista.
+    status: prior && prior.status !== 'pending' ? prior.status : 'pending',
+  }
 }
 
 function mergeSkillItem(
@@ -293,6 +344,11 @@ function mergeEventItem(
   }
   if (event.startsWith('model.')) {
     const prior = current?.type === 'model' ? current : undefined
+    if (event === 'model.tool_input') {
+      // Un archivo largo dentro de los argumentos: la línea viva dice cuánto lleva (F26).
+      const base = prior ?? { id, type: 'model' as const, modelCallId: text(payload.model_call_id), activitySeq, occurredAt, status: 'thinking' as const, content: '' }
+      return { ...base, toolInput: { tool: text(payload.tool), chars: number(payload.chars) ?? 0, path: text(payload.path) || undefined } }
+    }
     if (event === 'model.retrying') {
       // El reintento vuelve a escribir su respuesta desde el principio.
       return {
@@ -339,6 +395,16 @@ function mergeEventItem(
   }
   if (event.startsWith('memory.')) return mergeMemoryItem(current, event, payload, id, activitySeq, occurredAt)
   if (event === 'skill.proposed' || event === 'skill.proposal.resolved') return mergeSkillItem(current, event, payload, id, activitySeq, occurredAt)
+  if (event === 'instructions.proposed' || event === 'instructions.proposal.resolved') return mergeInstructionsItem(current, event, payload, id, activitySeq, occurredAt)
+  if (event === 'file.presented') {
+    // Lo que Rinari entregó a propósito (#35).
+    const files = Array.isArray(payload.items) ? payload.items.filter((file): file is PresentedFile => Boolean(file) && typeof file === 'object' && typeof (file as PresentedFile).name === 'string') : []
+    return { id, type: 'present', activitySeq, occurredAt, files }
+  }
+  if (event === 'speech.setup_needed') {
+    // Rinari quiso escuchar un audio sin el motor del dictado (#36).
+    return { id, type: 'system', activitySeq, occurredAt, kind: 'speech_setup', label: text(payload.file), status: text(payload.reason) }
+  }
   if (event === 'steer.applied') {
     return {
       id,
@@ -348,6 +414,11 @@ function mergeEventItem(
       steerId: text(payload.steer_id),
       content: text(payload.content) || (current?.type === 'steer' ? current.content : ''),
       status: 'applied',
+      source: text(payload.source) || undefined,
+      followUp: payload.follow_up === true || undefined,
+      interrupted: payload.interrupted === true || (current?.type === 'steer' && current.interrupted) || undefined,
+      ...(Array.isArray(payload.children) ? { children: payload.children.filter((id): id is string => typeof id === 'string') } : {}),
+      ...(payload.reports && typeof payload.reports === 'object' ? { reports: payload.reports as Record<string, string> } : {}),
     }
   }
   if (event.startsWith('vision.')) {
@@ -361,6 +432,7 @@ function mergeEventItem(
       question: text(payload.question) || prior?.question || '', analysis: text(payload.analysis) || prior?.analysis || '',
       error: errorMessage(payload.error), cached: payload.cached === true,
       fallback: text(payload.fallback) || prior?.fallback,
+      markedBy: text(payload.marked_by) || prior?.markedBy,
       images: Array.isArray(payload.images) ? payload.images.flatMap(image => {
         const parsed = presentation({ kind: 'image', image })?.image
         return parsed ? [parsed] : []
@@ -415,6 +487,7 @@ function mergeEventItem(
       arguments: text(payload.arguments) || prior?.arguments,
       result: text(payload.result) || prior?.result,
       error: errorMessage(payload.error) ?? prior?.error,
+      errorCode: text(payload.error_code) || errorCode(payload.error) || prior?.errorCode,
       durationMs: number(payload.duration_ms) ?? prior?.durationMs,
       presentation: nextPresentation,
     }
@@ -504,6 +577,7 @@ function mergeEventItem(
       phase: event === 'agent.completed' || event === 'agent.failed' ? 'terminal' : prior?.phase ?? 'started',
       status: event === 'agent.completed' ? 'completed' : event === 'agent.failed' ? 'failed' : prior?.status ?? 'running',
       agent: text(payload.agent) || prior?.agent || 'Agent',
+      nickname: text(payload.nickname) || prior?.nickname,
       objective: text(payload.objective) || prior?.objective,
       items: children, summary: text(payload.summary) || text(payload.error) || prior?.summary,
       cwd: text(payload.cwd) || prior?.cwd, profile: text(payload.profile) || prior?.profile,
@@ -534,7 +608,16 @@ function mergeEventItem(
       status: event.endsWith('completed') ? 'completed' : event.endsWith('failed') ? 'failed' : 'running',
       outcome: text(payload.outcome) || undefined,
       detail: errorMessage(payload.error),
+      reasons: Array.isArray(payload.reasons) ? payload.reasons.filter((item): item is string => typeof item === 'string') : undefined,
     }
+  }
+  if (event === 'provider.protocol.learned') {
+    // The endpoint refused the protocol; Rinari found the right one (#94).
+    return { id, type: 'system', activitySeq, occurredAt, kind: 'protocol_learned', label: text(payload.model), status: text(payload.transport) }
+  }
+  if (event === 'model.fallback') {
+    // The turn went on with the fallback model (plan 0.4.0 #80).
+    return { id, type: 'system', activitySeq, occurredAt, kind: 'model_fallback', label: text(payload.to_model), status: text(payload.reason) }
   }
   if (event === 'provider.reasoning.dropped') {
     // El modelo no admite el esfuerzo elegido: el turno siguió sin él.
@@ -600,7 +683,8 @@ function normalizePersistedTurn(turn: TimelineTurn): TurnTimeline {
     items: [],
   }
   for (const item of turn.items) {
-    timeline = mergeIntoTimeline(timeline, item.event, item as Record<string, unknown>, timeline.startedAt)
+    // La página dice los ids una vez por turno (#91); cada fila los recibe aquí.
+    timeline = mergeIntoTimeline(timeline, item.event, { session_id: turn.session_id, turn_id: turn.turn_id, ...(item as Record<string, unknown>) }, timeline.startedAt)
   }
   if (turn.final_response && !timeline.items.some((item) => item.type === 'model' && item.outputKind === 'final')) {
     timeline = mergeIntoTimeline(timeline, 'model.content.completed', {
@@ -637,6 +721,17 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
       threads: {
         ...state.threads,
         [action.sessionId]: [...action.messages, ...live.filter((message) => !ids.has(message.id))],
+      },
+    }
+  }
+  if (action.type === 'history/prepended') {
+    const thread = state.threads[action.sessionId] ?? []
+    const ids = new Set(thread.map((message) => message.id))
+    return {
+      ...state,
+      threads: {
+        ...state.threads,
+        [action.sessionId]: [...action.messages.filter((message) => !ids.has(message.id)), ...thread],
       },
     }
   }
@@ -715,6 +810,7 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
       steerId: action.steerId,
       content: action.content,
       status: 'pending',
+      ...(action.interrupted ? { interrupted: true } : {}),
     }
     return { ...state, timelines: { ...state.timelines, [action.turnId]: { ...timeline, items: [...timeline.items, item] } } }
   }
@@ -796,6 +892,7 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
   // no debe crear un turno fantasma «en curso».
   if (event.startsWith('memory.') && !state.timelines[turnId] && event !== 'memory.candidate.created' && event !== 'memory.remembered') return state
   if (event === 'skill.proposal.resolved' && !state.timelines[turnId]) return state
+  if (event === 'instructions.proposal.resolved' && !state.timelines[turnId]) return state
   let timeline = state.timelines[turnId] ?? defaultTimeline(turnId, sessionId, action.now)
   if (event === 'turn.started') {
     timeline = {
@@ -840,6 +937,18 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
     } else if (event === 'steer.returned') {
       // Lo que el turno no llegó a leer vuelve al compositor (useTurnRuntime).
       timeline = { ...timeline, items: timeline.items.filter((item) => item.type !== 'steer' || item.status !== 'pending') }
+    } else if (event === 'steer.cancelled') {
+      // Borrado antes de que Rinari lo leyera (#54).
+      timeline = { ...timeline, items: timeline.items.filter((item) => item.id !== `steer:${text(payload.steer_id)}`) }
+    } else if (event === 'steer.updated') {
+      // Editado antes de que Rinari lo leyera (#54), o adelantado con «Enviar
+      // ahora» (P7): entonces corta el paso y la burbuja lo dice.
+      timeline = {
+        ...timeline,
+        items: timeline.items.map((item) => item.type === 'steer' && item.id === `steer:${text(payload.steer_id)}` && item.status === 'pending'
+          ? { ...item, content: text(payload.message) || item.content, ...(payload.interrupt === true ? { interrupted: true } : {}) }
+          : item),
+      }
     } else {
       timeline = mergeIntoTimeline(timeline, event, payload, action.now)
       if (event === 'approval.requested' && ['running', 'approval'].includes(timeline.status)) timeline = { ...timeline, status: 'approval' }
@@ -892,6 +1001,12 @@ export function engineEventAction(event: EngineEventMsg, now = Date.now()): Time
     event.event.startsWith('memory.') ||
     event.event === 'skill.proposed' ||
     event.event === 'skill.proposal.resolved' ||
-    event.event === 'provider.reasoning.dropped'
+    event.event === 'instructions.proposed' ||
+    event.event === 'instructions.proposal.resolved' ||
+    event.event === 'provider.reasoning.dropped' ||
+    event.event === 'model.fallback' ||
+    event.event === 'provider.protocol.learned' ||
+    event.event === 'file.presented' ||
+    event.event === 'speech.setup_needed'
   return relevant ? { type: 'engine/event', event, now } : null
 }

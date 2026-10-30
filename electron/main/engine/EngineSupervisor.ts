@@ -85,13 +85,16 @@ const TEN_SECOND_METHODS = new Set([
   'session.restore',
   'session.fork',
   'session.close',
-  'session.history',
+  'project.status',
 ])
-const FIVE_SECOND_METHODS = new Set(['project.status', 'session.turn.start', 'model.discovery.start'])
+const FIVE_SECOND_METHODS = new Set(['session.turn.start', 'model.discovery.start'])
+/** Abrir una conversación larga en un equipo lento (#70): margen, no 10 s. */
+const THIRTY_SECOND_METHODS = new Set(['session.history', 'session.timeline'])
 
 export function deadlineFor(method: string): number {
   if (FIVE_SECOND_METHODS.has(method)) return 5_000
   if (TEN_SECOND_METHODS.has(method)) return 10_000
+  if (THIRTY_SECOND_METHODS.has(method)) return 30_000
   return 60_000
 }
 
@@ -131,7 +134,16 @@ export interface SupervisorOptions {
   resourceDir?: string
   packaged?: boolean
   env?: NodeJS.ProcessEnv
+  /** Plazo del saludo, leído en cada arranque (#70). Por defecto, el del transporte. */
+  handshakeTimeoutMs?: () => number
+  /** Variables para el proceso del Engine, leídas en cada arranque. */
+  engineEnv?: () => Record<string, string>
+  /** Lo que tardó el saludo: el host lo recuerda para el próximo límite (#70, #91). */
+  onStarted?: (ms: number) => void
 }
+
+/** Un arranque que falla así merece un segundo intento antes de mostrar el error (#70). */
+const RETRYABLE_START = new Set(['ENGINE_HANDSHAKE', 'ENGINE_SPAWN', 'ENGINE_IO'])
 
 export class EngineSupervisor {
   private state: EngineState = 'stopped'
@@ -193,8 +205,19 @@ export class EngineSupervisor {
         this.setState('failed', error.message)
         throw error
       }
-      return this.startWith(command)
+      return this.startOrRetry(command)
     })
+  }
+
+  /** Un equipo lento o un antivirus que retiene el primer arranque: un segundo intento antes del error (#70). */
+  private async startOrRetry(command: EngineCommand): Promise<EngineStatus> {
+    try {
+      return await this.startWith(command)
+    } catch (error) {
+      if (!(error instanceof EngineCommandError) || !RETRYABLE_START.has(error.code)) throw error
+      this.options.onStderr?.(`engine start failed (${error.code}); retrying once`)
+      return this.startWith(command)
+    }
   }
 
   /** Arranque explícito: sidecar, override o un engine falso en tests. */
@@ -202,6 +225,7 @@ export class EngineSupervisor {
     this.setState('handshaking', `spawning ${command.program}`)
     this.epoch += 1
     const epoch = this.epoch
+    const startedAt = Date.now()
     let transport: NdjsonTransport
     try {
       transport = await NdjsonTransport.spawn({
@@ -209,6 +233,8 @@ export class EngineSupervisor {
         args: command.args,
         cwd: command.cwd,
         epoch,
+        handshakeTimeoutMs: this.options.handshakeTimeoutMs?.(),
+        env: this.options.engineEnv?.(),
         onEvent: (event, at) => {
           // Un evento de una instancia anterior no puede pasar por nuevo.
           if (at !== this.epoch) return
@@ -236,6 +262,7 @@ export class EngineSupervisor {
 
     this.transport = transport
     this.hello = transport.engineHello
+    this.options.onStarted?.(Date.now() - startedAt)
     this.setState('ready', null)
     return this.status()
   }
@@ -250,6 +277,9 @@ export class EngineSupervisor {
       const transport = this.transport
       this.transport = null
       this.hello = null
+      // Un cierre pedido no es una caída (#91): sin cambiar de época, la
+      // salida del proceso pasaba por «degraded» y dejaba un ERROR en app.log.
+      this.epoch += 1
       if (transport) await transport.shutdown()
       this.setState('stopped', null)
       return this.status()
@@ -280,7 +310,7 @@ export class EngineSupervisor {
   startWithCommand(command: EngineCommand): Promise<EngineStatus> {
     return this.serialize(async () => {
       if (this.status().state === 'ready') return this.status()
-      return this.startWith(command)
+      return this.startOrRetry(command)
     })
   }
 }

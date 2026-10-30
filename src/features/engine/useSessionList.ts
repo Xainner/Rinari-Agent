@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch } from 'react'
+import { useBranchNoticeStore } from '../../stores/branchNotice'
 import { toast } from 'sonner'
 import {
   commandMessage,
@@ -13,9 +14,11 @@ import { translate } from '../../i18n'
 import type { Language } from '../../types'
 import { warnUntrusted } from '../projects/trustWarning'
 import { useUIStore } from '../../stores/ui'
+import { useBoardAttentionStore } from '../../stores/boardAttention'
 import { useActivityDisclosure } from '../../stores/activityDisclosure'
 import { revealSessionProject } from '../projects/revealSessionProject'
 import { useConversationDraftStore } from '../../stores/conversationDraft'
+import { isAgencySession, useAgencyStore } from '../../stores/agency'
 import { historyToMessages } from './history'
 import type { TimelineAction } from '../activity/turnTimelineReducer'
 import { isSessionHidden, partitionSessions } from './sessionVisibility'
@@ -24,6 +27,18 @@ import { isSessionHidden, partitionSessions } from './sessionVisibility'
  * The Engine lists 50 sessions unless asked for more, and the sidebar only
  * showed those: older chats vanished from it. Its ceiling is 500.
  */
+
+/** Mensajes por página de historial (#70). */
+const HISTORY_PAGE = 100
+
+/** Lo cargado de una conversación y desde dónde seguir hacia atrás. */
+export interface HistoryInfo {
+  total: number
+  hasMore: boolean
+  beforeSeq?: number | null
+  beforeTurnIndex?: number | null
+}
+
 export const SESSION_LIST_LIMIT = 500
 
 
@@ -82,7 +97,10 @@ export function useSessionList(options: {
   /** Archivadas: ciclo de vida explícito, separado de "cerrar". */
   const [archivedSessions, setArchivedSessions] = useState<SessionSummary[]>([])
   /** Total/has_more del historial cargado por sesión. */
-  const [historyInfo, setHistoryInfo] = useState<Record<string, { total: number; hasMore: boolean }>>({})
+  const [historyInfo, setHistoryInfo] = useState<Record<string, HistoryInfo>>({})
+  const historyInfoRef = useRef(historyInfo)
+  historyInfoRef.current = historyInfo
+  const earlierInFlight = useRef(new Set<string>())
   /** Sesiones con historial ya cargado o hilo vivo (no recargar encima). */
   const historyLoaded = useRef(new Set<string>())
   /** Un refresco obsoleto que resuelve tarde no debe sobrescribir uno más nuevo. */
@@ -123,7 +141,15 @@ export function useSessionList(options: {
    * historial no está cargado: así el primer pintado ya muestra
    * esqueleto y nunca el home transitorio. Único cuello de botella
    * para cambios de sesión Normal (ver select/restore/fork/create). */
+  // The session chosen last, and the listing in flight when it was: a listing
+  // that started before cannot know it (an Agency child before session.open
+  // answers), so it never moves you off it.
+  const activatedAt = useRef<{ id: string; seq: number }>({ id: '', seq: 0 })
+  // The session whose session.open is still pending: until it answers (with
+  // its agent_id, for an Agency child) no listing moves you off it.
+  const opening = useRef('')
   const activate = useCallback((id: string) => {
+    activatedAt.current = { id, seq: refreshSeq.current }
     if (id !== '' && !historyLoaded.current.has(id)) {
       setHistoryPhases((prev) => ({ ...prev, [id]: 'loading' }))
     }
@@ -144,6 +170,10 @@ export function useSessionList(options: {
   const rememberRows = useCallback((rows: SessionSummary[]) => {
     for (const row of rows) learntDuring.current.set(row.id, refreshSeq.current)
     if (rows.length === 0) return
+    // Rinari Agency: una conversación de un agente (también un hijo o un fork)
+    // se recuerda aparte: session.list no la trae, y no por eso se fue.
+    const agents = rows.filter((row) => row.agent_id).map((row) => row.id)
+    if (agents.length > 0) useAgencyStore.getState().markAgentRows(agents)
     setSessionsById((current) => {
       let changed = false
       const next = { ...current }
@@ -161,7 +191,8 @@ export function useSessionList(options: {
     const present = new Set(rows.map((row) => row.id))
     setSessionsById((current) => {
       const stale = Object.keys(current).filter(
-        (id) => !present.has(id) && (learntDuring.current.get(id) ?? 0) < seq,
+        // Las de la Agency no están en session.list: su fila (modelo, título) se queda.
+        (id) => !present.has(id) && (learntDuring.current.get(id) ?? 0) < seq && !isAgencySession(id),
       )
       if (stale.length === 0) return current
       const next = { ...current }
@@ -173,6 +204,7 @@ export function useSessionList(options: {
   /** Una sesión que el Engine confirmó que no existe deja de estar en caché. */
   const forgetRow = useCallback((id: string) => {
     learntDuring.current.delete(id)
+    useAgencyStore.getState().forgetAgentRow(id)
     setSessionsById((current) => {
       if (!(id in current)) return current
       const next = { ...current }
@@ -210,6 +242,11 @@ export function useSessionList(options: {
       setSessionsError(null)
       setActiveSession((current) => {
         if (current !== '' && normalized.some((s) => s.id === current)) return current
+        // Rinari Agency: sus chats y puestos no están en `session.list`; quien
+        // escribe en el chat de un agente sigue en él.
+        if (current !== '' && isAgencySession(current)) return current
+        if (current !== '' && activatedAt.current.id === current && activatedAt.current.seq >= seq) return current
+        if (current !== '' && opening.current === current) return current
         // Una conversación nueva en borrador no es «ninguna sesión»: se queda.
         if (current === '' && useConversationDraftStore.getState().normal) return ''
         return normalized[0]?.id ?? ''
@@ -235,14 +272,21 @@ export function useSessionList(options: {
       setHistoryPhases((prev) => ({ ...prev, [id]: 'loading' }))
       const job = (async () => {
         try {
+          // Una página, no la conversación entera (#70): lo anterior se pide
+          // con «Cargar anteriores».
           const [history, timeline] = await Promise.all([
-            engineApi.sessionHistory(id),
+            engineApi.sessionHistory(id, HISTORY_PAGE),
             timelineEnabled ? engineApi.sessionTimeline(id).catch(() => null) : Promise.resolve(null),
           ])
           if (!isCurrent()) return
           setHistoryInfo((prev) => ({
             ...prev,
-            [id]: { total: history.total, hasMore: history.has_more },
+            [id]: {
+              total: history.total,
+              hasMore: history.has_more || Boolean(timeline?.has_more),
+              beforeSeq: history.next_before_seq ?? null,
+              beforeTurnIndex: timeline?.has_more ? timeline.next_before_turn_index : null,
+            },
           }))
           const persisted = historyToMessages(history.messages)
           // Lo vivo siempre gana a un fetch de historial que llega tarde.
@@ -264,6 +308,33 @@ export function useSessionList(options: {
     },
     [dispatch, timelineEnabled],
   )
+
+  /** «Cargar anteriores» (#70): la página previa del historial y de los turnos. */
+  const loadEarlierHistory = useCallback(async (id: string): Promise<void> => {
+    const info = historyInfoRef.current[id]
+    if (!info?.hasMore || earlierInFlight.current.has(id)) return
+    earlierInFlight.current.add(id)
+    try {
+      const [history, timeline] = await Promise.all([
+        info.beforeSeq ? engineApi.sessionHistory(id, HISTORY_PAGE, info.beforeSeq) : Promise.resolve(null),
+        timelineEnabled && info.beforeTurnIndex !== null && info.beforeTurnIndex !== undefined
+          ? engineApi.sessionTimeline(id, info.beforeTurnIndex).catch(() => null)
+          : Promise.resolve(null),
+      ])
+      if (history) dispatch({ type: 'history/prepended', sessionId: id, messages: historyToMessages(history.messages) })
+      if (timeline) dispatch({ type: 'timeline/loaded', sessionId: id, turns: timeline.turns })
+      const beforeSeq = history ? history.next_before_seq ?? null : null
+      const beforeTurnIndex = timeline?.has_more ? timeline.next_before_turn_index : null
+      setHistoryInfo((prev) => ({
+        ...prev,
+        [id]: { ...info, beforeSeq, beforeTurnIndex, hasMore: Boolean(beforeSeq) || beforeTurnIndex !== null },
+      }))
+    } catch (err) {
+      toast.error(commandMessage(err))
+    } finally {
+      earlierInFlight.current.delete(id)
+    }
+  }, [dispatch, timelineEnabled])
 
   const retrySessionHistory = useCallback((id: string): Promise<void> => {
     historyLoaded.current.delete(id)
@@ -297,6 +368,7 @@ export function useSessionList(options: {
       }
       if (warning.startsWith('[git-branch]') && opened.branch_change) {
         toast.warning(branchChangeText(opened.branch_change, useUIStore.getState().lang), { id: `session-warning-${id}-${warning}` })
+        useBranchNoticeStore.getState().set(id, opened.branch_change)
         continue
       }
       toast.warning(warning, { id: `session-warning-${id}-${warning}` })
@@ -308,7 +380,8 @@ export function useSessionList(options: {
   const rememberOpened = useCallback(
     (opened: { session: SessionSummary }) => {
       rememberRows([opened.session])
-      if (!isSessionHidden(opened.session)) {
+      // Las conversaciones de la Agency no entran en los recientes de Rinari.
+      if (!isSessionHidden(opened.session) && !opened.session.agent_id) {
         setRecentSessionIds((current) =>
           current.includes(opened.session.id) ? current : [opened.session.id, ...current],
         )
@@ -376,13 +449,16 @@ export function useSessionList(options: {
       const previous = activeSession
       const generation = ++selectionGeneration.current
       const engine = generationRef.current
+      opening.current = id
       activate(id)
       try {
         const opened = await engineApi.openSession(id)
+        if (opening.current === id) opening.current = ''
         if (generationRef.current !== engine) return
         rememberOpened(opened)
         reportWarnings(id, opened)
       } catch (err) {
+        if (opening.current === id) opening.current = ''
         if (generationRef.current !== engine) return
         // A stale failure must not undo a newer selection.
         if (selectionGeneration.current === generation) {
@@ -405,12 +481,16 @@ export function useSessionList(options: {
         chat: !projectId,
         title: options.title ?? translate(useUIStore.getState().lang, 'sidebar.newChat'),
         mode: options.mode ?? 'build',
-        permission_profile: options.permissionProfile ?? 'workspace',
+        permission_profile: options.permissionProfile,
       })
       rememberRows([result.session])
       setRecentSessionIds((current) => [result.session.id, ...current.filter((item) => item !== result.session.id)])
       historyLoaded.current.add(result.session.id)
       setHistoryPhases((current) => ({ ...current, [result.session.id]: 'loaded' }))
+      // Su historial vacío también cuenta como cargado para los avisos: sin él,
+      // BoardActivityController no la seguía y sus resultados nunca quedaban
+      // pendientes (plan 0.4.0, #103).
+      setHistoryInfo((current) => ({ ...current, [result.session.id]: { total: 0, hasMore: false, beforeSeq: null, beforeTurnIndex: null } }))
       if (shouldActivate) activate(result.session.id)
       await revealSessionProject(result.session)
       void refreshSessions()
@@ -457,6 +537,7 @@ export function useSessionList(options: {
   const archiveSession = useCallback(async (id: string): Promise<boolean> => {
     try {
       await engineApi.archiveSession(id)
+      useBoardAttentionStore.getState().forgetSession(id)
       await refreshSessions()
       return true
     } catch (err) {
@@ -490,18 +571,25 @@ export function useSessionList(options: {
   /** Eliminación permanente con cascada explícita del engine. */
   const deleteSession = useCallback(
     async (id: string, cascade: boolean): Promise<SessionDeleteResult | null> => {
+      // La vista suelta la conversación antes de borrarla: si no, el anillo y
+      // el composer la volvían a pedir y el Engine respondía NOT_FOUND (#91).
+      const wasActive = activeSession === id
+      if (wasActive) setActiveSession('')
       try {
         const result = await engineApi.deleteSession(id, cascade)
         useActivityDisclosure.getState().forgetSession(id)
+        // Sus recibos «sin leer» ya no se podrían limpiar (#84).
+        useBoardAttentionStore.getState().forgetSession(id)
         forgetRow(id)
         await refreshSessions()
         return result
       } catch (err) {
+        if (wasActive) setActiveSession(id)
         toast.error(commandMessage(err))
         return null
       }
     },
-    [forgetRow, refreshSessions],
+    [activeSession, forgetRow, refreshSessions],
   )
 
   /** Cambia PLAN/BUILD/REVIEW de una sesión concreta. Tareas y contexto intactos. */
@@ -550,6 +638,9 @@ export function useSessionList(options: {
   return {
     sessions,
     sessionsById,
+    // A row the Engine answered with (a model change): an Agency chat is not in
+    // session.list, so a refresh alone would leave its row as it was.
+    rememberRows,
     activeSession,
     setActiveSession,
     sessionsLoaded,
@@ -561,6 +652,7 @@ export function useSessionList(options: {
     refreshSessions,
     loadSessionHistory,
     retrySessionHistory,
+    loadEarlierHistory,
     ensureHistoryLoaded: loadSessionHistory,
     deferTrustWarning,
     prepareSession,

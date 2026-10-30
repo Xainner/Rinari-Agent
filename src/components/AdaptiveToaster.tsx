@@ -25,6 +25,8 @@ export function toastLane(
     width: TOAST_WIDTH,
     height: FALLBACK_TOAST_HEIGHT,
   },
+  /** Cuánto sube la pila abajo para esquivar un composer (`toastLift`). */
+  lift = 0,
 ): NativeRect {
   const stackWidth = Math.min(Math.max(1, Math.ceil(stack.width)), Math.max(1, width - MARGIN * 2))
   const stackHeight = Math.min(
@@ -38,8 +40,43 @@ export function toastLane(
       : Math.max(MARGIN, (width - stackWidth) / 2)
   const y = position.startsWith('top')
     ? MARGIN
-    : Math.max(MARGIN, height - stackHeight - MARGIN)
+    : Math.max(MARGIN, height - stackHeight - MARGIN - lift)
   return { x, y, width: stackWidth, height: stackHeight }
+}
+
+/** Aire entre la pila y la zona que esquiva. */
+const AVOID_GAP = 10
+
+/**
+ * Cuánto sube la pila de abajo para no tapar una zona marcada con
+ * `data-toast-avoid` (el composer y su «Enviar», un formulario abierto sobre
+ * él): queda por encima de la más alta que cae bajo su carril. Una zona que
+ * ocupa casi toda la ventana no cuenta, y nunca sube más del 70 % del alto.
+ */
+export function toastLift(
+  position: Placement,
+  viewport: { width: number; height: number },
+  zones: NativeRect[],
+  stack?: { width: number; height: number },
+): number {
+  if (!position.startsWith('bottom') || zones.length === 0) return 0
+  const lane = toastLane(position, viewport.width, viewport.height, stack)
+  let lift = 0
+  for (const zone of zones) {
+    if (zone.width <= 0 || zone.height <= 0) continue
+    if (zone.x >= lane.x + lane.width || zone.x + zone.width <= lane.x) continue
+    if (zone.height > viewport.height * 0.7) continue
+    lift = Math.max(lift, viewport.height - zone.y - MARGIN + AVOID_GAP)
+  }
+  return Math.min(Math.max(0, Math.round(lift)), Math.round(viewport.height * 0.7))
+}
+
+/** Las zonas que la pila esquiva, en coordenadas de la ventana. */
+export function measureAvoidZones(document: Document): NativeRect[] {
+  return Array.from(document.querySelectorAll<HTMLElement>('[data-toast-avoid]')).flatMap((element) => {
+    const rect = element.getBoundingClientRect()
+    return rect.width > 0 && rect.height > 0 ? [{ x: Math.floor(rect.left), y: Math.floor(rect.top), width: Math.ceil(rect.width), height: Math.ceil(rect.height) }] : []
+  })
 }
 
 export function overlaps(a: NativeRect, b: NativeRect): boolean {
@@ -51,17 +88,19 @@ export function chooseToastLayout(
   viewport: { width: number; height: number },
   frozen?: Placement | null,
   stack?: { width: number; height: number },
-): { chosen: Placement; occlusions: NativeRect[] } {
+  zones: NativeRect[] = [],
+): { chosen: Placement; occlusions: NativeRect[]; lift: number } {
   const chosen =
     frozen ??
     placements.find((candidate) => {
-      const rect = toastLane(candidate, viewport.width, viewport.height, stack)
+      const rect = toastLane(candidate, viewport.width, viewport.height, stack, toastLift(candidate, viewport, zones, stack))
       return surfaces.every((surface) => !overlaps(rect, surface))
     }) ??
     'bottom-right'
-  const rect = toastLane(chosen, viewport.width, viewport.height, stack)
+  const lift = toastLift(chosen, viewport, zones, stack)
+  const rect = toastLane(chosen, viewport.width, viewport.height, stack, lift)
   const blocked = surfaces.some((surface) => overlaps(rect, surface))
-  return { chosen, occlusions: blocked ? [rect] : [] }
+  return { chosen, occlusions: blocked ? [rect] : [], lift }
 }
 
 /**
@@ -124,6 +163,7 @@ export default function AdaptiveToaster() {
   const toaster = useRef<HTMLElement | null>(null)
   const frozen = useRef<Placement | null>(null)
   const [measured, setMeasured] = useState<NativeRect | null>(null)
+  const [zones, setZones] = useState<NativeRect[]>([])
   const [viewport, setViewport] = useState(() => ({ width: window.innerWidth, height: window.innerHeight }))
 
   useEffect(() => {
@@ -136,8 +176,8 @@ export default function AdaptiveToaster() {
   const native = useMemo(() => Object.values(surfaces), [surfaces])
   const decision = useMemo(() => {
     const stack = measured ? { width: measured.width, height: measured.height } : undefined
-    return chooseToastLayout(native, viewport, frozen.current, stack)
-  }, [native, viewport, measured])
+    return chooseToastLayout(native, viewport, frozen.current, stack, zones)
+  }, [native, viewport, measured, zones])
   const occlusions = useMemo(
     () => protectedToastOcclusions(active, native, measured, decision.occlusions),
     [active, native, measured, decision.occlusions],
@@ -147,6 +187,7 @@ export default function AdaptiveToaster() {
     const root = toaster.current
     if (!active || !root) {
       setMeasured(null)
+      setZones((current) => (current.length === 0 ? current : []))
       return
     }
 
@@ -158,6 +199,8 @@ export default function AdaptiveToaster() {
       setMeasured((current) =>
         JSON.stringify(current) === JSON.stringify(next) ? current : next,
       )
+      const avoid = measureAvoidZones(root.ownerDocument)
+      setZones((current) => (JSON.stringify(current) === JSON.stringify(avoid) ? current : avoid))
       framesLeft -= 1
       if (framesLeft > 0) frame = requestAnimationFrame(measure)
     }
@@ -186,6 +229,12 @@ export default function AdaptiveToaster() {
     mutation?.observe(root, { childList: true, subtree: true, attributes: true })
     root.addEventListener('transitionrun', burst, true)
     root.addEventListener('transitionend', burst, true)
+    // Lo que la pila esquiva (un composer, un pie con «Crear») puede aparecer
+    // debajo mientras un toast sigue a la vista: se vuelve a mirar cada poco.
+    const zonesTimer = window.setInterval(() => {
+      const avoid = measureAvoidZones(root.ownerDocument)
+      setZones((current) => (JSON.stringify(current) === JSON.stringify(avoid) ? current : avoid))
+    }, 400)
     observeTree()
     return () => {
       if (frame !== null) cancelAnimationFrame(frame)
@@ -193,6 +242,7 @@ export default function AdaptiveToaster() {
       mutation?.disconnect()
       root.removeEventListener('transitionrun', burst, true)
       root.removeEventListener('transitionend', burst, true)
+      window.clearInterval(zonesTimer)
     }
   }, [active, toasts])
 
@@ -205,7 +255,7 @@ export default function AdaptiveToaster() {
   return (
     <Toaster
       ref={toaster}
-      offset={MARGIN}
+      offset={decision.lift > 0 ? { top: MARGIN, right: MARGIN, bottom: MARGIN + decision.lift, left: MARGIN } : MARGIN}
       position={active ? (frozen.current ?? decision.chosen) : placement}
       theme="dark"
       closeButton

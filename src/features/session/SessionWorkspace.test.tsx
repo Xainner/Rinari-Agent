@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-// Doc 01 §5: un workspace visual por sesión (chat + dock de Archivos /
-// Navegador / Workspace) compartido por Normal y Boards (UX-07, UX-08, UX-09).
+// Doc 01 §5: un workspace visual por sesión (chat + panel lateral con sus
+// vistas en mosaico, #47) compartido por Normal y Boards (UX-07, UX-08, UX-09).
 import { installMockPlatform } from '../../test/mockPlatform'
 installMockPlatform()
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
@@ -15,11 +15,10 @@ vi.mock('../../services/desktop', () => ({
   },
 }))
 vi.mock('../../lib/highlight', () => ({ highlightToHtml: vi.fn().mockResolvedValue(null) }))
-vi.mock('../workspace/WorkspaceView', () => ({
-  default: ({ session, tab }: { session: { id: string } | null; tab?: string }) => (
-    <div data-testid={`workspace-${session?.id ?? 'none'}`} data-tab={tab} />
-  ),
-}))
+vi.mock('../workspace/ChangesPanel', () => ({ default: ({ path }: { path: string }) => <div data-testid={`changes-${path}`} /> }))
+vi.mock('../workspace/CheckpointsPanel', () => ({ default: () => <div data-testid="checkpoints" /> }))
+vi.mock('../workspace/ArtifactsPanel', () => ({ default: () => <div data-testid="artifacts" /> }))
+vi.mock('../summary/SummaryPanel', () => ({ default: () => <div data-testid="summary-panel" /> }))
 
 vi.mock('../terminal/TerminalPanel', () => ({
   default: ({ sessionId }: { sessionId: string }) => <div data-testid={`terminal-${sessionId}`} />,
@@ -72,37 +71,111 @@ function workspace(sessionId: string, options: { focused?: boolean; density?: 'n
   )
 }
 
-it('mounts one dock with its surfaces per session; a file link reveals Files in that dock only', async () => {
+it('mounts one dock per session; a file link reveals Files in that dock only', async () => {
   render(<I18nProvider lang="es">{workspace('ses_a')}{workspace('ses_b', { focused: false })}</I18nProvider>)
   expect(screen.queryByTestId('session-dock')).toBeNull()
   const user = userEvent.setup()
   await user.click(screen.getByText('Open plan ses_a'))
   const dock = await screen.findByTestId('session-dock')
   expect(dock.dataset.sessionId).toBe('ses_a')
-  expect(dock.dataset.surface).toBe('files')
-  const surfaces = within(dock).getByRole('tablist', { name: 'Panel lateral de la sesión' })
-  expect(within(surfaces).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Agentes', 'Archivos1', 'Navegador', 'Workspace'])
+  expect(dock.dataset.views).toBe('files')
+  expect(within(dock).getAllByTestId('dock-view').map((tile) => tile.getAttribute('aria-label'))).toEqual(['Archivos'])
   expect(await within(dock).findByRole('heading', { name: 'Planning document' })).toBeTruthy()
+  // Artefactos vive al pie de Archivos (#47).
+  expect(within(dock).getByText('Artefactos')).toBeTruthy()
   expect(screen.getAllByTestId('session-dock')).toHaveLength(1)
-  // El chat sigue montado al lado: el dock ocupa espacio real, no lo cubre.
+  // El chat sigue montado al lado: el panel ocupa espacio real, no lo cubre.
   expect(screen.getByTestId('chat-ses_a')).toBeTruthy()
   expect(dock.closest('.session-workspace')?.getAttribute('data-dock')).toBe('docked')
 })
 
 it.each([
-  ['es', 'Panel lateral de la sesión', 'Cerrar panel lateral', 'Ancho del panel lateral'],
-  ['en', 'Session side panel', 'Close side panel', 'Side panel width'],
-] as const)('uses consistent side panel names in %s, including the close tooltip', (lang, label, close, width) => {
-  useSessionDockStore.getState().reveal('ses_a', 'workspace')
+  ['es', 'Panel lateral de la sesión', 'Cerrar Archivos', 'Ancho del panel lateral'],
+  ['en', 'Session side panel', 'Close Files', 'Side panel width'],
+] as const)('uses consistent side panel names in %s, including each view close button', (lang, label, close, width) => {
+  useSessionDockStore.getState().reveal('ses_a', 'files')
   render(<I18nProvider lang={lang}>{workspace('ses_a')}</I18nProvider>)
   expect(screen.getByRole('complementary', { name: label })).toBeTruthy()
-  expect(screen.getByRole('tablist', { name: label })).toBeTruthy()
   const button = screen.getByRole('button', { name: close })
   expect(button.title).toBe(close)
   expect(screen.getByRole('separator', { name: width })).toBeTruthy()
   fireEvent.click(button)
   expect(screen.queryByTestId('session-dock')).toBeNull()
   expect(screen.getByTestId('chat-ses_a')).toBeTruthy()
+})
+
+it('stacks views in the mosaic, amplifies one and Escape gives the width back', async () => {
+  useSessionDockStore.getState().reveal('ses_a', 'files')
+  useSessionDockStore.getState().reveal('ses_a', 'workspace', { workspaceTab: 'checkpoints' })
+  render(<I18nProvider lang="es">{workspace('ses_a')}</I18nProvider>)
+  const dock = screen.getByTestId('session-dock')
+  expect(dock.dataset.views).toBe('files changes')
+  // Revelar hacia Checkpoints abre su sección al pie de Cambios.
+  await waitFor(() => expect(within(dock).getByTestId('checkpoints')).toBeTruthy())
+  fireEvent.click(screen.getByRole('button', { name: 'Ampliar Cambios' }))
+  expect(screen.getByTestId('session-dock').dataset.views).toBe('changes')
+  expect(screen.getByTestId('session-dock').closest('.session-workspace')?.getAttribute('data-amp')).toBe('true')
+  fireEvent.keyDown(window, { key: 'Escape' })
+  await waitFor(() => expect(screen.getByTestId('session-dock').dataset.views).toBe('files changes'))
+})
+
+it('#82: el Resumen flota sobre el chat; no abre el panel, no cambia sus vistas y Esc lo cierra', async () => {
+  useSessionDockStore.getState().reveal('ses_a', 'files')
+  render(<I18nProvider lang="es">{workspace('ses_a')}</I18nProvider>)
+  const workspaceEl = screen.getByTestId('session-dock').closest('.session-workspace')!
+  act(() => useSessionDockStore.getState().toggleSummary('ses_a'))
+  const summary = screen.getByTestId('summary-dock')
+  // Dentro de la columna del chat, encima; el panel sigue igual, con sus vistas.
+  expect(summary.closest('.session-workspace-chat')).toBeTruthy()
+  expect(summary.className).toBe('summary-float')
+  expect(screen.getByTestId('session-dock').dataset.views).toBe('files')
+  expect(workspaceEl.getAttribute('data-dock')).toBe('docked')
+  fireEvent.keyDown(window, { key: 'Escape' })
+  await waitFor(() => expect(screen.queryByTestId('summary-dock')).toBeNull())
+  expect(screen.getByTestId('session-dock').dataset.views).toBe('files')
+  // Sin vistas, abrirlo no muestra el panel.
+  act(() => useSessionDockStore.getState().closeView('ses_a', 'files'))
+  act(() => useSessionDockStore.getState().toggleSummary('ses_a'))
+  expect(screen.getByTestId('summary-dock')).toBeTruthy()
+  expect(screen.queryByTestId('session-dock')).toBeNull()
+  expect(workspaceEl.getAttribute('data-dock')).toBe('hidden')
+})
+
+it('con el chat muy angosto el Resumen se aparta sin cerrarse y vuelve solo al haber sitio', async () => {
+  render(<I18nProvider lang="es">{workspace('ses_a')}</I18nProvider>)
+  const chat = document.querySelector('.session-workspace-chat') as HTMLElement
+  let width = 600
+  chat.getBoundingClientRect = () => ({ width, height: 700, top: 0, left: 0, right: width, bottom: 700, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect
+  act(() => useSessionDockStore.getState().toggleSummary('ses_a'))
+  await waitFor(() => expect(screen.queryByTestId('summary-dock')).toBeNull())
+  expect(useSessionDockStore.getState().summaries).not.toEqual({})
+  // Vuelve a haber sitio (el observador de la columna avisa): regresa solo.
+  width = 900
+  for (const observer of resizeObservers) if (observer.element === chat) act(() => observer.callback([{ contentRect: { width } }]))
+  expect(screen.getByTestId('summary-dock')).toBeTruthy()
+  // En el borde no parpadea: 740 está entre los dos umbrales y sigue a la vista.
+  width = 740
+  for (const observer of resizeObservers) if (observer.element === chat) act(() => observer.callback([{ contentRect: { width } }]))
+  expect(screen.getByTestId('summary-dock').hasAttribute('data-leaving')).toBe(false)
+})
+
+it('al cambiar de conversación en el mismo espacio, el panel y el Resumen no animan su entrada ni su salida', () => {
+  useSessionDockStore.getState().reveal('ses_a', 'files')
+  useSessionDockStore.getState().toggleSummary('ses_b')
+  const view = render(<I18nProvider lang="es">{workspace('ses_a')}</I18nProvider>)
+  expect(screen.getByTestId('session-dock').hasAttribute('data-entering')).toBe(false)
+  // ses_b: sin panel y con su Resumen abierto. El panel de ses_a no se pliega con un fantasma.
+  view.rerender(<I18nProvider lang="es">{workspace('ses_b')}</I18nProvider>)
+  expect(screen.queryByTestId('session-dock')).toBeNull()
+  expect(document.querySelector('.pane-dock-ghost')).toBeNull()
+  expect(screen.getByTestId('summary-dock').hasAttribute('data-still')).toBe(true)
+  // De vuelta a ses_a: su panel aparece tal cual y el Resumen de ses_b no se queda saliendo.
+  view.rerender(<I18nProvider lang="es">{workspace('ses_a')}</I18nProvider>)
+  expect(screen.getByTestId('session-dock').hasAttribute('data-entering')).toBe(false)
+  expect(screen.queryByTestId('summary-dock')).toBeNull()
+  // Abrirlo uno mismo sí entra con movimiento.
+  act(() => useSessionDockStore.getState().toggleSummary('ses_a'))
+  expect(screen.getByTestId('summary-dock').hasAttribute('data-still')).toBe(false)
 })
 
 it('UX-09: a typed dock action names its session and never opens the dock of the others', () => {
@@ -117,7 +190,7 @@ it('UX-09: a typed dock action names its session and never opens the dock of the
 })
 
 it('UX-08: when chat and dock do not fit, the dock becomes a drawer inside the session with focus and Escape', async () => {
-  useSessionDockStore.getState().reveal('ses_a', 'workspace')
+  useSessionDockStore.getState().reveal('ses_a', 'files')
   render(<I18nProvider lang="es">{workspace('ses_a')}</I18nProvider>)
   const dock = screen.getByTestId('session-dock')
   const root = dock.closest('.session-workspace')!
@@ -129,7 +202,7 @@ it('UX-08: when chat and dock do not fit, the dock becomes a drawer inside the s
   expect(screen.getByTestId('session-dock').closest('.session-workspace')).toBe(root)
   expect(document.querySelector('[class*="fixed"]')).toBeNull()
   // Foco dentro del drawer; Escape lo cierra sin clicks al contenido de abajo.
-  expect(document.activeElement).toBe(within(screen.getByTestId('session-dock')).getByRole('tab', { selected: true }))
+  expect(screen.getByTestId('session-dock').contains(document.activeElement)).toBe(true)
   const chatClicks = vi.fn()
   screen.getByTestId('chat-ses_a').addEventListener('click', chatClicks)
   fireEvent.keyDown(screen.getByTestId('session-dock'), { key: 'Escape' })
@@ -141,10 +214,10 @@ it('UX-08: when chat and dock do not fit, the dock becomes a drawer inside the s
 })
 
 it('the same dock layout follows the session from Normal into its board pane', () => {
-  useSessionDockStore.getState().reveal('ses_a', 'workspace', { workspaceTab: 'tasks' })
+  useSessionDockStore.getState().reveal('ses_a', 'workspace', { workspaceTab: 'artifacts' })
   useSessionDockStore.getState().setWidth('ses_a', 420)
   const normal = render(<I18nProvider lang="es">{workspace('ses_a')}</I18nProvider>)
-  expect(screen.getByTestId('workspace-ses_a').dataset.tab).toBe('tasks')
+  expect(screen.getByTestId('session-dock').dataset.views).toBe('files')
   expect(screen.getByTestId('session-dock').style.width).toBe('420px')
   normal.unmount()
 
@@ -153,8 +226,7 @@ it('the same dock layout follows the session from Normal into its board pane', (
   render(<BoardHarness engine={engine}><BoardView /></BoardHarness>)
   const pane = screen.getByRole('region', { name: 'Backend API' })
   const dock = within(pane).getByTestId('session-dock')
-  expect(dock.dataset.surface).toBe('workspace')
-  expect(within(pane).getByTestId('workspace-ses_a').dataset.tab).toBe('tasks')
+  expect(dock.dataset.views).toBe('files')
   expect(dock.style.width).toBe('420px')
 })
 
@@ -176,7 +248,7 @@ it('UX-07: removing a pane keeps its draft, sends nothing and leaves the session
   expect(engine.closeSession).not.toHaveBeenCalled()
   expect(engine.cancelTurnFor).not.toHaveBeenCalled()
   // Ni el layout del dock ni la sesión se borran por quitar el panel.
-  expect(useSessionDockStore.getState().layoutFor('ses_a')).toMatchObject({ visible: true, activeSurface: 'files' })
+  expect(useSessionDockStore.getState().layoutFor('ses_a')).toMatchObject({ visible: true, views: ['files'] })
 })
 
 // Doc 03 §8.3: el panel se revela cuando el agente empieza a usar el browser.
@@ -209,7 +281,7 @@ it('revela el navegador cuando el contexto nativo pasa a estar listo, y sólo un
       bridge.emitBrowserContext(ready)
     })
     await waitFor(() =>
-      expect(screen.getByTestId('session-dock').dataset.surface).toBe('browser'),
+      expect(screen.getByTestId('session-dock').dataset.views).toBe('browser'),
     )
 
     // Cerrarlo es decisión del usuario: otro aviso del mismo contexto no se lo
@@ -265,7 +337,7 @@ it('un overlay bloqueante viaja en la geometría del slot', async () => {
   }
 })
 
-it('la pestaña Terminal aparece solo si el Engine anuncia la terminal', () => {
+it('la vista Terminal aparece solo si el Engine anuncia la terminal', () => {
   useSessionDockStore.getState().reveal('ses_t', 'terminal')
   const view = (terminalEnabled: boolean) => (
     <I18nProvider lang="es">
@@ -275,13 +347,28 @@ it('la pestaña Terminal aparece solo si el Engine anuncia la terminal', () => {
     </I18nProvider>
   )
   const { rerender } = render(view(false))
-  // Sin capacidad, una superficie guardada «terminal» cae en Workspace.
-  let dock = screen.getByTestId('session-dock')
-  expect(dock.dataset.surface).toBe('workspace')
-  expect(within(dock).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Agentes', 'Archivos', 'Navegador', 'Workspace'])
+  // Sin capacidad, una vista guardada «terminal» no se muestra.
+  expect(screen.getByTestId('session-dock').dataset.views).toBe('')
+  expect(screen.queryByTestId('terminal-ses_t')).toBeNull()
   rerender(view(true))
-  dock = screen.getByTestId('session-dock')
-  expect(dock.dataset.surface).toBe('terminal')
-  expect(within(dock).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Agentes', 'Archivos', 'Navegador', 'Workspace', 'Terminal'])
+  expect(screen.getByTestId('session-dock').dataset.views).toBe('terminal')
   expect(screen.getByTestId('terminal-ses_t')).toBeTruthy()
+})
+
+it('a file opened in a team office shows only the viewer: the office has no folder to list', async () => {
+  // Abrir lo que presentó un puesto desde la oficina decía «Session not found:
+  // office:team_…»: el árbol y los artefactos pedían la carpeta de la oficina.
+  render(
+    <I18nProvider lang="es">
+      <SessionWorkspace sessionId="office:team_x" record={null} density="normal" focused browserEnabled={false}>
+        <FileLink href="artifact://ses_post/media/registro.md">Abrir registro</FileLink>
+      </SessionWorkspace>
+    </I18nProvider>,
+  )
+  await userEvent.setup().click(screen.getByText('Abrir registro'))
+  const dock = await screen.findByTestId('session-dock')
+  expect(dock.dataset.views).toBe('files')
+  expect(within(dock).queryByText('Artefactos')).toBeNull()
+  expect(within(dock).queryByTestId('files-tree-toggle')).toBeNull()
+  expect(within(dock).queryByTestId('artifacts')).toBeNull()
 })

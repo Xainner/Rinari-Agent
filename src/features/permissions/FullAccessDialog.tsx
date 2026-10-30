@@ -22,6 +22,8 @@ interface FullAccessDialogProps {
   open: boolean
   onCancel: () => void
   onConfirm: () => void
+  /** Dibujarlo dentro de este elemento (el panel de Boards) y no sobre la ventana. */
+  container?: HTMLElement | null
 }
 
 /**
@@ -30,11 +32,11 @@ interface FullAccessDialogProps {
  * preguntando, el riesgo y cómo quitarlo. Solo se activa al confirmar;
  * cerrar o cancelar deja el perfil como estaba.
  */
-export function FullAccessDialog({ open, onCancel, onConfirm }: FullAccessDialogProps) {
+export function FullAccessDialog({ open, onCancel, onConfirm, container }: FullAccessDialogProps) {
   const { t } = useI18n()
   return (
     <AlertDialog open={open} onOpenChange={(next) => { if (!next) onCancel() }}>
-      <AlertDialogContent className="full-access-dialog max-w-lg" data-testid="full-access-dialog">
+      <AlertDialogContent container={container} className="full-access-dialog max-w-lg" data-testid="full-access-dialog">
         <AlertDialogHeader className="gap-2">
           <div className="flex items-center gap-3">
             <span className="full-access-badge" aria-hidden="true"><ShieldAlert size={18} /></span>

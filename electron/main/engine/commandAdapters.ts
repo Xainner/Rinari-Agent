@@ -70,33 +70,10 @@ export const COMMAND_ADAPTERS: Record<string, (args: Args) => EngineCall> = {
   /** Patch parcial: solo lo presente, y `ref` siempre. */
   provider_update: (args) => {
     const params: Args = { ref: args.reference }
-    for (const key of ['alias', 'endpoint', 'account_hint', 'secret', 'secret_env', 'settings']) {
+    for (const key of ['alias', 'endpoint', 'account_hint', 'secret', 'secret_env', 'settings', 'enabled']) {
       put(params, args, key)
     }
     return { method: 'provider.update', params }
-  },
-
-  /**
-   * Procedencia de Boards: `source_session_id` y `quoted_source` son parte de
-   * la UX del reenvío manual, no adorno.
-   */
-  peer_message_forward: (args) => {
-    const params: Args = { target_session_id: args.target_session_id, message: args.message }
-    put(params, args, 'source_session_id')
-    put(params, args, 'quoted_source')
-    return { method: 'session.peer_message.forward', params }
-  },
-
-  /**
-   * Precedencia, no unión: el host anterior usa `else if` y manda **una**
-   * clave. Mandar las tres cambiaría a qué grupo resuelve el Engine.
-   */
-  peer_group_get: (args) => {
-    for (const key of ['group_id', 'session_id', 'board_id']) {
-      const value = args[key]
-      if (typeof value === 'string' && value) return { method: 'session.peer_group.get', params: { [key]: value } }
-    }
-    return { method: 'session.peer_group.get', params: {} }
   },
 
   session_timeline: (args) => {

@@ -3,7 +3,7 @@ const { click, clickText, command, evaluate, input, key, panesFor, q, reload, re
 const scroller = '.conversation-enter > .overflow-y-auto'
 const arrow = 'button[aria-label="Ir al final"]'
 const stop = 'button[aria-label="Detener generación"]'
-const steer = 'button[aria-label="Enviar ahora, sin detenerla"]'
+const steer = 'button[aria-label="Enviar sin detenerla: lo leerá al terminar el paso"]'
 const show = 'button[aria-label="Ver actividad del turno"]'
 const hide = 'button[aria-label="Ocultar actividad del turno"]'
 const operations = '[data-activity-disclosure="operations"] > div > button[aria-expanded]'
@@ -41,17 +41,20 @@ async function fits(prefix = '') {
   await wait(`!${q(prefix + ' ' + arrow)}`)
 }
 async function checkpointError(prefix = '') {
-  await clickText('Workspace', prefix + ' .pane-dock-tabs button')
-  await clickText('Checkpoints', prefix + ' [role=tab]')
-  await wait(`${q(prefix + ' .session-dock')}?.innerText.includes('INVALID_USAGE')`)
+  // Checkpoints vive al pie de Cambios (#47); la barra de título actúa sobre la sesión destino.
+  // El código crudo (INVALID_USAGE) ya no se ve (#68): queda la explicación del Engine.
+  // Un panel que se abre con su botón trae su última vista; si ya es Cambios, no se pulsa otra vez.
+  if (!(await evaluate(`Boolean(${q(prefix + ' [data-dock-view="changes"]')})`))) await click('.dock-view-bar button[data-view="changes"]')
+  await clickText('Checkpoints', prefix + ' .dock-section-head')
+  await wait(`${q(prefix + ' .session-dock')}?.innerText.includes('Checkpoints require a Git repository')`)
   assert.equal(await evaluate(`(${q(prefix + ' .session-dock')}.innerText.match(/Checkpoints require a Git repository/g)||[]).length`), 1)
   assert.equal(await evaluate(`document.querySelectorAll('[data-sonner-toast]').length`), 0)
   assert.equal(await evaluate(`${q(prefix + ' .session-dock')}.innerText.includes('Sin checkpoints.')`), false)
   await clickText('Reintentar', prefix + ' .session-dock button')
-  await wait(`${q(prefix + ' .session-dock')}?.innerText.includes('INVALID_USAGE')`)
+  await wait(`${q(prefix + ' .session-dock')}?.innerText.includes('Checkpoints require a Git repository')`)
   assert.equal(await evaluate(`document.querySelectorAll('[data-sonner-toast]').length`), 0)
   await screenshot(prefix ? 'boards-checkpoints' : 'normal-checkpoints')
-  await click(prefix + ' button[aria-label="Cerrar panel lateral"]')
+  await click(prefix + ' button[aria-label="Cerrar Cambios"]')
 }
 
 scenario(async () => {
@@ -99,7 +102,6 @@ scenario(async () => {
   await press(hide, `!${q(hide)}`)
   await fits()
 
-  await click('.app-topbar-dock-button')
   await checkpointError()
   await seedBoard({ boardId: 'interaction-fixes', panes: panesFor(ids.slice(0, 2)), focusedPaneId: 'pane_0' })
   const a = '[data-pane-id="pane_0"]', b = '[data-pane-id="pane_1"]'

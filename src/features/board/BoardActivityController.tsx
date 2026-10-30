@@ -1,5 +1,9 @@
-import { useEffect, useMemo, useRef } from 'react'
-import { useEngineData, useRuntimeStore } from '../engine/EngineContext'
+import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
+import { useEngineData, useOptionalEngineCommands, useRuntimeStore } from '../engine/EngineContext'
+import { onNotificationActivated, onNotificationReplied } from '../../services/notifications'
+import { useAgencyStore } from '../../stores/agency'
+import { enterAgencySession } from '../agency/openAgencySession'
+import { requestTurnReveal } from './boardCommands'
 import {
   derivePaneStatus,
   samePaneStatus,
@@ -11,20 +15,29 @@ import {
 } from '../engine/sessionSelectors'
 import type { TurnTimeline } from '../activity/types'
 import { isDraftPane, useBoardStore } from '../../stores/board'
-import { unreadPeerCount, unreadResultCount, useBoardAttentionStore, type TerminalSource } from '../../stores/boardAttention'
+import { unreadResultCount, useBoardAttentionStore, type TerminalSource } from '../../stores/boardAttention'
 import { useBoardStatusStore } from '../../stores/boardStatus'
 import { getPendingQuestions, subscribePendingQuestions } from '../questions/usePendingQuestions'
 import { useAttentionIndicators } from '../notifications/attentionIndicators'
 import { useUIStore } from '../../stores/ui'
-import { useWindowAttention } from '../../hooks/useWindowAttention'
+import { getWindowAttention } from '../../hooks/useWindowAttention'
+import { hasResultBlock } from '../activity/resultBlock'
+import { lookupSession } from '../notifications/sessionDirectory'
+import { switchToProfileOf } from '../profiles/useProfileWorkspace'
 import { useWindowTitle } from '../../hooks/useWindowTitle'
 import { projectDisplayName } from '../projects/workspaceModel'
 import { useI18n } from '../../i18n'
-import { useBoardNotifications } from './useBoardNotifications'
-import { usePeerNotifications } from './usePeerNotifications'
+import { useBoardNotifications, type ConversationTarget } from './useBoardNotifications'
 import { useCallback } from 'react'
 
 const ACTIVE = new Set(['running', 'approval', 'cancelling'])
+
+/** Sesiones con un turno vivo, como clave estable (preguntas que vigilar). */
+function activeSessionKey(timelines: Record<string, TurnTimeline>): string {
+  const ids = new Set<string>()
+  for (const turn of Object.values(timelines)) if (ACTIVE.has(turn.status)) ids.add(turn.sessionId)
+  return [...ids].sort().join('|')
+}
 
 interface SessionWatch {
   /** Último estado conocido por turno para detectar transiciones. */
@@ -52,6 +65,8 @@ export default function BoardActivityController() {
   const data = useEngineData()
   const store = useRuntimeStore()
   const watches = useRef(new Map<string, SessionWatch>())
+  const phases = useRef(data.historyPhases)
+  phases.current = data.historyPhases
   const panes = useBoardStore((state) => state.panes)
   // Los borradores no tienen sesión ni actividad que observar.
   const members = useMemo(() => panes.filter((pane) => !isDraftPane(pane)), [panes])
@@ -87,10 +102,23 @@ export default function BoardActivityController() {
       if (!session?.initialized) {
         // Antes del baseline: recordar los que terminaron delante de nosotros.
         if (wasActive) watch.liveBeforeInit.add(turn.turnId)
-        return
+        if (!wasActive || phases.current?.[turn.sessionId] === 'loading') return
+        // Una conversación cuyo historial no se carga (una hija, una tarea
+        // programada) también se sigue: lo que se vio empezar y terminar en
+        // vivo es nuevo; lo demás que ya conocemos, baseline (#103).
+        const known = Object.values(store.getState().timelines).flatMap((other) => {
+          const done = other.sessionId === turn.sessionId && other.turnId !== turn.turnId ? terminalOutcomeOf(other) : null
+          return done ? [{ turnId: other.turnId, outcome: done as TerminalOutcome, completedAt: other.completedAt }] : []
+        })
+        watch.liveBeforeInit.delete(turn.turnId)
+        attention.initializeSessionAttention(turn.sessionId, known, { liveTerminalTurnIds: [...watch.liveBeforeInit] })
+        watch.liveBeforeInit.clear()
       }
       const source: TerminalSource = wasActive ? 'live' : previousStatus === undefined ? 'history' : 'snapshot'
-      attention.observeTerminal(turn.sessionId, turn.turnId, outcome, source, turn.completedAt)
+      attention.observeTerminal(turn.sessionId, turn.turnId, outcome, source, turn.completedAt, {
+        quiet: !hasResultBlock(turn),
+        away: !getWindowAttention().attended,
+      })
     }
 
     const scan = () => {
@@ -123,6 +151,24 @@ export default function BoardActivityController() {
     return store.subscribe(scan)
   }, [store, memberIds, data.historyInfo, data.engineGeneration])
 
+  // -- recibos huérfanos (#84): una conversación borrada o archivada no deja
+  // un «sin leer» que nadie puede limpiar. Lo que la lista no trae se
+  // pregunta una vez; si el Engine no contesta, no se borra nada.
+  useEffect(() => {
+    if (!data.ready || !data.sessionsLoaded || data.sessionsError) return
+    let cancelled = false
+    const forget = (id: string) => { if (!cancelled) useBoardAttentionStore.getState().forgetSession(id) }
+    for (const id of Object.keys(useBoardAttentionStore.getState().sessions)) {
+      const row = data.sessionsById[id]
+      if (row) {
+        if (row.state === 'archived') forget(id)
+        continue
+      }
+      void lookupSession(id).then((entry) => { if (entry && (!entry.exists || entry.archived)) forget(id) })
+    }
+    return () => { cancelled = true }
+  }, [data.ready, data.sessionsLoaded, data.sessionsError, data.sessionsById])
+
   // -- estado derivado central por panel (toolbar, barra superior, título) ----
   const memberKey = members.map((pane) => `${pane.paneId}:${pane.sessionId}`).join('|')
   useEffect(() => {
@@ -142,7 +188,6 @@ export default function BoardActivityController() {
           pendingApprovals: selectSessionApprovals(runtime, pane.sessionId).length,
           pendingQuestions: getPendingQuestions(pane.sessionId).length,
           unreadResultCount: unreadResultCount(receipts),
-          unreadPeerCount: unreadPeerCount(receipts),
           availability: !data.ready ? 'disconnected' : data.sessionsById[pane.sessionId] ? 'ready' : 'loading',
         })
         const before = previous[pane.paneId] ?? null
@@ -162,60 +207,87 @@ export default function BoardActivityController() {
     }
   }, [store, memberKey, data.ready, data.sessionsById])
 
-  // -- avisos, título de ventana y lectura de mensajes de pares -----------------
+  // -- avisos y título de ventana -------------------------------------------------
   const { t } = useI18n()
-  const labelFor = useCallback((sessionId: string): string | null => {
-    if (!useBoardStore.getState().panes.some((pane) => pane.sessionId === sessionId)) return null
+  // Avisos de todas las conversaciones (#33): nombre de cualquiera, preguntas
+  // de las que tienen un turno vivo, y «Ir» abre la conversación en el turno.
+  const titleFor = useCallback((sessionId: string): string | null => {
     const record = data.sessionsById[sessionId]
-    return record?.title || (record?.project_root ? projectDisplayName(record.project_root) : null) || t('sidebar.newChat')
+    // Las conversaciones de la Agency no están en la lista de Rinari: se nombran por su agente (y su equipo).
+    if (!record) return useAgencyStore.getState().sessionLabels[sessionId] ?? null
+    return record.title || (record.project_root ? projectDisplayName(record.project_root) : null) || t('sidebar.newChat')
   }, [data.sessionsById, t])
-  const focusSession = useCallback((sessionId: string): boolean => {
-    const pane = useBoardStore.getState().panes.find((item) => item.sessionId === sessionId)
-    if (!pane) return false
-    useUIStore.getState().goBoard()
-    useBoardStore.getState().expandPane(pane.paneId, { focus: true })
-    return true
-  }, [])
-  const view = useUIStore((state) => state.view)
-  const focusedPaneId = useBoardStore((state) => state.focusedPaneId)
-  const focusedPane = members.find((pane) => pane.paneId === focusedPaneId) ?? null
-  const focusedSessionId = view === 'board' && focusedPane && !focusedPane.collapsed ? focusedPane.sessionId : null
+  const projectFor = useCallback((sessionId: string): string | null => {
+    const root = data.sessionsById[sessionId]?.project_root
+    return root ? projectDisplayName(root) : null
+  }, [data.sessionsById])
+  const activeKey = useSyncExternalStore(store.subscribe, () => activeSessionKey(store.getState().timelines))
+  const watchedSessionIds = useMemo(
+    () => [...new Set([...members.map((pane) => pane.sessionId), ...(data.activeSession ? [data.activeSession] : []), ...(activeKey ? activeKey.split('|') : [])])],
+    [members, data.activeSession, activeKey],
+  )
+  const commands = useOptionalEngineCommands()
+  const openConversation = useCallback((target: ConversationTarget) => {
+    if (!commands) return
+    // Un aviso de otro perfil cambia antes a ese perfil (#34).
+    const profile = data.sessionsById[target.sessionId]?.rinari_profile_id
+    void switchToProfileOf(profile).then(() => {
+      // Una conversación de la Agency se abre dentro de la Agency, con su página.
+      enterAgencySession(target.sessionId, data.activeSession || null)
+      return commands.selectSession(target.sessionId)
+    }).then(() => {
+      useUIStore.getState().goChat()
+      if (target.turnId) requestTurnReveal({ sessionId: target.sessionId, turnId: target.turnId })
+    })
+  }, [commands, data.sessionsById, data.activeSession])
   useBoardNotifications({
     runtime: store,
-    labelFor,
+    labelFor: titleFor,
+    projectFor,
     activeSessionId: data.activeSession,
-    systemPermission: 'unsupported',
-    memberKey,
+    // Electron no pide un permiso aparte: decide el soporte del sistema.
+    systemPermission: 'granted',
+    memberKey: watchedSessionIds.join('|'),
+    watchedSessionIds,
+    openConversation,
   })
-  usePeerNotifications({
-    supported: data.status?.capabilities.session_peer_messaging_v1 === true,
-    labelFor,
-    focusedSessionId,
-    focusSession,
-  })
+  // Clic (o «Abrir» / «Revisar plan») en la notificación del sistema de un
+  // turno: abre la conversación ahí. Las de tareas programadas no llevan
+  // turno; las abre ScheduleNotifier. «Responder» manda el texto a esa
+  // conversación sin abrir la ventana: un mensaje nuevo, o uno durante el
+  // turno si Rinari está trabajando (#64, #54).
+  const openRef = useRef(openConversation)
+  openRef.current = openConversation
+  const commandsRef = useRef(commands)
+  commandsRef.current = commands
+  useEffect(() => {
+    const stops: Array<() => void> = []
+    let disposed = false
+    const keep = (unsubscribe: () => void) => { if (disposed) unsubscribe(); else stops.push(unsubscribe) }
+    void onNotificationActivated((target) => {
+      if (target.sessionId && target.turnId) openRef.current({ sessionId: target.sessionId, turnId: target.turnId })
+    }).then(keep).catch(() => undefined)
+    void onNotificationReplied(({ target, text }) => {
+      const engine = commandsRef.current
+      if (!engine || !target.sessionId || !text.trim()) return
+      const sessionId = target.sessionId
+      const delivered = engine.isBusy(sessionId) ? engine.steerTo(sessionId, text) : engine.sendTo(sessionId, text)
+      void delivered.catch(() => false)
+    }).then(keep).catch(() => undefined)
+    return () => { disposed = true; for (const stop of stops.splice(0)) stop() }
+  }, [])
   // Una sola cuenta para el título, la barra de tareas y la bandeja.
   const { lang } = useI18n()
   const liveSessionIds = useMemo(
     () => [...new Set([...members.map((pane) => pane.sessionId), ...(data.activeSession ? [data.activeSession] : [])])],
     [members, data.activeSession],
   )
-  const summary = useAttentionIndicators(store, { ready: data.ready, lang, liveSessionIds })
+  const profileFor = useCallback((sessionId: string): string | null => {
+    const record = data.sessionsById[sessionId]
+    return record ? record.rinari_profile_id ?? 'default' : null
+  }, [data.sessionsById])
+  const summary = useAttentionIndicators(store, { ready: data.ready, lang, liveSessionIds, titleFor, profileFor })
   useWindowTitle(summary.count)
-
-  // Mensajes de pares: se reconocen al atender el panel (expandido, enfocado,
-  // ventana con foco) durante un instante; abrir un resultado no los marca.
-  const attention = useWindowAttention()
-  const attendedSession = attention.attended
-    ? (view === 'board' ? focusedSessionId : view === 'chat' ? data.activeSession || null : null)
-    : null
-  const attendedPeerIds = useBoardAttentionStore((state) => (attendedSession ? state.sessions[attendedSession]?.unreadPeerMessageIds : undefined))
-  useEffect(() => {
-    if (!attendedSession || !attendedPeerIds || attendedPeerIds.length === 0) return
-    const timer = window.setTimeout(() => {
-      useBoardAttentionStore.getState().markPeerMessagesSeen(attendedSession, attendedPeerIds)
-    }, 500)
-    return () => window.clearTimeout(timer)
-  }, [attendedSession, attendedPeerIds])
 
   return null
 }

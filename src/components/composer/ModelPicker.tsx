@@ -8,6 +8,7 @@ import { brandForProvider } from '../../lib/providerBrand'
 import ProviderLogo from '../ProviderLogo'
 import { cn } from '../../lib/utils'
 import { modelDisplayName, modelTechnicalId } from '../../lib/modelDisplay'
+import { SearchClearButton } from '../ui/SearchField'
 
 export interface ModelPickerProps {
   models: ModelSummary[]
@@ -30,6 +31,20 @@ export interface ModelPickerProps {
   /** Cada incremento abre el selector (comando `/model`). */
   openSignal?: number
 }
+
+const FREE_SUFFIX = '\u0000free'
+
+/** The Engine marks free models from their catalog price (plan 0.4.0 #13). */
+export function isFreeModel(model: ModelSummary): boolean {
+  return model.capabilities?.pricing === 'free'
+}
+
+/** The Engine has no protocol for this model yet (#94): it is listed, not chosen. */
+export function unsupportedModel(model: ModelSummary): boolean {
+  return model.capabilities?.route_supported === false
+}
+
+const baseProvider = (group: string) => (group.endsWith(FREE_SUFFIX) ? group.slice(0, -FREE_SUFFIX.length) : group)
 
 /** Qué contar de un refresco: los alias añadidos y los proveedores que fallaron. */
 export function refreshSummary(result: ModelRefreshResult): { added: string[]; failed: string[] } {
@@ -90,7 +105,12 @@ export default function ModelPicker({
       setRefreshing(false)
     }
   }
-  const providerGroups = [...new Set(models.map((model) => model.provider ?? 'Otros'))]
+  // A provider's free models form their own group (plan 0.4.0 #13): «OpenCode Go (gratis)».
+  const other = t('composer.otherProvider')
+  const groupOf = (model: ModelSummary) => `${model.provider ?? other}${isFreeModel(model) ? FREE_SUFFIX : ''}`
+  const groupLabel = (group: string) =>
+    group.endsWith(FREE_SUFFIX) ? t('composer.providerFree', { name: group.slice(0, -FREE_SUFFIX.length) }) : group
+  const providerGroups = [...new Set(models.map(groupOf))]
   const providerRecord = (alias: string | null | undefined) =>
     providers?.find((provider) => provider.alias === alias)
   const selectedModel = activeModel ?? models.find((model) => model.alias === activeAlias)
@@ -133,6 +153,7 @@ export default function ModelPicker({
           <label className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-2.5 py-1.5 focus-within:border-[var(--border-strong)]">
             <Search size={13} aria-hidden="true" className="text-[var(--text-subtle)]" />
             <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('composer.searchModels')} className="min-w-0 flex-1 border-0 bg-transparent text-xs text-[var(--text)] outline-none placeholder:text-[var(--text-subtle)]" />
+            <SearchClearButton value={query} onClear={() => setQuery('')} />
           </label>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-0.5">
@@ -146,26 +167,29 @@ export default function ModelPicker({
             </button>
           )}
           {models.length > 0 && matchingModels.length === 0 && <p className="px-2.5 py-6 text-center text-xs text-[var(--text-subtle)]">{t('models.noneFound')}</p>}
-          {providerGroups.filter((provider) => matchingModels.some((model) => (model.provider ?? 'Otros') === provider)).map((provider) => <section key={provider} aria-label={provider}>
+          {providerGroups.filter((provider) => matchingModels.some((model) => groupOf(model) === provider)).map((provider) => <section key={provider} aria-label={groupLabel(provider)}>
             <h3 className="text-[11px] font-semibold text-[var(--text-subtle)]">
               <button type="button" aria-expanded={Boolean(query.trim()) || !collapsedProviders.has(provider)} onClick={() => setCollapsedProviders((current) => { const next = new Set(current); if (next.has(provider)) next.delete(provider); else next.add(provider); return next })} disabled={Boolean(query.trim())} className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-2 text-left hover:bg-[var(--bg-hover)] disabled:cursor-default">
                 <span className="flex size-3.5 shrink-0 items-center justify-center">
-                  <ProviderLogo productId={providerRecord(provider)?.product_id} alias={provider} endpoint={providerRecord(provider)?.endpoint} size={13} />
+                  <ProviderLogo productId={providerRecord(baseProvider(provider))?.product_id} alias={baseProvider(provider)} endpoint={providerRecord(baseProvider(provider))?.endpoint} size={13} />
                 </span>
-                <span className="flex-1">{provider}</span>
+                <span className="flex-1">{groupLabel(provider)}</span>
                 <ChevronDown size={13} aria-hidden="true" className={`transition-transform ${!query.trim() && collapsedProviders.has(provider) ? '-rotate-90' : ''}`} />
               </button>
             </h3>
-            {(Boolean(query.trim()) || !collapsedProviders.has(provider)) && matchingModels.filter((model) => (model.provider ?? 'Otros') === provider).map((model) => (
+            {(Boolean(query.trim()) || !collapsedProviders.has(provider)) && matchingModels.filter((model) => groupOf(model) === provider).map((model) => (
               <button
                 key={model.id}
                 type="button"
+                disabled={unsupportedModel(model)}
+                title={unsupportedModel(model) ? t('composer.unsupportedModelHint') : undefined}
                 onClick={() => { setOpen(false); onUseModel(model) }}
-                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[var(--bg-hover)]"
+                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[var(--bg-hover)] disabled:cursor-default disabled:opacity-60 disabled:hover:bg-transparent"
               >
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[13px] font-medium text-[var(--text)]">
                     {modelDisplayName(model)}
+                    {unsupportedModel(model) && <span className="r-chip model-unsupported">{t('composer.unsupportedModel')}</span>}
                   </span>
                   <span
                     className="block truncate font-mono text-[11px] text-[var(--text-subtle)]"

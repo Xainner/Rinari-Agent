@@ -10,6 +10,8 @@ import type { DraftPermission } from '../../stores/conversationDraft'
 import type { AttachmentRef } from '../../types'
 import type { ModelSummary } from '../../services/engine'
 import { cn } from '../../lib/utils'
+import { movePaneDraft } from '../projects/draftProject'
+import { toast } from 'sonner'
 
 const EMPTY_SEARCH = Promise.resolve({ root: '', files: [] })
 
@@ -67,6 +69,26 @@ export default function DraftPane({
     if (!focused) onFocus(pane.paneId)
   }, [focused, onFocus, pane.paneId])
 
+  // El chip de proyecto del composer (#42). Un proyecto que ya está en otro
+  // panel avisa, como al añadirlo: dos agentes en la misma carpeta pueden pisarse.
+  const chooseProject = useCallback((projectId: string | null) => {
+    if (!movePaneDraft(pane.paneId, projectId) || !projectId) return
+    const chosen = data.projects.find((item) => item.id === projectId)
+    if (!chosen) return
+    const others = useBoardStore.getState().panes.filter((other) => other.paneId !== pane.paneId)
+    const shared = [
+      ...others
+        .map((other) => data.sessionsById[other.sessionId])
+        .filter((session): session is NonNullable<typeof session> => Boolean(session))
+        .filter((session) => session.project_id === chosen.id || (session.project_root !== null && (session.project_root === chosen.root || session.project_root === chosen.canonical_root)))
+        .map((session) => session.title || session.id),
+      ...others.filter((other) => other.draft?.projectId === chosen.id).map(() => t('sidebar.newChat')),
+    ]
+    if (shared.length > 0) {
+      toast.warning(t('board.sameProject.title'), { description: t('board.sameProject.body', { project: chosen.name || chosen.root, panes: shared.join(', ') }) })
+    }
+  }, [data.projects, data.sessionsById, pane.paneId, t])
+
   if (pane.collapsed) {
     return (
       <div data-pane-id={pane.paneId} data-draft className={cn('pane-strip', focused && 'is-focused')}>
@@ -111,6 +133,7 @@ export default function DraftPane({
             messages={[]}
             sessionId=""
             composerDraftKey={key}
+            draftProject={{ projectId: pane.draft.projectId, onChange: chooseProject }}
             isStreaming={false}
             engineReady={data.ready}
             onSend={send}

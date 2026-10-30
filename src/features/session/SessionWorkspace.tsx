@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { ResizeHandle } from '../../components/ui/resize-handle'
 import { useDragResize } from '../../hooks/useDragResize'
 import { useI18n } from '../../i18n'
@@ -6,24 +6,46 @@ import { platform } from '../../platform'
 import type { SessionSummary } from '../../services/engine'
 import {
   CHAT_MIN_DOCKED_WIDTH,
-  DOCK_MAX_WIDTH,
   DOCK_MIN_WIDTH,
   selectDockLayout,
+  selectSummaryOpen,
   useSessionDockStore,
   type DockSurface,
 } from '../../stores/sessionDock'
+import { selectOverlayDepth, useOverlayStore } from '../../stores/overlay'
+import { useDockSignalsStore } from '../../stores/dockSignals'
 import { automaticBrowserUiEnabled } from '../browser/automaticBrowserUi'
 import { useBrowserFrame } from '../browser/useBrowserFrame'
 import { FileWorkspaceProvider } from '../files/FileWorkspace'
+import { useOptionalEngineData, useOptionalRuntimeStore } from '../engine/EngineContext'
+import { useFlow } from '../flow/useFlow'
+import { teamIdOfDockKey } from '../agency/AgencyData'
+import type { RuntimeStore } from '../engine/runtimeStore'
+import { useSessionTimelines } from '../engine/sessionSelectors'
+import { sessionAgents } from '../agents/AgentsPanel'
+import { presentedChangeSets } from '../activity/changeSetPresentation'
+import { sessionPlans } from '../plan/planModel'
+import { useAgentRunningCount } from '../terminal/agentTab'
 import SessionDock from './SessionDock'
+import SummaryPanel from '../summary/SummaryPanel'
+import { ZoneBoundary } from '../../components/ZoneBoundary'
 
 const HANDLE_WIDTH = 6
+/** Lo que tarda en irse el Resumen flotante (`summary-float-out`). */
+const SUMMARY_LEAVE_MS = 180
+/**
+ * Con el chat más angosto que esto el Resumen se aparta (sigue abierto y
+ * vuelve solo al haber sitio), como el panel de Claude Code. Dos umbrales
+ * para que no parpadee al arrastrar justo en el borde.
+ */
+const SUMMARY_HIDE_BELOW = 720
+const SUMMARY_SHOW_FROM = 760
 
-/** Acción tipada: alternar/abrir el dock de **una** sesión (nunca de todos los providers montados). */
+/** Acción tipada: alternar/abrir el panel lateral de **una** sesión (nunca de todos los providers montados). */
 export const DOCK_TOGGLE_EVENT = 'rinari:dock-toggle'
 export interface DockToggleDetail {
   sessionId: string
-  /** Sin superficie: alterna visibilidad. Con superficie: la revela. */
+  /** Sin vista: oculta o muestra el panel (Ctrl+B). Con vista: la revela. */
   surface?: DockSurface
 }
 export function requestDockToggle(detail: DockToggleDetail): void {
@@ -42,7 +64,7 @@ export interface SessionWorkspaceProps {
   sharedRoot?: boolean
   /** El Engine anuncia `browser_view_v1`; sin capability no se consulta. */
   browserEnabled?: boolean
-  /** El Engine anuncia `desktop_terminal_v1`: el dock suma la pestaña Terminal. */
+  /** El Engine anuncia `desktop_terminal_v1`: el panel suma la vista Terminal. */
   terminalEnabled?: boolean
   /** Generación del Engine: al cambiar, el visor vuelve a inscribir sus watches. */
   engineGeneration?: number
@@ -52,23 +74,25 @@ export interface SessionWorkspaceProps {
 
 /**
  * Composición de una sesión compartida por Normal (`SingleSessionView`) y por
- * cada panel del board (`SessionPane`): conversación + dock con Archivos,
- * Navegador, Workspace y Terminal. Una sola implementación del visor de archivos y del
- * browser; el layout del dock es por sesión (`sessionDock`). El dock ocupa
- * ancho real dentro de la sesión y, cuando no caben chat y dock, pasa a un
- * drawer dentro de este contenedor: no reaparece ninguna superficie flotante
- * global.
+ * cada panel del board (`SessionPane`): conversación + panel lateral con sus
+ * vistas en mosaico (#47). Una sola implementación del visor de archivos y del
+ * browser; la disposición es por sesión (`sessionDock`). El panel ocupa ancho
+ * real dentro de la sesión, sin tope (#44a): lo limita el chat, que no baja de
+ * 300 px; si ni así caben, pasa a un cajón encima del chat. «Ampliar» lo lleva
+ * a toda la conversación y deja el chat en una columna.
  */
 export default function SessionWorkspace({ sessionId, record, children, density, focused, sharedRoot = false, browserEnabled = true, terminalEnabled = false, busy = false, engineGeneration }: SessionWorkspaceProps) {
   const { t } = useI18n()
   const layout = useSessionDockStore(selectDockLayout(sessionId))
   const setVisible = useSessionDockStore((state) => state.setVisible)
-  const setActiveSurface = useSessionDockStore((state) => state.setActiveSurface)
+  const toggleVisible = useSessionDockStore((state) => state.toggleVisible)
+  const summaryOpen = useSessionDockStore(selectSummaryOpen(sessionId))
+  const setSummary = useSessionDockStore((state) => state.setSummary)
   const setWidth = useSessionDockStore((state) => state.setWidth)
-  const setWorkspaceTab = useSessionDockStore((state) => state.setWorkspaceTab)
+  const setAmp = useSessionDockStore((state) => state.setAmp)
   const reveal = useSessionDockStore((state) => state.reveal)
 
-  // Geometría real del contenedor: decide si el dock cabe al lado o va en drawer.
+  // Geometría real del contenedor: decide si el panel cabe al lado o va en cajón.
   const bodyRef = useRef<HTMLDivElement>(null)
   const [innerWidth, setInnerWidth] = useState<number | null>(null)
   useEffect(() => {
@@ -81,24 +105,62 @@ export default function SessionWorkspace({ sessionId, record, children, density,
     observer.observe(element)
     return () => observer.disconnect()
   }, [])
-  const canDock = innerWidth === null || innerWidth >= CHAT_MIN_DOCKED_WIDTH + layout.widthPx + HANDLE_WIDTH
-  const dockLayout: 'docked' | 'drawer' = canDock ? 'docked' : 'drawer'
+  const room = innerWidth === null ? null : innerWidth - CHAT_MIN_DOCKED_WIDTH - HANDLE_WIDTH
+  const placement: 'docked' | 'drawer' = room === null || room >= DOCK_MIN_WIDTH ? 'docked' : 'drawer'
 
   const [liveWidth, setLiveWidth] = useState(layout.widthPx)
   useEffect(() => {
     setLiveWidth(layout.widthPx)
   }, [layout.widthPx])
+  const amplified = layout.amp !== null && layout.visible && placement === 'docked'
+  const shownWidth = room === null ? liveWidth : amplified ? room : Math.max(DOCK_MIN_WIDTH, Math.min(liveWidth, room))
+
+  // «Ampliar» y volver: el ancho se anima en lugar de saltar (termina también sin pintar).
+  const [animateWidth, setAnimateWidth] = useState(false)
+  const widthKey = `${layout.amp}`
+  // En Normal este componente sigue montado al cambiar de conversación: lo
+  // que cambia con la conversación (ampliado, abierto) no se anima.
+  const shownAmp = useRef({ sessionId, widthKey })
+  useEffect(() => {
+    const previous = shownAmp.current
+    shownAmp.current = { sessionId, widthKey }
+    if (previous.sessionId !== sessionId) {
+      setAnimateWidth(false)
+      return
+    }
+    if (previous.widthKey === widthKey) return
+    setAnimateWidth(true)
+    const timer = window.setTimeout(() => setAnimateWidth(false), 420)
+    return () => window.clearTimeout(timer)
+  }, [sessionId, widthKey])
+  // Esc devuelve el panel ampliado a su ancho, si nada encima la quiere.
+  useEffect(() => {
+    if (!amplified || !focused) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented || selectOverlayDepth(useOverlayStore.getState()) > 0) return
+      setAmp(sessionId, null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [amplified, focused, sessionId, setAmp])
 
   // Al cerrarse, un fantasma sin contenido con el ancho que tenía se pliega:
   // la salida se ve sin retener el panel real ni su navegador nativo.
-  // Al abrirse (por el usuario, no al montar la vista) el panel crece desde 0
-  // y el chat se encoge con él: la misma animación que el cierre, al revés.
-  const [leaving, setLeaving] = useState<{ width: number; layout: 'docked' | 'drawer' } | null>(null)
+  // Al abrirse (por el usuario, no al montar la vista ni al cambiar de
+  // conversación) el panel crece desde 0 y el chat se encoge con él: la misma
+  // animación que el cierre, al revés.
+  const [leaving, setLeaving] = useState<{ width: number; placement: 'docked' | 'drawer' } | null>(null)
   const [entering, setEntering] = useState(false)
-  const shown = useRef({ visible: layout.visible, width: liveWidth, layout: dockLayout })
+  const shown = useRef({ sessionId, visible: layout.visible, width: shownWidth, placement })
   useEffect(() => {
     const previous = shown.current
-    shown.current = { visible: layout.visible, width: liveWidth, layout: dockLayout }
+    shown.current = { sessionId, visible: layout.visible, width: shownWidth, placement }
+    if (previous.sessionId !== sessionId) {
+      // Otra conversación, con su propio panel: se ve tal cual, sin entrar ni plegarse.
+      setEntering(false)
+      setLeaving(null)
+      return
+    }
     if (layout.visible) {
       setLeaving(null)
       if (previous.visible) return
@@ -109,61 +171,67 @@ export default function SessionWorkspace({ sessionId, record, children, density,
     }
     setEntering(false)
     if (!previous.visible) return
-    setLeaving({ width: previous.width, layout: previous.layout })
+    setLeaving({ width: previous.width, placement: previous.placement })
     const timer = window.setTimeout(() => setLeaving(null), 360)
     return () => window.clearTimeout(timer)
-  }, [layout.visible, liveWidth, dockLayout])
+  }, [sessionId, layout.visible, shownWidth, placement])
   const { handleProps } = useDragResize({
-    value: liveWidth,
+    value: shownWidth,
     min: DOCK_MIN_WIDTH,
-    max: () => Math.min(DOCK_MAX_WIDTH, Math.max(DOCK_MIN_WIDTH, (innerWidth ?? DOCK_MAX_WIDTH) - CHAT_MIN_DOCKED_WIDTH - HANDLE_WIDTH)),
+    max: () => Math.max(DOCK_MIN_WIDTH, room ?? DOCK_MIN_WIDTH),
     direction: 'left',
-    onChange: setLiveWidth,
+    onChange: (next) => {
+      if (layout.amp) setAmp(sessionId, null)
+      setLiveWidth(next)
+    },
     onCommit: (final) => setWidth(sessionId, final),
-    disabled: dockLayout === 'drawer',
+    disabled: placement === 'drawer',
   })
 
-  // Enlaces de archivo del transcript: revelan Archivos en este mismo dock.
+  // Enlaces de archivo del transcript: revelan Archivos en este mismo panel.
   const revealFile = useCallback(() => reveal(sessionId, 'files'), [reveal, sessionId])
 
-  // Acción tipada con destinatario explícito (atajo «archivos», paleta…).
+  // Acción tipada con destinatario explícito (atajos, paleta…).
   useEffect(() => {
     function onToggle(event: Event) {
       const detail = (event as CustomEvent<DockToggleDetail>).detail
       if (!detail || detail.sessionId !== sessionId) return
       if (detail.surface) reveal(sessionId, detail.surface)
-      else setVisible(sessionId, !useSessionDockStore.getState().layoutFor(sessionId).visible)
+      else toggleVisible(sessionId)
     }
     window.addEventListener(DOCK_TOGGLE_EVENT, onToggle)
     return () => window.removeEventListener(DOCK_TOGGLE_EVENT, onToggle)
-  }, [sessionId, reveal, setVisible])
+  }, [sessionId, reveal, toggleVisible])
 
   // Navegador del Engine: se consulta a la cadencia de capturas solo con la
-  // superficie a la vista. Un browser aparece por actividad del agente, así
-  // que fuera de esa superficie basta una sonda al montar y otra al terminar
-  // un turno: oculto no genera poll de capturas.
-  const [targetId, setTargetId] = useState('')
+  // vista a la vista. Un browser aparece por actividad del agente, así que
+  // fuera de ella basta una sonda al montar y otra al terminar un turno.
+  // La pestaña elegida es de su conversación: este componente sigue montado
+  // al cambiar de conversación en la vista Normal.
+  const [targetOf, setTargetOf] = useState<{ sessionId: string; targetId: string }>({ sessionId, targetId: '' })
+  const targetId = targetOf.sessionId === sessionId ? targetOf.targetId : ''
+  const setTargetId = useCallback((next: string) => setTargetOf({ sessionId, targetId: next }), [sessionId])
   const [browserProbe, setBrowserProbe] = useState(0)
   const wasBusy = useRef(false)
   useEffect(() => {
     if (wasBusy.current && !busy) setBrowserProbe((value) => value + 1)
     wasBusy.current = busy
   }, [busy])
-  const browserActive = layout.visible && layout.activeSurface === 'browser'
+  const browserActive = layout.visible && layout.views.includes('browser')
   const browser = useBrowserFrame(sessionId, { active: browserActive, targetId, enabled: browserEnabled, probe: browserProbe })
   // Browser nativo: el panel se revela cuando el contexto pasa a estar listo,
-  // que es cuando el agente empieza a usarlo de verdad. Antes había que abrirlo
-  // a mano y no había forma de saber que hacía falta.
+  // que es cuando el agente empieza a usarlo de verdad. Una vez por contexto:
+  // si el usuario lo cerró después, es su decisión. Con el panel abierto en
+  // otra vista (Resumen, Archivos…) el Navegador se apila con ella; antes no
+  // se mostraba y parecía que Rinari no había abierto nada.
   //
-  // Se revela **una vez por contexto**, no en cada aviso: si el usuario lo
-  // cierra, esa es su decisión y no se le vuelve a abrir hasta que haya un
-  // browser nuevo. Y sólo si el dock está cerrado: con el dock abierto en otra
-  // superficie, quitarle lo que está mirando sería peor. Presentarlo no es
-  // requisito para que las herramientas funcionen —la vista maqueta igual—,
-  // así que esto es comodidad, no corrección.
-  const nativeState = useRef<string | null>(null)
-  // El foco se lee por referencia: cambia a menudo y no puede resuscribir el
-  // aviso cada vez, que es justo cuando se pierde el que importa.
+  // Estado **por conversación**: en la vista Normal este componente sigue
+  // montado al cambiar de conversación. Con un solo valor, la conversación
+  // nueva heredaba el «listo» de la anterior (y no se revelaba al abrir
+  // Rinari una página) y su botón Navegador salía en vivo sin haberlo usado.
+  const nativeStates = useRef(new Map<string, string>())
+  const [nativeLiveBySession, setNativeLive] = useState<{ sessionId: string; live: 'agent' | 'live' | null } | null>(null)
+  const nativeLive = nativeLiveBySession?.sessionId === sessionId ? nativeLiveBySession.live : null
   const focusedRef = useRef(focused)
   focusedRef.current = focused
   useEffect(() => {
@@ -173,12 +241,18 @@ export default function SessionWorkspace({ sessionId, record, children, density,
     void platform()
       .browser.onContextChanged((view) => {
         if (!alive || view.session_id !== sessionId) return
-        const previous = nativeState.current
-        nativeState.current = view.context_state
-        if (view.backend !== 'electron-native' || view.context_state !== 'ready') return
-        if (previous === 'ready' || !automaticBrowserUiEnabled()) return
+        const previous = nativeStates.current.get(sessionId) ?? null
+        nativeStates.current.set(sessionId, view.context_state)
+        setNativeLive({ sessionId, live: view.context_state === 'ready' ? (view.control_state === 'agent' ? 'agent' : 'live') : null })
+        if (view.backend !== 'electron-native' || view.context_state !== 'ready' || previous === 'ready') return
+        // Una línea en el registro de la app por cada contexto que pasa a
+        // listo: si el panel no aparece, dice por qué.
+        const skip = !automaticBrowserUiEnabled() ? 'automatic UI off' : !focusedRef.current ? 'not focused' : null
         const current = useSessionDockStore.getState().layoutFor(sessionId)
-        if (focusedRef.current && !current.visible) reveal(sessionId, 'browser')
+        const shown = current.visible && current.views.includes('browser')
+        console.info(`[rinari] browser ready: ${sessionId} ${skip ? `not revealed (${skip})` : shown ? 'already shown' : 'revealed'}`)
+        if (skip || shown) return
+        reveal(sessionId, 'browser')
       })
       .then((stop) => {
         if (alive) unsubscribe = stop
@@ -198,40 +272,214 @@ export default function SessionWorkspace({ sessionId, record, children, density,
     const instance = browser.connectedInstance
     if (!instance || revealedInstance.current === instance) return
     revealedInstance.current = instance
-    // Un browser nuevo no roba foco a otro panel, no cambia Normal/Boards y no
-    // reemplaza un archivo que el usuario esté leyendo: solo se revela con el
-    // dock cerrado y la sesión enfocada; en otro caso queda el indicador.
+    // Un browser nuevo no roba foco a otro panel ni reemplaza lo que el
+    // usuario mira: solo se revela con el panel oculto y la sesión enfocada.
     const current = useSessionDockStore.getState().layoutFor(sessionId)
     if (focused && !current.visible) reveal(sessionId, 'browser')
   }, [browser.connectedInstance, focused, reveal, sessionId])
 
+  // Indicadores de los botones de la barra de título (#47).
+  const publish = useDockSignalsStore((state) => state.publish)
+  const clearSignals = useDockSignalsStore((state) => state.clear)
+  const agentRunning = useAgentRunningCount(terminalEnabled ? sessionId : '')
+  const browserSignal = nativeLive ?? (browser.frame?.state === 'connected' ? (busy ? 'agent' : 'live') : null)
+  useEffect(() => { publish(sessionId, { browser: browserSignal, terminal: agentRunning }) }, [publish, sessionId, browserSignal, agentRunning])
+  useEffect(() => () => clearSignals(sessionId), [clearSignals, sessionId])
+  const runtime = useOptionalRuntimeStore()
+  const chatRef = useRef<HTMLDivElement>(null)
+  const closeSummary = useCallback(() => setSummary(sessionId, false), [setSummary, sessionId])
+  const flowSupported = useOptionalEngineData()?.status?.capabilities?.project_flow_v1 === true
+
   return (
     <FileWorkspaceProvider sessionId={sessionId} onOpen={revealFile} engineGeneration={engineGeneration}>
-      <div ref={bodyRef} className="session-workspace" data-density={density} data-dock={layout.visible ? dockLayout : 'hidden'}>
-        <div className="session-workspace-chat">{children}</div>
-        {!layout.visible && leaving && <div className="pane-dock-ghost" data-layout={leaving.layout} style={{ width: leaving.width }} aria-hidden="true" />}
+      {runtime && <TimelineSignals store={runtime} sessionId={sessionId} focused={focused} />}
+      {/* Solo la sesión destino de la barra de título pide su flujo; la oficina de un equipo no es una sesión del Engine. */}
+      {focused && flowSupported && !teamIdOfDockKey(sessionId) && <FlowSignals sessionId={sessionId} />}
+      <div ref={bodyRef} className="session-workspace" data-density={density} data-dock={layout.visible ? placement : 'hidden'} data-amp={amplified || undefined}>
+        <div ref={chatRef} className="session-workspace-chat">
+          {children}
+          <FloatingSummary key={sessionId} sessionId={sessionId} record={record} open={summaryOpen} focused={focused} column={chatRef} onClose={closeSummary} />
+        </div>
+        {!layout.visible && leaving && <div className="pane-dock-ghost" data-layout={leaving.placement} style={{ width: leaving.width }} aria-hidden="true" />}
         {layout.visible && (
           <>
-            {dockLayout === 'docked' && <ResizeHandle {...handleProps} label={t('board.resize.workspace')} />}
+            {placement === 'docked' && (
+              <ResizeHandle
+                {...handleProps}
+                label={t('board.resize.workspace')}
+                // Doble clic en el borde: amplía todo el panel, o lo devuelve.
+                onDoubleClick={() => setAmp(sessionId, layout.amp ? null : 'all')}
+              />
+            )}
+            <ZoneBoundary zone="side-panel">
             <SessionDock
               sessionId={sessionId}
               session={record}
-              surface={layout.activeSurface === 'terminal' && !terminalEnabled ? 'workspace' : layout.activeSurface}
-              onSurfaceChange={(surface) => setActiveSurface(sessionId, surface)}
-              workspaceTab={layout.workspaceTab}
-              onWorkspaceTabChange={(tab) => setWorkspaceTab(sessionId, tab)}
+              layout={layout}
               sharedRoot={sharedRoot}
-              layout={dockLayout}
-              width={liveWidth}
+              placement={placement}
+              width={shownWidth}
               entering={entering}
-              onClose={() => setVisible(sessionId, false)}
+              animateWidth={animateWidth}
+              onHide={() => setVisible(sessionId, false)}
               browser={{ frame: browser.frame, error: browser.error, targetId, onTargetChange: setTargetId }}
               terminalEnabled={terminalEnabled}
               busy={busy}
             />
+            </ZoneBoundary>
           </>
         )}
       </div>
     </FileWorkspaceProvider>
   )
+}
+
+/**
+ * El Resumen (#82) flota sobre el chat, arriba a la derecha: no es parte del
+ * panel lateral, así que abrirlo no lo abre, no cambia sus vistas (el
+ * navegador nativo sigue donde estaba) ni el ancho del chat. No tapa el
+ * composer: su borde de abajo se queda encima de él. Esc o la X lo cierran;
+ * lo que lleva a otra vista también. Si el chat queda muy angosto (el panel
+ * lateral se ensancha, la ventana se estrecha) se aparta sin cerrarse y
+ * regresa solo cuando vuelve a haber sitio.
+ */
+function FloatingSummary({ sessionId, record, open, focused, column, onClose }: {
+  sessionId: string
+  record: SessionSummary | null
+  open: boolean
+  focused: boolean
+  column: RefObject<HTMLDivElement | null>
+  onClose: () => void
+}) {
+  const { t } = useI18n()
+  // ¿Cabe? Se mide la columna del chat; sin medida (aún sin pintar) se da por que sí.
+  const [fits, setFits] = useState(true)
+  useLayoutEffect(() => {
+    const chat = column.current
+    if (!open || !chat) return
+    const update = () => {
+      const width = chat.getBoundingClientRect().width
+      if (width > 0) setFits((was) => width >= (was ? SUMMARY_HIDE_BELOW : SUMMARY_SHOW_FROM))
+    }
+    update()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(update)
+    observer.observe(chat)
+    return () => observer.disconnect()
+  }, [column, open])
+  const shown = open && fits
+
+  // Al cerrarse (o apartarse) se queda un momento para irse con su animación.
+  // Montado ya abierto (otra conversación con su Resumen abierto, o al
+  // cargar) aparece quieto: solo entra con movimiento cuando lo abres o
+  // cuando vuelve a haber sitio.
+  const [still, setStill] = useState(open)
+  const [rendered, setRendered] = useState(open)
+  const [leaving, setLeaving] = useState(false)
+  useEffect(() => {
+    if (shown) {
+      setRendered(true)
+      setLeaving(false)
+      return
+    }
+    if (!rendered) return
+    setStill(false)
+    setLeaving(true)
+    const timer = window.setTimeout(() => {
+      setRendered(false)
+      setLeaving(false)
+    }, SUMMARY_LEAVE_MS)
+    return () => window.clearTimeout(timer)
+  }, [shown, rendered])
+
+  // Hasta dónde puede bajar: encima del composer (y de lo que va con él).
+  const [bottom, setBottom] = useState(10)
+  useLayoutEffect(() => {
+    const chat = column.current
+    if (!rendered || !chat) return
+    const update = () => {
+      const slot = chat.querySelector('.conversation-composer-slot')
+      setBottom(slot ? Math.max(10, Math.round(chat.getBoundingClientRect().bottom - slot.getBoundingClientRect().top) + 10) : 10)
+    }
+    update()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(update)
+    observer.observe(chat)
+    const slot = chat.querySelector('.conversation-composer-slot')
+    if (slot) observer.observe(slot)
+    return () => observer.disconnect()
+  }, [column, rendered])
+
+  // Esc lo cierra si nada encima lo quiere y no estás escribiendo en otro sitio.
+  const self = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (!shown || !focused) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented || selectOverlayDepth(useOverlayStore.getState()) > 0) return
+      const active = document.activeElement as HTMLElement | null
+      const inside = Boolean(active && self.current?.contains(active))
+      if (!inside && active && (active.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName))) return
+      onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [shown, focused, onClose])
+
+  if (!rendered) return null
+  return (
+    <aside
+      ref={self}
+      aria-label={t('summary.title')}
+      data-testid="summary-dock"
+      data-session-id={sessionId}
+      className="summary-float"
+      data-still={(still && !leaving) || undefined}
+      data-leaving={leaving || undefined}
+      style={{ '--summary-bottom': `${bottom}px` } as CSSProperties}
+    >
+      <SummaryPanel sessionId={sessionId} record={record} onClose={onClose} />
+    </aside>
+  )
+}
+
+/** Una etapa del Flujo que te necesita enciende el botón Flujo en ámbar (#43). */
+function FlowSignals({ sessionId }: { sessionId: string }) {
+  // Un borrador aún no tiene conversación: sin id no hay Flujo que pedir (F3, plan 0.4.0 v2).
+  const scope = useMemo(() => (sessionId ? { kind: 'session' as const, id: sessionId } : null), [sessionId])
+  const flow = useFlow(scope)
+  const publish = useDockSignalsStore((state) => state.publish)
+  const needsYou = (flow.data?.stages ?? []).some((stage) => stage.status === 'needs_you')
+  useEffect(() => {
+    publish(sessionId, { flowNeedsYou: needsYou })
+    return () => publish(sessionId, { flowNeedsYou: false })
+  }, [publish, sessionId, needsYou])
+  return null
+}
+
+/** Agentes trabajando y archivos cambiados en el último turno con cambios, para sus botones. */
+function TimelineSignals({ store, sessionId, focused }: { store: RuntimeStore; sessionId: string; focused: boolean }) {
+  const timelines = useSessionTimelines(store, sessionId)
+  const publish = useDockSignalsStore((state) => state.publish)
+  const plans = sessionPlans(timelines).length
+  // Cada vez que termina un plan, su vista se abre sola (#55); no al abrir una conversación que ya los tenía.
+  // Se cuenta por conversación: al cambiar a una con más planes no se abría por error.
+  const seenPlans = useRef<{ sessionId: string; plans: number } | null>(null)
+  useEffect(() => {
+    const previous = seenPlans.current?.sessionId === sessionId ? seenPlans.current.plans : null
+    seenPlans.current = { sessionId, plans }
+    if (previous !== null && plans > previous && focused) useSessionDockStore.getState().openView(sessionId, 'plan')
+  }, [plans, focused, sessionId])
+  useEffect(() => { publish(sessionId, { plans }) }, [publish, sessionId, plans])
+  const agents = sessionAgents(timelines).filter((entry) => entry.live).length
+  let changes = 0
+  let latestAt = -Infinity
+  for (const timeline of Object.values(timelines)) {
+    const { latest } = presentedChangeSets(timeline)
+    if (latest && timeline.startedAt > latestAt) {
+      latestAt = timeline.startedAt
+      changes = latest.files.length
+    }
+  }
+  useEffect(() => { publish(sessionId, { agents, changes }) }, [publish, sessionId, agents, changes])
+  return null
 }

@@ -66,8 +66,10 @@ export interface SpawnOptions extends TransportHandlers {
   cwd?: string
   /** Época de conexión: identifica a esta instancia frente a las anteriores. */
   epoch: number
-  /** Plazo del handshake; solo los tests lo acortan. */
+  /** Plazo del handshake (#70: el host lo adapta a lo que tardó el último arranque). */
   handshakeTimeoutMs?: number
+  /** Variables añadidas al entorno del Engine (registros detallados). */
+  env?: Record<string, string>
 }
 
 interface PendingRequest {
@@ -154,7 +156,7 @@ export class NdjsonTransport {
 
   /** Lanza el proceso y completa el handshake; al volver, el lector corre. */
   static async spawn(options: SpawnOptions): Promise<NdjsonTransport> {
-    const { program, args, cwd, epoch, handshakeTimeoutMs, ...handlers } = options
+    const { program, args, cwd, epoch, handshakeTimeoutMs, env, ...handlers } = options
     let child: ChildProcessWithoutNullStreams
     try {
       child = spawn(program, [...args], {
@@ -164,7 +166,7 @@ export class NdjsonTransport {
         shell: false,
         windowsHide: true,
         stdio: ['pipe', 'pipe', 'pipe'],
-        env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' },
+        env: { ...process.env, ...env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' },
       })
     } catch (reason) {
       throw new TransportError('spawn', reason instanceof Error ? reason.message : String(reason))
@@ -412,17 +414,30 @@ export class NdjsonTransport {
 
   /**
    * Termina el hijo y suelta a los que esperan. Idempotente y acotado: nunca
-   * bloquea más que su plazo, para que un nieto huérfano —el wrapper de
+   * bloquea más que sus plazos, para que un nieto huérfano —el wrapper de
    * desarrollo deja vivo a python sujetando las tuberías— no cuelgue el cierre.
+   *
+   * Primero se cierra su entrada: el Engine lo toma como «el escritorio se
+   * fue», cancela el turno en curso y sale solo, soltando el candado del home.
+   * Matar sin más solo alcanzaba al wrapper (`uv run`): el python de debajo
+   * seguía vivo con el candado y el siguiente arranque fallaba con «Another
+   * Rinari engine is already using …».
    */
-  async shutdown(timeoutMs = 2_000): Promise<void> {
+  async shutdown(timeoutMs = 2_000, graceMs = 1_500): Promise<void> {
     if (this.closed) return
     this.closed = true
     this.fail(new TransportError('shutdown', 'engine transport is shut down'))
     if (this.child.exitCode !== null || this.exited) return
-    this.child.kill()
     const exited = once(this.child, 'exit')
-    await Promise.race([exited, new Promise((resolve) => setTimeout(resolve, timeoutMs))])
+    const within = (ms: number) =>
+      Promise.race([exited, new Promise((resolve) => setTimeout(resolve, ms))])
+    // Un Engine que ya cerró su lado daría EPIPE: aquí no es un error.
+    this.child.stdin?.once('error', () => {})
+    this.child.stdin?.end()
+    await within(graceMs)
+    if (this.child.exitCode !== null || this.exited) return
+    this.child.kill()
+    await within(timeoutMs)
     if (this.child.exitCode === null) this.child.kill('SIGKILL')
   }
 }

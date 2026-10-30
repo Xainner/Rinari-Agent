@@ -1,24 +1,12 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react'
-import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
 import { commandMessage, engineApi, isCommandError, type SessionSummary } from '../../services/engine'
 import { ResizeHandle } from '../../components/ui/resize-handle'
 import { useDragResize } from '../../hooks/useDragResize'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '../../components/ui/alert-dialog'
-import { useEngineCommands, useEngineData, useRuntimeStore } from '../engine/EngineContext'
+import { useEngineCommands, useEngineData } from '../engine/EngineContext'
 import { isSessionHidden } from '../engine/sessionVisibility'
 import { useUIStore } from '../../stores/ui'
-import { projectDisplayName } from '../projects/workspaceModel'
 import {
   PANE_MAX_WIDTH,
   PANE_MIN_WIDTH,
@@ -31,13 +19,29 @@ import AddPaneDialog from './AddPaneDialog'
 import BoardEmptyState from './BoardEmptyState'
 import BoardToolbar from './BoardToolbar'
 import SessionPane from './SessionPane'
-import { PeerNavigationProvider, type PeerNavigation } from './PeerNavigationContext'
-import { usePeerGroup } from './usePeerGroup'
+import { COLUMN_WIDTH } from './CollapsedPaneStrip'
+import { useBoardNavigation } from './useBoardNavigation'
+import { SESSION_DRAG_TYPE, dropIndex, isSessionDrag } from './boardDrag'
 import { useBoardAttentionStore } from '../../stores/boardAttention'
 
 export interface BoardActions {
   addPane: () => void
   removePane: () => void
+}
+
+/** Ancho mínimo de un panel desplegado con «Ajustar a la vista» (CSS `.is-fit-to-view`). */
+const FIT_MIN_PANE_WIDTH = 320
+/**
+ * Plegado, un panel es una columna con su estado (~200 px) si caben todas
+ * junto a los desplegados; si no, todos caen a la tira de 48 px (plan-boards
+ * B.2). Sin medida todavía (primer cuadro, jsdom), la tira de siempre.
+ */
+export function collapsedVariantFor(panes: BoardPane[], fitToView: boolean, available: number): 'column' | 'strip' {
+  const columns = panes.filter((pane) => pane.collapsed && !isDraftPane(pane)).length
+  if (columns === 0 || available <= 0) return 'strip'
+  const strips = panes.filter((pane) => pane.collapsed && isDraftPane(pane)).length * 48
+  const expanded = panes.filter((pane) => !pane.collapsed).reduce((sum, pane) => sum + (fitToView ? FIT_MIN_PANE_WIDTH : pane.width), 0)
+  return expanded + strips + columns * COLUMN_WIDTH <= available ? 'column' : 'strip'
 }
 
 function canonicalRoot(session: SessionSummary | undefined): string | null {
@@ -82,7 +86,6 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
   const { t } = useI18n()
   const commands = useEngineCommands()
   const data = useEngineData()
-  const store = useRuntimeStore()
   const goNormal = useUIStore((state) => state.goNormal)
   const goSettings = useUIStore((state) => state.goSettings)
   const panes = useBoardStore((state) => state.panes)
@@ -95,13 +98,24 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
   const reconcile = useBoardStore((state) => state.reconcileResolvedSessions)
   const persistError = useBoardStore((state) => state.persistError)
   const attentionPersistError = useBoardAttentionStore((state) => state.persistError)
-  const boardId = useBoardStore((state) => state.boardId)
-  const messagingEnabled = useBoardStore((state) => state.messagingEnabled)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [closing, setClosing] = useState<{ paneId: string; sessionId: string } | null>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
   const paneRowRef = useRef<HTMLDivElement>(null)
   const [fitOverflow, setFitOverflow] = useState(false)
+  const [canvasWidth, setCanvasWidth] = useState(0)
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const measure = () => setCanvasWidth(canvas.clientWidth)
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(measure)
+    observer.observe(canvas)
+    return () => observer.disconnect()
+  }, [])
+  const collapsedVariant = collapsedVariantFor(panes, fitToView, canvasWidth)
+  // Ctrl+1…9 y Ctrl+J (plan-boards B.4.1).
+  useBoardNavigation()
 
   // Flex reparte el espacio real después de reservar Añadir y las tiras. Solo
   // observamos si se alcanzó la densidad mínima: nunca persistimos geometría.
@@ -150,6 +164,47 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
     warnSoftLimit()
     addDraftPane(projectId, { focus: true })
   }, [addDraftPane, warnSoftLimit])
+
+  // -- soltar una conversación de la barra lateral (B.4.2) -------------------
+  const [drop, setDrop] = useState<{ index: number; x: number } | null>(null)
+  const dropAt = useCallback((clientX: number) => {
+    const canvas = canvasRef.current
+    if (!canvas) return null
+    const nodes = [...canvas.querySelectorAll<HTMLElement>('.board-pane-row > [data-pane-id]')]
+    const rects = nodes.map((node) => node.getBoundingClientRect())
+    const index = dropIndex(clientX, rects)
+    const box = canvas.getBoundingClientRect()
+    const edge = index < rects.length ? rects[index].left : (rects.at(-1)?.right ?? box.left)
+    return { index, x: edge - box.left + canvas.scrollLeft }
+  }, [])
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    if (!isSessionDrag(event.dataTransfer.types)) return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'copy'
+    const next = dropAt(event.clientX)
+    setDrop((current) => (current && next && current.index === next.index && current.x === next.x ? current : next))
+  }, [dropAt])
+  const onDragLeave = useCallback((event: React.DragEvent) => {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
+    setDrop(null)
+  }, [])
+  const onDrop = useCallback((event: React.DragEvent) => {
+    const sessionId = event.dataTransfer.getData(SESSION_DRAG_TYPE)
+    setDrop(null)
+    if (!sessionId) return
+    event.preventDefault()
+    const target = dropAt(event.clientX)?.index ?? useBoardStore.getState().panes.length
+    const existing = useBoardStore.getState().panes.findIndex((pane) => pane.sessionId === sessionId)
+    if (existing >= 0) {
+      const pane = useBoardStore.getState().panes[existing]
+      // Quitarlo de su sitio corre una posición lo que estaba detrás.
+      useBoardStore.getState().movePane(pane.paneId, target > existing ? target - 1 : target)
+      focusPane(pane.paneId)
+      return
+    }
+    warnSoftLimit()
+    addPane(sessionId, { focus: true, atIndex: target })
+  }, [addPane, dropAt, focusPane, warnSoftLimit])
 
   const openAddDialog = useCallback(() => setDialogOpen(true), [])
   const removeFocused = useCallback(() => {
@@ -228,16 +283,6 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
     return new Set([...counts.entries()].filter(([, count]) => count > 1).map(([root]) => root))
   }, [panes, data.sessionsById])
 
-  // -- quitar y cerrar --------------------------------------------------------
-  async function confirmClose() {
-    if (!closing) return
-    const { paneId, sessionId } = closing
-    setClosing(null)
-    const ok = await commands.closeSession(sessionId)
-    if (ok) removePane(paneId)
-  }
-  const closingBusy = closing ? store.getState().busySessions.has(closing.sessionId) : false
-
   const openSingle = useCallback((sessionId: string) => {
     void commands.selectSession(sessionId)
     goNormal()
@@ -245,35 +290,7 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
 
   const currentSessionOnBoard = data.activeSession !== '' && panes.some((pane) => pane.sessionId === data.activeSession)
 
-  // -- mensajería entre paneles (session_peer_messaging_v1) ------------------
-  const peerMessaging = data.status?.capabilities.session_peer_messaging_v1 === true
-  const peerLabelFor = useCallback((sessionId: string): string | null => {
-    if (!panes.some((pane) => pane.sessionId === sessionId)) return null
-    const record = data.sessionsById[sessionId]
-    return record?.title || (record?.project_root ? projectDisplayName(record.project_root) : null) || t('sidebar.newChat')
-  }, [panes, data.sessionsById, t])
-  const focusSessionPane = useCallback((sessionId: string): boolean => {
-    const pane = useBoardStore.getState().panes.find((item) => item.sessionId === sessionId)
-    if (!pane) return false
-    focusPane(pane.paneId)
-    return true
-  }, [focusPane])
-  const peerNavigation = useMemo<PeerNavigation>(
-    () => ({ labelFor: peerLabelFor, focusSession: focusSessionPane }),
-    [peerLabelFor, focusSessionPane],
-  )
-  usePeerGroup({
-    boardId,
-    panes,
-    sessionsById: data.sessionsById,
-    messagingEnabled,
-    supported: peerMessaging,
-    engineReady: data.ready && data.sessionsLoaded,
-    engineGeneration,
-  })
-
   return (
-    <PeerNavigationProvider value={peerNavigation}>
     <div className={fitToView ? 'board-root is-fit-to-view' : 'board-root'}>
       {persistError && (
         <div role="alert" className="board-banner">{t('board.persistError')}</div>
@@ -283,7 +300,8 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
       )}
       {panes.length > 0 && <BoardToolbar onAddPane={openAddDialog} />}
       {fitToView && fitOverflow && <div role="status" className="board-banner">{t('board.fitOverflow')}</div>}
-      <div ref={canvasRef} className="board-canvas" role="region" aria-label={t('board.title')}>
+      <div ref={canvasRef} className="board-canvas" role="region" aria-label={t('board.title')} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop} data-dropping={drop ? '' : undefined}>
+        {drop && <span className="board-drop-guide" aria-hidden="true" data-testid="board-drop-guide" style={{ left: drop.x }} />}
         {panes.length === 0 ? (
           <BoardEmptyState
             onAddPane={openAddDialog}
@@ -305,41 +323,18 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
                       onFocus={focusPane}
                       onOpenSingle={openSingle}
                       onRemove={removePane}
-                      onRemoveAndClose={(paneId, sessionId) => setClosing({ paneId, sessionId })}
                       onOpenProviders={() => goSettings('providers')}
-                      peerMessaging={peerMessaging}
-                      peerLabelFor={peerLabelFor}
+                      collapsedVariant={collapsedVariant}
                     />
                     {!pane.collapsed && !fitToView && <PaneResizer pane={pane} />}
                   </Fragment>
                 )
               })}
             </div>
-            <div className="board-add-column">
-              <button type="button" onClick={openAddDialog} className="board-add-button" aria-label={t('board.empty.addPane')} title={t('board.empty.addPane')}>
-                <Plus size={18} aria-hidden="true" />
-                <span>{t('board.empty.addPane')}</span>
-              </button>
-            </div>
           </>
         )}
       </div>
       <AddPaneDialog open={dialogOpen} onOpenChange={setDialogOpen} onAdded={addSession} onAddDraft={addDraft} />
-      <AlertDialog open={closing !== null} onOpenChange={(next) => { if (!next) setClosing(null) }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('board.pane.removeAndClose')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {closingBusy ? t('board.pane.removeAndClose.busy') : t('board.pane.removeAndClose.confirm')}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('board.sameProject.cancel')}</AlertDialogCancel>
-            <AlertDialogAction disabled={closingBusy} onClick={() => void confirmClose()}>{t('board.pane.removeAndClose')}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
-    </PeerNavigationProvider>
   )
 }

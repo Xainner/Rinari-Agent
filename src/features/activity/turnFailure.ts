@@ -5,7 +5,7 @@ import type { ProviderTab } from '../../stores/ui'
  * `limit_kind`, `http_status`), nunca del texto del mensaje. Sin una causa
  * acreditada devuelve `null` y la vista muestra solo el mensaje recibido.
  */
-export type FailureKind = 'quota' | 'rate' | 'limit' | 'auth' | 'access' | 'model' | 'context' | 'request' | 'upstream' | 'stream' | 'engine'
+export type FailureKind = 'quota' | 'rate' | 'limit' | 'auth' | 'access' | 'model' | 'context' | 'request' | 'upstream' | 'stream' | 'engine' | 'disabled'
 
 export interface TurnFailure {
   kind: FailureKind
@@ -14,6 +14,8 @@ export interface TurnFailure {
   providerAlias?: string
   model?: string
   retryAfterS?: number
+  /** Cuándo se restablece el límite, si el proveedor lo dijo (plan 0.4.0 #24). */
+  resetsAt?: string
   httpStatus?: number
   providerCode?: string
   requestId?: string
@@ -22,13 +24,15 @@ export interface TurnFailure {
 const text = (value: unknown) => (typeof value === 'string' && value ? value : undefined)
 const num = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : undefined)
 
-export function turnFailure(details: Record<string, unknown> | undefined): TurnFailure | null {
+export function turnFailure(details: Record<string, unknown> | undefined, errorCode?: string): TurnFailure | null {
   if (!details) return null
   const code = text(details.provider_error_code)
   const status = num(details.http_status)
   const limit = text(details.limit_kind)
   let kind: FailureKind | null = null
-  if (code === 'QUOTA_EXHAUSTED') kind = 'quota'
+  // The owner turned the provider off (#97): nothing was called.
+  if (errorCode === 'PROVIDER_DISABLED') kind = 'disabled'
+  else if (code === 'QUOTA_EXHAUSTED') kind = 'quota'
   else if (code === 'RATE_LIMIT') kind = limit === 'rate' ? 'rate' : limit === 'quota' ? 'quota' : 'limit'
   else if (code === 'AUTH') kind = status === 403 ? 'access' : 'auth'
   else if (code === 'MODEL_NOT_FOUND' || code === 'MODEL_UNAVAILABLE') kind = 'model'
@@ -48,6 +52,7 @@ export function turnFailure(details: Record<string, unknown> | undefined): TurnF
     providerAlias: text(details.provider_alias) ?? text(details.provider),
     model: text(details.model),
     retryAfterS: num(details.retry_after_s),
+    resetsAt: text(details.resets_at),
     httpStatus: status,
     providerCode: text(details.provider_response_code),
     requestId: text(details.request_id),

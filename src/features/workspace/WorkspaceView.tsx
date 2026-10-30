@@ -1,27 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useI18n } from '../../i18n'
 import { motion } from 'framer-motion'
 import { instant, spring, useCalmMotion } from '../../lib/motion'
 import type { SessionSummary } from '../../services/engine'
 import ChangesPanel from './ChangesPanel'
-import TasksPanel from './TasksPanel'
-import VerificationPanel from './VerificationPanel'
 import CheckpointsPanel from './CheckpointsPanel'
 import ArtifactsPanel from './ArtifactsPanel'
-import InsightPanel from './InsightPanel'
 
-export type WorkspaceTab = 'changes' | 'tasks' | 'verification' | 'checkpoints' | 'artifacts' | 'insight'
+export type WorkspaceTab = 'changes' | 'checkpoints' | 'artifacts'
 
-const TABS: WorkspaceTab[] = ['changes', 'tasks', 'verification', 'checkpoints', 'artifacts', 'insight']
+const TABS: WorkspaceTab[] = ['changes', 'checkpoints', 'artifacts']
 
 /** Alcance real de cada superficie: por raíz de proyecto o por sesión. */
 export const WORKSPACE_TAB_SCOPE: Record<WorkspaceTab, 'project' | 'session'> = {
   changes: 'project',
-  tasks: 'project',
-  verification: 'project',
   checkpoints: 'project',
   artifacts: 'session',
-  insight: 'session',
 }
 
 interface WorkspaceViewProps {
@@ -60,15 +54,8 @@ export default function WorkspaceView({
     if (onTabChange) onTabChange(next)
     else setLocalTab(next)
   }
-  const [changedFiles, setChangedFiles] = useState<string[]>([])
 
   const path = session?.project_root ?? session?.current_cwd ?? null
-  const sessionId = session?.id ?? null
-
-  // Los cambios listados pertenecen a una raíz: no reutilizarlos para otra.
-  useEffect(() => {
-    setChangedFiles([])
-  }, [path, sessionId])
 
   const scope = WORKSPACE_TAB_SCOPE[tab]
 
@@ -144,14 +131,9 @@ export default function WorkspaceView({
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto pb-8">
-            {tab === 'changes' && <ChangesPanel key={path} path={path} onFiles={setChangedFiles} />}
-            {tab === 'tasks' && <TasksPanel key={path} path={path} />}
-            {tab === 'verification' && (
-              <VerificationPanel key={path} path={path} changedFiles={changedFiles} />
-            )}
+            {tab === 'changes' && <ChangesPanel key={path} path={path} onFiles={() => {}} />}
             {tab === 'checkpoints' && <CheckpointsPanel key={path} path={path} />}
             {tab === 'artifacts' && session && <ArtifactsPanel key={session.id} sessionId={session.id} />}
-            {tab === 'insight' && session && <InsightPanel key={session.id} sessionId={session.id} />}
           </div>
         </>
       )}

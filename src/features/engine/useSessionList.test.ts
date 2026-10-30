@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { useSessionList } from './useSessionList'
 import type { SessionSummary } from '../../services/engine'
 import { useProjectExpansionStore } from '../../stores/projectExpansion'
+import { useAgencyStore } from '../../stores/agency'
 
 vi.mock('sonner', () => ({
   toast: { error: vi.fn(), warning: vi.fn(), success: vi.fn() },
@@ -95,6 +96,15 @@ describe('useSessionList session visibility', () => {
     expect(useProjectExpansionStore.getState().choices.actual).toBe(false)
   })
 
+  it('a created session counts as loaded and empty, so its results can become pending (#103)', async () => {
+    const { result } = setup()
+    createSession.mockResolvedValue({ session: summary('new') })
+    sessions.mockResolvedValue({ sessions: [summary('new')] })
+    await act(async () => { await result.current.createSession(undefined, { activate: false }) })
+    expect(result.current.historyInfo.new).toEqual({ total: 0, hasMore: false, beforeSeq: null, beforeTurnIndex: null })
+    expect(sessionHistory).not.toHaveBeenCalledWith('new', expect.anything())
+  })
+
   it('resolves a root-only creation against the Engine catalog', async () => {
     const { result } = setup()
     const created = { ...summary('new'), kind: 'PROJECT', project_root: '/repo/actual' }
@@ -172,6 +182,95 @@ describe('useSessionList session visibility', () => {
       expect(result.current.sessions.map((s) => s.id)).toEqual(['other', 'mine'])
     },
   )
+
+  it('keeps an Agency conversation active although session.list leaves it out, and out of the recents', async () => {
+    // Rinari Agency: writing in an agent's chat must not move you to a Rinari conversation.
+    const { result } = setup()
+    useAgencyStore.setState({ agentSessions: { ses_agent: 'agent_1' } })
+    sessions.mockResolvedValue({ sessions: [summary('a')] })
+    openSession.mockResolvedValue({ session: { ...summary('ses_agent'), agent_id: 'agent_1' }, created: false, warnings: [] })
+    await act(async () => {
+      await result.current.refreshSessions()
+      await result.current.selectSession('ses_agent')
+    })
+    expect(result.current.activeSession).toBe('ses_agent')
+    await act(async () => {
+      await result.current.refreshSessions()
+    })
+    expect(result.current.activeSession).toBe('ses_agent')
+    expect(result.current.sessions.map((item) => item.id)).not.toContain('ses_agent')
+    // Its row stays: the model pill and the title read it after every turn.
+    expect(result.current.sessionsById.ses_agent?.model_id).toBe('m')
+    useAgencyStore.setState({ agentSessions: {}, agentRows: {} })
+  })
+
+  it('keeps a child of an agent\'s chat active and its row after a refresh', async () => {
+    // The Engine copies agent_id to a child or a fork; nothing else names it.
+    const { result } = setup()
+    useAgencyStore.setState({ agentSessions: {}, postSessions: {}, sessionLabels: {}, agentRows: {} })
+    sessions.mockResolvedValue({ sessions: [summary('a')] })
+    const child = { ...summary('ses_child'), title: 'Investigar', model_id: 'qwen', agent_id: 'agent_1', parent_session_id: 'ses_agent' }
+    openSession.mockResolvedValue({ session: child, created: false, warnings: [] })
+    await act(async () => {
+      await result.current.refreshSessions()
+      await result.current.selectSession('ses_child')
+    })
+    for (let turn = 0; turn < 2; turn += 1) {
+      await act(async () => {
+        await result.current.refreshSessions()
+      })
+    }
+    expect(result.current.activeSession).toBe('ses_child')
+    expect(result.current.sessionsById.ses_child?.model_id).toBe('qwen')
+    expect(result.current.sessionsById.ses_child?.title).toBe('Investigar')
+    expect(result.current.sessions.map((item) => item.id)).not.toContain('ses_child')
+    useAgencyStore.setState({ agentRows: {} })
+  })
+
+  it('a listing in flight when an Agency child is opened does not move you off it', async () => {
+    // The child is activated before session.open answers with its agent_id.
+    const { result } = setup()
+    useAgencyStore.setState({ agentSessions: {}, postSessions: {}, sessionLabels: {}, agentRows: {} })
+    const listing = deferred<{ sessions: SessionSummary[] }>()
+    const opening = deferred<{ session: SessionSummary; created: boolean; warnings: string[] }>()
+    sessions.mockReturnValueOnce(listing.promise)
+    openSession.mockReturnValueOnce(opening.promise)
+    let refresh!: Promise<void>
+    let select!: Promise<void>
+    act(() => { refresh = result.current.refreshSessions() })
+    act(() => { select = result.current.selectSession('ses_child') })
+    await act(async () => {
+      listing.resolve({ sessions: [summary('a')] })
+      await refresh
+    })
+    expect(result.current.activeSession).toBe('ses_child')
+    await act(async () => {
+      opening.resolve({ session: { ...summary('ses_child'), agent_id: 'agent_1' }, created: false, warnings: [] })
+      await select
+    })
+    expect(result.current.activeSession).toBe('ses_child')
+    useAgencyStore.setState({ agentRows: {} })
+  })
+
+  it('a listing that starts while an Agency child is still opening does not move you off it', async () => {
+    const { result } = setup()
+    useAgencyStore.setState({ agentSessions: {}, postSessions: {}, sessionLabels: {}, agentRows: {} })
+    const opening = deferred<{ session: SessionSummary; created: boolean; warnings: string[] }>()
+    openSession.mockReturnValueOnce(opening.promise)
+    sessions.mockResolvedValue({ sessions: [summary('a')] })
+    let select!: Promise<void>
+    act(() => { select = result.current.selectSession('ses_child') })
+    // A profile switch, a model change or a retry: a new listing while it opens.
+    await act(async () => { await result.current.refreshSessions() })
+    expect(result.current.activeSession).toBe('ses_child')
+    await act(async () => {
+      opening.resolve({ session: { ...summary('ses_child'), agent_id: 'agent_1' }, created: false, warnings: [] })
+      await select
+    })
+    await act(async () => { await result.current.refreshSessions() })
+    expect(result.current.activeSession).toBe('ses_child')
+    useAgencyStore.setState({ agentRows: {} })
+  })
 
   it('reconciles selectSession with the resumed record instead of stale list data', async () => {
     const { result } = setup()

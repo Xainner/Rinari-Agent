@@ -1,4 +1,4 @@
-import type { TimelineItem, TurnTimeline, ModelTimelineItem, ApprovalTimelineItem, MemoryTimelineItem, SkillTimelineItem } from './types'
+import type { TimelineItem, TurnTimeline, ModelTimelineItem, ApprovalTimelineItem, MemoryTimelineItem, SkillTimelineItem, InstructionsTimelineItem, PresentTimelineItem } from './types'
 
 export const turnIsActive = (status: TurnTimeline['status']) => ['running', 'approval', 'cancelling'].includes(status)
 export const pendingApproval = (item: TimelineItem): item is ApprovalTimelineItem => item.type === 'approval' && ['pending', 'resolving'].includes(item.status)
@@ -35,6 +35,11 @@ function approvalStates(items: TimelineItem[]) {
 }
 
 /** Presentation only. The original timeline, identities and runtime stay untouched. */
+/** `checklist.update`: bookkeeping of the list, not an action of the turn (#30). */
+export function isChecklistCall(item: { tool?: string }): boolean {
+  return item.tool === 'checklist.update'
+}
+
 export function projectActivity(timeline: TurnTimeline) {
   const active = turnIsActive(timeline.status)
   const final = [...timeline.items].reverse().find((i): i is ModelTimelineItem => i.type === 'model' && i.outputKind === 'final' && Boolean(i.content))
@@ -47,6 +52,9 @@ export function projectActivity(timeline: TurnTimeline) {
   // Propuestas y recuerdos: tarjetas propias, también desde un subagente.
   const memories: MemoryTimelineItem[] = []
   const skills: SkillTimelineItem[] = []
+  const instructions: InstructionsTimelineItem[] = []
+  // Lo que Rinari entregó con file.present (#35): a la vista siempre.
+  const presented: PresentTimelineItem[] = []
   const segments: ActivitySegment[] = [{ id: 'initial', items: [], publicTexts: [] }]
   const actions = new Set<string>()
   const incidents = new Set<string>()
@@ -72,15 +80,24 @@ export function projectActivity(timeline: TurnTimeline) {
       if (!skills.some((skill) => skill.id === item.id)) skills.push(item)
       return null
     }
+    if (item.type === 'instructions') {
+      if (!instructions.some((entry) => entry.id === item.id)) instructions.push(item)
+      return null
+    }
+    if (item.type === 'present') {
+      if (!presented.some((present) => present.id === item.id)) presented.push(item)
+      return null
+    }
     if (item.type === 'question' && item.request.status === 'pending') return ownerActive ? null : { ...item, request: { ...item.request, status: 'expired' } }
     // El modelo ignoró el razonamiento elegido o no ve imágenes: aviso siempre visible.
-    if ((item.type === 'system' && item.kind === 'reasoning_dropped') || (item.type === 'vision' && item.fallback === 'without_images')) {
-      if (!notices.some((notice) => notice.type === item.type)) notices.push(item)
+    if ((item.type === 'system' && (item.kind === 'reasoning_dropped' || item.kind === 'model_fallback' || item.kind === 'protocol_learned' || item.kind === 'speech_setup')) || (item.type === 'vision' && item.fallback === 'without_images')) {
+      const key = (notice: TimelineItem) => `${notice.type}:${notice.type === 'system' ? notice.kind : ''}`
+      if (!notices.some((notice) => key(notice) === key(item))) notices.push(item)
       return null
     }
     if (item.type === 'changeset' || item.type === 'system' || (item.type === 'model' && !item.content)) return null
     if (item.type === 'vision' && item.route === 'conversation') return null
-    if (['tool', 'context', 'verification', 'vision'].includes(item.type)) {
+    if (['tool', 'context', 'verification', 'vision'].includes(item.type) && !(item.type === 'tool' && isChecklistCall(item))) {
       // A visual analysis with a toolCallId is the presentation of that tool, not another call.
       const identity = (item.type === 'tool' || item.type === 'vision') && item.toolCallId ? `tool:${item.toolCallId}` : item.id
       actions.add(`${owner}/${identity}`)
@@ -91,7 +108,7 @@ export function projectActivity(timeline: TurnTimeline) {
     if (item.type === 'agent') {
       if (item.status === 'failed') incidents.add(`${owner}/${item.id}`)
       return { ...item, items: (item.items ?? []).flatMap(child => {
-        const selected = inspect(child, `${owner}/${item.agentId}`, item.agent, ownerActive && item.status === 'running')
+        const selected = inspect(child, `${owner}/${item.agentId}`, item.nickname ? `${item.nickname} · ${item.agent}` : item.agent, ownerActive && item.status === 'running')
         return selected ? [selected] : []
       }) }
     }
@@ -109,7 +126,7 @@ export function projectActivity(timeline: TurnTimeline) {
     const selected = inspect(item)
     if (selected) segments.at(-1)!.items.push(selected)
   }
-  return { segments, approvals: [...approvals.values()], recoveries, notices, memories, skills, final, provisional, actions: actions.size, incidents: incidents.size }
+  return { segments, approvals: [...approvals.values()], recoveries, notices, memories, skills, instructions, presented, final, provisional, actions: actions.size, incidents: incidents.size }
 }
 
 /** Active identities win over the last row or output timestamp. Token/stdout updates cannot rotate the header. */
@@ -139,7 +156,7 @@ export function activityState(timeline: TurnTimeline) {
   const model = [...timeline.items].reverse().find(i => i.type === 'model')
   if (model?.type === 'model' && model.retry && !model.content && model.status === 'thinking') return { kind: 'retrying', retry: model.retry, parallel: agents } as const
   if (model?.type === 'model' && !model.outputKind && model.content && model.status !== 'failed') return { kind: 'responding', parallel: agents } as const
-  if (!model || model.status === 'thinking' || model.status === 'streaming') return { kind: 'thinking', parallel: agents } as const
+  if (!model || model.status === 'thinking' || model.status === 'streaming') return { kind: 'thinking', parallel: agents, input: model?.type === 'model' ? model.toolInput : undefined } as const
   return { kind: 'waiting', parallel: agents } as const
 }
 

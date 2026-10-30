@@ -64,6 +64,7 @@ scenario(async () => {
   assert(layout.dockHeight < 60, 'collapsed dock is one line')
   await assertNoSlotScroll('collapsed dock')
   await screenshot('collapsed-open')
+  const collapsedBody = await evaluate(`document.querySelector(${JSON.stringify(DOCK)} + ' .checklist-body').getBoundingClientRect().height`)
   await click(`${DOCK} .checklist-toggle`)
   await wait(`document.querySelector(${JSON.stringify(DOCK)} + ' .checklist-body')?.hasAttribute('data-open')`)
   await settleAnimations()
@@ -74,6 +75,33 @@ scenario(async () => {
   await assertNoSlotScroll('expanded dock and a long draft')
   await input('.composer-surface textarea', '')
   await screenshot('expanded-open')
+
+  // #22: the arrow points where the list moves: open ↓ (180°), closed ↑ (0°).
+  const angle = `(() => { const m = getComputedStyle(document.querySelector(${JSON.stringify(DOCK)} + ' .checklist-chevron')).transform; if (m === 'none') return 0; const [a, b] = m.slice(m.indexOf('(') + 1, -1).split(',').map(Number); return Math.abs(Math.round(Math.atan2(b, a) * 180 / Math.PI)) })()`
+  assert.equal(await evaluate(angle), 180, 'open: the arrow points down, toward the composer')
+  // #26: closing only goes down, frame by frame, and the height cap never lifts.
+  await evaluate(`(() => {
+    const body = document.querySelector(${JSON.stringify(DOCK)} + ' .checklist-body')
+    const inner = body.querySelector('.checklist-body-inner')
+    const state = window.__close = { heights: [], uncapped: 0, stop: false }
+    const tick = () => {
+      state.heights.push(body.getBoundingClientRect().height)
+      if (getComputedStyle(inner).maxHeight === 'none') state.uncapped += 1
+      if (!state.stop) requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  })()`)
+  await click(`${DOCK} .checklist-toggle`)
+  // Sample the whole closing, whatever the screen's refresh rate: until it settles at the collapsed height.
+  await wait(`Math.abs(document.querySelector(${JSON.stringify(DOCK)} + ' .checklist-body').getBoundingClientRect().height - ${collapsedBody}) <= 1`, 5000)
+  await settleAnimations()
+  const closing = await evaluate('(() => { window.__close.stop = true; return window.__close })()')
+  const rises = closing.heights.filter((h, i) => i > 0 && h > closing.heights[i - 1] + 0.5).length
+  assert.equal(rises, 0, `closing never grows first: ${JSON.stringify(closing.heights.map(Math.round))}`)
+  assert.equal(closing.uncapped, 0, 'the height cap stays while closing')
+  assert(Math.abs(closing.heights.at(-1) - collapsedBody) <= 1, `back to the collapsed height at the end: ${closing.heights.at(-1)} vs ${collapsedBody}`)
+  await settleAnimations()
+  assert.equal(await evaluate(angle), 0, 'closed: the arrow points up, where it opens')
 
   // 2. A reload keeps it, still (no entrance replay).
   await reload()
@@ -98,5 +126,5 @@ scenario(async () => {
   await wait(text('HOLA DE VUELTA'))
   assert.equal(await evaluate(`Boolean(document.querySelector(${JSON.stringify(DOCK)}))`), false)
 
-  report({ passed: ['list built and kept live', 'open after a turn with steps left', 'above the composer, one line collapsed', 'expanded statuses', 'reload keeps it still', 'completed then rolled over', 'plain chat has no dock'] })
+  report({ passed: ['list built and kept live', 'the arrow follows where the list moves', 'closing only goes down with the cap in place', 'open after a turn with steps left', 'above the composer, one line collapsed', 'expanded statuses', 'reload keeps it still', 'completed then rolled over', 'plain chat has no dock'] })
 })

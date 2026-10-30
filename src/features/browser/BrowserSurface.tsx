@@ -1,7 +1,22 @@
+import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { Maximize2, Monitor, Smartphone, Tablet, TriangleAlert, Tv } from 'lucide-react'
+
 import { useI18n } from '../../i18n'
 import type { BrowserView as BrowserFrame } from '../../types/protocol.generated'
-import type { NativeBrowserTarget } from '../../platform/contract'
+import { browserShortcut, type NativeBrowserContext, type NativeBrowserTarget } from '../../platform/contract'
+import { CHAT_KEY, rememberable, useBrowserPrefs } from '../../stores/browserPrefs'
 
+import BrowserHome from './BrowserHome'
+import { PAGE_WIDTHS, usePageSizeStore } from './pageSize'
+import { Select } from '../../components/ui/select'
+
+/** Un icono de dispositivo para cada ancho de página (#99.3). */
+const PAGE_WIDTH_ICONS: Record<(typeof PAGE_WIDTHS)[number], ReactNode> = {
+  390: <Smartphone size={14} />,
+  768: <Tablet size={14} />,
+  1280: <Monitor size={14} />,
+  1920: <Tv size={14} />,
+}
 import BrowserToolbar from './BrowserToolbar'
 import NativeBrowserSlot from './NativeBrowserSlot'
 import ScreenshotBrowserFallback from './ScreenshotBrowserFallback'
@@ -17,8 +32,10 @@ export interface BrowserSurfaceProps {
   shown?: boolean
   /** Overlays de Rinari encima ahora mismo (§8.3). */
   overlayDepth?: number
-  /** Hay un turno en curso en la sesión (reparto automático del control). */
+  /** Hay un turno en curso en la sesión: Rinari puede estar usando la página. */
   busy?: boolean
+  /** Proyecto de la conversación: los recientes y fijados de la página de inicio son suyos. */
+  projectId?: string | null
 }
 
 /**
@@ -37,6 +54,20 @@ export interface BrowserSurfaceProps {
  *
  * Ocultar la superficie no cierra nada: retira la presentación y ya.
  */
+/** Cmd en vez de Ctrl para los atajos del navegador. */
+const MAC = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform)
+
+/**
+ * ¿Se ve la página de inicio? Sin navegador todavía, mientras se prepara, o
+ * con la pestaña activa en blanco (plan 0.4.0 #46).
+ */
+export function showsHome(context: NativeBrowserContext | null): boolean {
+  if (!context || context.context_state === 'absent' || context.context_state === 'creating') return true
+  if (context.context_state !== 'ready') return false
+  const active = (context.targets ?? []).find((page) => page.active)
+  return !active || !active.url || active.url === 'about:blank'
+}
+
 export default function BrowserSurface({
   sessionId,
   frame,
@@ -46,9 +77,22 @@ export default function BrowserSurface({
   shown = true,
   overlayDepth = 0,
   busy,
+  projectId,
 }: BrowserSurfaceProps) {
   const { t } = useI18n()
-  const native = useNativeBrowser(sessionId, { shown, overlayDepth, busy })
+  // A loose chat keeps its own recents: they were shared by every chat and
+  // showed pages the owner never opened in this one (#99.2).
+  const projectKey = projectId || `${CHAT_KEY}:${sessionId}`
+  const recordVisit = useBrowserPrefs((state) => state.recordVisit)
+  const togglePin = useBrowserPrefs((state) => state.togglePin)
+  const pinnedUrls = useBrowserPrefs((state) => state.pinned[projectKey])
+  // La página de inicio (#46) se ve en lugar de «Preparando…» y de una
+  // página en blanco: mientras está, la vista nativa no se presenta.
+  const native = useNativeBrowser(sessionId, {
+    shown,
+    overlayDepth,
+    presentWhen: (view) => !showsHome(view),
+  })
   const context = native.context
 
   const useNative = Boolean(context?.supported && context.backend === 'electron-native')
@@ -72,6 +116,83 @@ export default function BrowserSurface({
     : (frame?.url ?? '')
 
   const problem = error || native.error
+  const home = useNative && showsHome(context)
+  // Ctrl+L: desde la página lo avisa main; desde la barra, este panel.
+  const [focusHere, setFocusHere] = useState(0)
+  const focusAddress = native.focusAddress + focusHere
+
+  /**
+   * Los atajos del navegador con el foco en la barra o en la página de
+   * inicio. Con el foco en la página los atiende main (la vista nativa se
+   * queda con las teclas). Solo dentro de este panel: no chocan con el
+   * composer ni con un editor.
+   */
+  const onShortcutKey = (event: KeyboardEvent<HTMLElement>) => {
+    const action = browserShortcut({ key: event.key, control: event.ctrlKey, alt: event.altKey, shift: event.shiftKey, meta: event.metaKey }, MAC)
+    if (!action) return
+    event.preventDefault()
+    if (event.repeat) return
+    const order = nativeTargets.map((page) => page.target_id)
+    const index = order.indexOf(activeTargetId)
+    switch (action) {
+      case 'new-tab':
+        void native.newTab()
+        return
+      case 'close-tab':
+        if (activeTargetId) void native.closeTab(activeTargetId)
+        return
+      case 'next-tab':
+      case 'previous-tab':
+        if (order.length > 1 && index >= 0) {
+          void native.selectTarget(order[(index + (action === 'next-tab' ? 1 : -1) + order.length) % order.length])
+        }
+        return
+      case 'focus-address':
+        setFocusHere((n) => n + 1)
+        return
+      default:
+        if (!home) void native.history(action)
+    }
+  }
+
+  // Tamaño de la página (#44b). Lo que pida el agente manda: el selector lo
+  // enseña; el dueño puede cambiarlo después.
+  const chosenWidth = usePageSizeStore((state) => state.bySession[sessionId])
+  const setPageWidth = usePageSizeStore((state) => state.set)
+  const agentWidth = context?.viewport_width
+  useEffect(() => {
+    if (agentWidth !== undefined) setPageWidth(sessionId, agentWidth ?? null)
+  }, [agentWidth, sessionId, setPageWidth])
+  const pageWidth = useNative && !home ? (chosenWidth ?? null) : null
+  const [slotHeight, setSlotHeight] = useState(0)
+  const sizeControl = useNative ? (
+    <label className="browser-size" title={t('browser.size.label')}>
+      <Select
+        compact
+        label={t('browser.size.label')}
+        testId="browser-size"
+        value={chosenWidth ? String(chosenWidth) : 'fit'}
+        onChange={(value) => setPageWidth(sessionId, value === 'fit' ? null : Number(value))}
+        options={[
+          { value: 'fit', label: t('browser.size.fit'), icon: <Maximize2 size={14} /> },
+          ...PAGE_WIDTHS.map((width) => ({ value: String(width), label: t(`browser.size.${width}` as const), icon: PAGE_WIDTH_ICONS[width] })),
+        ]}
+      />
+      {pageWidth && slotHeight > 0 && <span className="browser-size-value" data-testid="browser-size-value">{pageWidth} × {slotHeight}</span>}
+    </label>
+  ) : undefined
+  const activeTitle = useNative ? (nativeTargets.find((page) => page.active)?.title ?? '') : ''
+
+  // Lo que se abre queda en «Recientes» del proyecto.
+  useEffect(() => {
+    if (useNative && rememberable(url)) recordVisit(projectKey, { url, title: activeTitle })
+  }, [useNative, url, activeTitle, projectKey, recordVisit])
+
+  /** Abrir desde la página de inicio: prepara el navegador si aún no existe. */
+  const openFromHome = async (next: string) => {
+    if (!context || context.context_state === 'absent') await native.prepare()
+    await native.navigate(next)
+  }
 
   return (
     <section
@@ -80,6 +201,7 @@ export default function BrowserSurface({
       data-state={useNative ? (context?.context_state ?? 'idle') : (frame?.state ?? 'idle')}
       data-backend={useNative ? 'electron-native' : 'screenshot'}
       className="flex min-h-0 min-w-0 flex-1 flex-col"
+      onKeyDown={useNative ? onShortcutKey : undefined}
     >
       <BrowserToolbar
         context={useNative ? context : null}
@@ -91,27 +213,51 @@ export default function BrowserSurface({
         onSelectTarget={useNative ? (id) => void native.selectTarget(id) : onTargetChange}
         onNavigate={useNative ? (next) => void native.navigate(next) : undefined}
         onHistory={useNative ? (action) => void native.history(action) : undefined}
+        onNewTab={useNative && context?.context_state === 'ready' ? () => void native.newTab() : undefined}
+        onCloseTab={useNative ? (id) => void native.closeTab(id) : undefined}
+        focusAddress={home ? 0 : focusAddress}
         busy={busy}
-        onTakeControl={useNative ? () => void native.takeControl() : undefined}
-        onReturnControl={useNative ? () => void native.returnControl() : undefined}
+        pinned={Boolean(url && (pinnedUrls ?? []).some((place) => place.url === url))}
+        onTogglePin={useNative && rememberable(url) ? () => togglePin(projectKey, { url, title: activeTitle }) : undefined}
+        sizeControl={sizeControl}
+        home={home}
       />
 
-      {problem && <p role="alert" className="browser-problem">{problem}</p>}
+      {problem && <p role="alert" className="browser-problem"><TriangleAlert size={13} aria-hidden="true" /><span>{browserProblemText(problem, t)}</span></p>}
 
       {useNative && context ? (
         <NativeBrowserSlot
           context={context}
           slotRef={native.slotRef}
           onPrepare={() => void native.prepare()}
-          preview={native.preview}
+          pageWidth={pageWidth}
+          onHeight={setSlotHeight}
+          home={home ? (
+            <BrowserHome
+              sessionId={sessionId}
+              projectKey={projectKey}
+              scope={projectId ? 'project' : 'chat'}
+              busy={busy}
+              focusAddress={focusAddress}
+              onOpen={(next) => void openFromHome(next)}
+            />
+          ) : undefined}
         />
       ) : (
         <ScreenshotBrowserFallback frame={frame} connected={Boolean(connected)} />
       )}
 
-      <footer className="browser-footer">
-        {useNative ? t('browser.nativeNote') : t('browser.fallbackNote')}
-      </footer>
+      {/* La vista con capturas avisa de que no se puede usar aquí; el navegador nativo no necesita nota. */}
+      {!useNative && <footer className="browser-footer">{t('browser.fallbackNote')}</footer>}
     </section>
   )
+}
+
+/** What the host says when it cannot do something, in the owner's language (#99.2). */
+export function browserProblemText(message: string, t: ReturnType<typeof useI18n>['t']): string {
+  if (/no browser context/i.test(message)) return t('browser.problem.absent')
+  if (/has to wait: Rinari is finishing a step/i.test(message)) return t('browser.problem.busy')
+  if (/will not navigate to/i.test(message)) return t('browser.problem.blocked')
+  if (/the window is not ready|browser host is not ready/i.test(message)) return t('browser.problem.notReady')
+  return message
 }

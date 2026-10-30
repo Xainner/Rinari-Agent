@@ -3,7 +3,7 @@
 // foco, zoom, barra lateral, ventanas estrechas, recarga y migración del
 // schema 3. El proveedor es un puerto muerto: el turno falla a propósito.
 const assert = require('node:assert/strict')
-const { ui, command, domClick, evaluate, menuShortcut, report, scenario, screenshot, seedBoard, size, useLocalModel, wait, delay, settleAnimations } = require('../harness.cjs')
+const { ui, click, command, domClick, evaluate, menuShortcut, report, scenario, screenshot, seedBoard, size, useLocalModel, wait, delay, settleAnimations } = require('../harness.cjs')
 
 async function geometry() {
   // Mide con el board quieto: plegar, desplegar y la barra lateral se animan.
@@ -16,7 +16,8 @@ async function geometry() {
       row:rect(row), scrollWidth:row.scrollWidth, clientWidth:row.clientWidth, scrollLeft:row.scrollLeft,
       panes:[...row.querySelectorAll(':scope > .session-pane')].map(rect),
       strips:[...row.querySelectorAll(':scope > [data-collapsed]')].map(rect),
-      add:rect(document.querySelector('.board-add-column')),
+      // «Añadir panel» vive en la barra (sin la columna fija, plan-boards B.4.3).
+      add:rect(document.querySelector('.board-toolbar button.is-primary')),
       overflow:document.body.textContent.includes('No caben todos los paneles'),
       handles:document.querySelectorAll('.board-pane-resizer').length,
     }
@@ -39,8 +40,16 @@ function checkFit(g, overflow) {
   }
 }
 const fit = 'button[aria-label="Ajustar a la vista"]'
-const focusMode = '.board-toolbar button[title="Mantiene expandido solo el panel enfocado; el resto queda en tiras."]'
-const collapseAll = '.board-toolbar button[title="Colapsar todo"]'
+// Modo foco y Colapsar todo viven en el menú «⋯» de la barra (plan-boards B.4.3).
+const focusMode = 'Modo foco'
+const collapseAll = 'Colapsar todo'
+async function boardMenu(label) {
+  await click('.board-toolbar button[aria-label="Más acciones del board"]')
+  const item = `[...document.querySelectorAll('[role="menuitem"],[role="menuitemcheckbox"]')].find(el => el.textContent.trim() === '${label}')`
+  await wait(`Boolean(${item})`)
+  await evaluate(`${item}.click()`)
+  await wait(`!document.querySelector('[role="menu"]')`)
+}
 const collapsePane = '.pane-header button[aria-label="Colapsar panel"]'
 const sidePanel = '.pane-header button[aria-label="Mostrar u ocultar panel lateral"]'
 
@@ -59,7 +68,7 @@ scenario(async () => {
   async function load(count, collapsed = [], fitToView = true, version = 4) {
     const layout = { version, boardId: 'boards_fit_acceptance', fitToView,
       panes: ids.slice(0, count).map((sessionId, i) => ({ paneId: `pane_${i}`, sessionId, width: 650 + i * 50, collapsed: collapsed.includes(i) })),
-      focusedPaneId: 'pane_0', messagingEnabled: false }
+      focusedPaneId: 'pane_0' }
     if (version < 4) delete layout.fitToView
     await seedBoard(layout)
     await delay(450)
@@ -98,12 +107,12 @@ scenario(async () => {
   await domClick(collapsePane)
   checkFit(await geometry(), false)
   assert.equal((await geometry()).strips.length, 1)
-  await domClick(focusMode)
+  await boardMenu(focusMode)
   assert.equal((await geometry()).panes.length, 1)
   checkFit(await geometry(), false)
-  await domClick(focusMode)
+  await boardMenu(focusMode)
   assert.equal((await geometry()).panes.length, 2)
-  await domClick(collapseAll)
+  await boardMenu(collapseAll)
   checkFit(await geometry(), false)
   assert.equal((await geometry()).panes.length, 0)
   await domClick(fit)
@@ -111,7 +120,7 @@ scenario(async () => {
   checkFit(await geometry(), false)
   // Con el ajuste ya activo antes de Colapsar todo, un clic revela todo.
   await domClick(fit)
-  await domClick(collapseAll)
+  await boardMenu(collapseAll)
   await domClick(fit)
   assert.equal((await geometry()).panes.length, 3)
   checkFit(await geometry(), false)
@@ -120,7 +129,7 @@ scenario(async () => {
   await domClick(fit)
   assert.equal((await geometry()).panes.length, 3)
   checkFit(await geometry(), false)
-  await domClick(focusMode)
+  await boardMenu(focusMode)
   await domClick(fit)
   assert.equal((await geometry()).panes.length, 3)
   checkFit(await geometry(), false)
@@ -133,7 +142,7 @@ scenario(async () => {
     return { height: t.getBoundingClientRect().height, min: parseFloat(s.minHeight), max: parseFloat(s.maxHeight), width: t.clientWidth } })`
   await evaluate(`(() => { const RO = window.ResizeObserver; window.__ResizeObserver = RO
     window.ResizeObserver = class extends RO { observe(target, options) { if (target.tagName !== 'TEXTAREA') super.observe(target, options) } } })()`)
-  await domClick(collapseAll)
+  await boardMenu(collapseAll)
   await domClick(fit)
   assert.equal((await geometry()).panes.length, 3)
   const unfolded = await evaluate(composers)
@@ -155,7 +164,7 @@ scenario(async () => {
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(el, '')
     el.dispatchEvent(new Event('input', { bubbles: true })); window.ResizeObserver = window.__ResizeObserver })()`)
   // Se vuelven a montar con el ResizeObserver real para el resto del recorrido.
-  await domClick(collapseAll)
+  await boardMenu(collapseAll)
   await domClick(fit)
   assert.equal((await geometry()).panes.length, 3)
   await size(1200, 850)
@@ -200,7 +209,7 @@ scenario(async () => {
   await size(800, 850)
   checkFit(await geometry(), true)
   assert.equal(await evaluate(`getComputedStyle(document.querySelector('${fit} span')).display`), 'none')
-  await domClick('.board-add-column button')
+  await domClick('.board-toolbar button.is-primary')
   await wait('Boolean(document.querySelector("[role=dialog]"))')
   await screenshot('add-dialog-narrow')
   await evaluate(`[...document.querySelectorAll('[role="dialog"] button')].find(b => b.textContent.includes('Chat general')).click()`)
@@ -212,7 +221,10 @@ scenario(async () => {
   await wait('document.querySelectorAll(".session-pane").length === 3')
   checkFit(await geometry(), true)
   await load(16, ids.map((_, i) => i))
-  checkFit(await geometry(), true)
+  // Sin la columna fija «Añadir panel» (plan-boards B.4.3) caben más tiras:
+  // el aviso sale solo si las 16 de 48 px no entran en el ancho real.
+  const sixteen = await geometry()
+  checkFit(sixteen, sixteen.strips.reduce((sum, strip) => sum + strip.width, 0) > sixteen.canvas.width + 1)
   await screenshot('collapsed-overflow')
   await size(1500, 850)
   await load(3, [], false)

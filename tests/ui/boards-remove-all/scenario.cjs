@@ -19,8 +19,16 @@ function layout(ids, mode = 'expanded') {
   }
 }
 
-async function removeAll(label = 'Quitar todos') {
-  await click(`.board-toolbar button[aria-label="${label}"]`)
+// «Quitar todos» vive en el menú «⋯» de la barra (plan-boards B.4.3).
+async function openRemoveAll(label = 'Quitar todos', more = 'Más acciones del board') {
+  await click(`.board-toolbar button[aria-label="${more}"]`)
+  const item = `[...document.querySelectorAll('[role="menuitem"]')].find(el => el.textContent.trim() === '${label}')`
+  await wait(`Boolean(${item})`)
+  await evaluate(`${item}.click()`)
+}
+
+async function removeAll(label = 'Quitar todos', more = 'Más acciones del board') {
+  await openRemoveAll(label, more)
   // La confirmación es el diálogo de la app; su botón repite la etiqueta.
   await wait(`Boolean(document.querySelector('[role="alertdialog"]'))`)
   await clickText(label, '[role="alertdialog"] button')
@@ -52,11 +60,11 @@ async function exercise() {
   await screenshot('running-before-removal')
 
   // Cancelar el diálogo no toca el board.
-  await click('.board-toolbar button[aria-label="Quitar todos"]')
+  await openRemoveAll()
   await clickText('Cancelar', '[role="alertdialog"] button')
   await wait(`!document.querySelector('[role="alertdialog"]')`)
   assert.equal(await evaluate('document.querySelectorAll("[data-pane-id]").length'), 3)
-  await click('.board-toolbar button[aria-label="Quitar todos"]')
+  await openRemoveAll()
   await wait(`Boolean(document.querySelector('[role="alertdialog"]'))`)
   await screenshot('confirmation')
   await clickText('Cancelar', '[role="alertdialog"] button')
@@ -75,10 +83,17 @@ async function exercise() {
   await evaluate(`localStorage.setItem('rinari.lang','en')`)
   await seedBoard(layout(ids))
   await size(780, 800)
-  const button = '.board-toolbar button[aria-label="Remove all"]'
-  assert(await evaluate(`(() => {const b=document.querySelector(${JSON.stringify(button)});const r=b.getBoundingClientRect();return r.width>0 && r.left>=0 && r.right<=innerWidth && b.title.includes('Conversations')})()`))
+  const button = '.board-toolbar button[aria-label="More board actions"]'
+  assert(await evaluate(`(() => {const b=document.querySelector(${JSON.stringify(button)});const r=b.getBoundingClientRect();return r.width>0 && r.left>=0 && r.right<=innerWidth})()`))
+  await click(button)
+  const item = `[...document.querySelectorAll('[role="menuitem"]')].find(el => el.textContent.trim() === 'Remove all')`
+  await wait(`Boolean(${item})`)
+  assert(await evaluate(`(() => {const r=${item}.getBoundingClientRect();return r.width>0 && r.left>=0 && r.right<=innerWidth && ${item}.title.includes('Conversations')})()`))
   await screenshot('narrow-english')
-  await removeAll('Remove all')
+  await evaluate(`${item}.click()`)
+  await wait(`Boolean(document.querySelector('[role="alertdialog"]'))`)
+  await clickText('Remove all', '[role="alertdialog"] button')
+  await wait('document.querySelectorAll("[data-pane-id]").length===0 && Boolean(document.querySelector(".board-empty"))')
   await evaluate(`localStorage.setItem('rinari.lang','es')`)
   writeFileSync(join(ui.data, 'expected.json'), JSON.stringify({ ids }))
   report({ passed: ['app-styled confirmation, cancel keeps the board', 'expanded panes', 'collapsed panes', 'focus mode', 'draft and side panel preservation', 'real Engine turn completes after removal with scripted model', 'sessions remain active', 'English accessible control at 780px'] })

@@ -1,4 +1,4 @@
-import { platform, type NotificationTarget, type SystemNotification } from '../platform'
+import { platform, type NotificationReply, type NotificationTarget, type SystemNotification } from '../platform'
 import type { NotificationDeliverySupport, SystemPermission } from './notificationPolicy'
 import { ownSoundsEnabled } from './notificationSounds'
 
@@ -52,6 +52,8 @@ export interface NativeNotification {
   title: string
   body: string
   target?: NotificationTarget
+  actions?: SystemNotification['actions']
+  reply?: SystemNotification['reply']
 }
 
 /** `false` si no se mostró: sin soporte, o deduplicada por el host. */
@@ -61,6 +63,8 @@ export async function sendSystemNotification(notification: NativeNotification): 
     title: notification.title,
     body: notification.body,
     target: notification.target,
+    ...(notification.actions ? { actions: notification.actions } : {}),
+    ...(notification.reply ? { reply: notification.reply } : {}),
     // Con los tonos de Rinari activos, ellos son el único sonido del aviso.
     silent: ownSoundsEnabled(),
   }
@@ -75,6 +79,11 @@ export async function sendSystemNotification(notification: NativeNotification): 
  * Clic del usuario en una notificación. Resuelve el destino y nada más: no
  * envía, no reanuda, no aprueba (documento 02 §7).
  */
+/** «Responder» desde la notificación del sistema (#64). */
+export function onNotificationReplied(callback: (reply: NotificationReply) => void): Promise<() => void> {
+  return platform().notifications.onReplied(callback)
+}
+
 export function onNotificationActivated(
   callback: (target: NotificationTarget) => void,
 ): Promise<() => void> {

@@ -15,7 +15,7 @@ describe('cobertura de los adaptadores manuales', () => {
       .map(([name]) => name)
     const sinAdaptador = marcados.filter((name) => !COMMAND_ADAPTERS[name])
     expect(sinAdaptador).toEqual([])
-    expect(marcados.length).toBeGreaterThanOrEqual(10)
+    expect(marcados.length).toBeGreaterThanOrEqual(8)
   })
 
   it('no hay adaptadores huérfanos que el mapa no reconozca', () => {
@@ -100,39 +100,18 @@ describe('TR-04 — provider_update manda solo el patch', () => {
     expect(call.params).toEqual({ ref: 'p1', secret: 's', settings: { protocol: 'openai-compatible' } })
   })
 
+  it('activar o desactivar viaja solo (plan 0.4.0 #97)', () => {
+    expect(translateCommand('provider_update', { reference: 'p1', enabled: false })).toEqual({
+      method: 'provider.update',
+      params: { ref: 'p1', enabled: false },
+    })
+  })
+
   it('no manda nulos por los campos que no se tocan', () => {
     const params = translateCommand('provider_update', { reference: 'p1', alias: 'x' }).params!
     for (const key of ['endpoint', 'account_hint', 'secret', 'secret_env', 'settings']) {
       expect(params).not.toHaveProperty(key)
     }
-  })
-})
-
-describe('TR-05 — peer_message_forward conserva la procedencia', () => {
-  it('lleva origen y cita intactos', () => {
-    expect(
-      translateCommand('peer_message_forward', {
-        target_session_id: 'ses_b',
-        message: 'revisar',
-        source_session_id: 'ses_a',
-        quoted_source: { session_id: 'ses_a', turn_id: 'turn_1' },
-      }),
-    ).toEqual({
-      method: 'session.peer_message.forward',
-      params: {
-        target_session_id: 'ses_b',
-        message: 'revisar',
-        source_session_id: 'ses_a',
-        quoted_source: { session_id: 'ses_a', turn_id: 'turn_1' },
-      },
-    })
-  })
-
-  it('sin procedencia no inventa claves', () => {
-    expect(translateCommand('peer_message_forward', { target_session_id: 'b', message: 'x' }).params).toEqual({
-      target_session_id: 'b',
-      message: 'x',
-    })
   })
 })
 
@@ -196,17 +175,5 @@ describe('TR-09 — workspace_process_stop conserva la identidad', () => {
       session_id: 'ses',
       id: 'proc',
     })
-  })
-})
-
-describe('peer_group_get manda una sola clave, por precedencia', () => {
-  it('group_id gana a session_id y este a board_id', () => {
-    expect(translateCommand('peer_group_get', { board_id: 'b', session_id: 's', group_id: 'g' }).params).toEqual(
-      { group_id: 'g' },
-    )
-    expect(translateCommand('peer_group_get', { board_id: 'b', session_id: 's' }).params).toEqual({
-      session_id: 's',
-    })
-    expect(translateCommand('peer_group_get', { board_id: 'b' }).params).toEqual({ board_id: 'b' })
   })
 })

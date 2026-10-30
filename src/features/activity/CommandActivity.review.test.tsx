@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import TurnTimelineView from './TurnTimelineView'
@@ -55,4 +55,23 @@ it('renders structured results for tools without a model observation string', ()
   } })
   expect(container.textContent).toContain('mañana.txt')
   expect(container.textContent).toContain('café.md')
+})
+
+it('an output the history cut can be shown whole (#91)', async () => {
+  const { engineApi } = await import('../../services/engine')
+  const toolOutput = vi.spyOn(engineApi, 'toolOutput').mockResolvedValue({ tool_call_id: 'review', stdout: `${'A'.repeat(20)}FIN`, stderr: null })
+  const { container } = show({ kind: 'command', command: 'build', status: 'success', exit_code: 0, stdout: 'A'.repeat(20), page_truncated: true })
+  fireEvent.click(screen.getByTestId('tool-output-whole'))
+  await waitFor(() => expect(container.textContent).toContain('FIN'))
+  expect(toolOutput).toHaveBeenCalledWith('review-session', 'review')
+  expect(screen.queryByTestId('tool-output-whole')).toBeNull()
+})
+
+it('a tool result whose data the history cut can be shown whole (#91)', async () => {
+  const { engineApi } = await import('../../services/engine')
+  vi.spyOn(engineApi, 'toolOutput').mockResolvedValue({ tool_call_id: 'review', stdout: null, stderr: null, data: { content: 'TODO EL CONTENIDO' } })
+  const { container } = show({ kind: 'tool', status: 'success', data: { content: 'TODO…' }, page_truncated: true })
+  fireEvent.click(screen.getByTestId('tool-output-whole'))
+  await waitFor(() => expect(container.textContent).toContain('TODO EL CONTENIDO'))
+  expect(screen.queryByTestId('tool-output-whole')).toBeNull()
 })

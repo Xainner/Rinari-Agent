@@ -121,6 +121,8 @@ function scrollTo(top: number) {
   Object.defineProperty(el, 'clientHeight', { configurable: true, value: 300 })
   Object.defineProperty(el, 'scrollTop', { configurable: true, writable: true, value: top })
   handle.scrollOffset = top
+  // Una persona mueve la rueda: solo un gesto apaga «seguir el final» (#88).
+  fireEvent.wheel(el)
   fireEvent.scroll(el)
 }
 
@@ -140,7 +142,7 @@ it('UX-06: collapsing while reading mid-history restores the same row and offset
   expect(screen.getByRole('button', { name: /final|bottom/i })).toBeTruthy()
 })
 
-it('UX-06: a reader who was at the end keeps following the end after remounting', () => {
+it('UX-06: a reader who was at the end keeps following the end after remounting', async () => {
   const engine = engineWithTurns(10)
   const first = render(<BoardHarness engine={engine}><SingleSessionView onOpenProviders={() => {}} /></BoardHarness>)
   scrollTo(700)
@@ -150,7 +152,8 @@ it('UX-06: a reader who was at the end keeps following the end after remounting'
   scrollToIndex.mockClear()
   render(<BoardHarness engine={engine}><SingleSessionView onOpenProviders={() => {}} /></BoardHarness>)
   expect(scrollToIndex).not.toHaveBeenCalledWith(4, expect.anything())
-  expect(scrollToIndex).toHaveBeenCalledWith(9, { align: 'end' })
+  // Ir al final va una vez por cuadro (#58).
+  await vi.waitFor(() => expect(scrollToIndex).toHaveBeenCalledWith(9, { align: 'end' }))
 })
 
 it('an anchor whose row no longer exists falls back to the end once the transcript is loaded', () => {
@@ -185,6 +188,16 @@ it('FLOW-10: a queued reveal for another session is ignored and left for that se
   expect(takeQueuedTurnReveal('ses_other')).toBe('t1')
 })
 
+/** Un `scroll` que provoca la lista al medir o crecer, sin gesto de nadie. */
+function listScroll(top: number) {
+  const el = scroller()
+  Object.defineProperty(el, 'scrollHeight', { configurable: true, value: 1_000 })
+  Object.defineProperty(el, 'clientHeight', { configurable: true, value: 300 })
+  Object.defineProperty(el, 'scrollTop', { configurable: true, writable: true, value: top })
+  handle.scrollOffset = top
+  fireEvent.scroll(el)
+}
+
 function sendFromComposer(text: string) {
   const box = screen.getByRole('textbox', { name: /mensaje|message/i })
   fireEvent.change(box, { target: { value: text } })
@@ -212,7 +225,7 @@ it('after the jump only a gesture of the person stops following the end, not a s
   await vi.waitFor(() => expect(scrollToIndex).toHaveBeenCalledWith(9, { align: 'end' }))
   // The virtualizer re-measures rows while the reply arrives: a scroll event
   // that is not at the end must not switch following off.
-  scrollTo(430)
+  listScroll(430)
   expect(screen.queryByRole('button', { name: /final|bottom/i })).toBeNull()
   // The person scrolls up with the wheel: now it stops.
   fireEvent.wheel(scroller())
@@ -247,4 +260,19 @@ it('an explicit turn reveal during the send wins over the jump', async () => {
   await new Promise((resolve) => setTimeout(resolve, 20))
   await new Promise((resolve) => requestAnimationFrame(resolve))
   expect(scrollToIndex).not.toHaveBeenCalledWith(9, expect.anything())
+})
+
+it('#88: the reply growing under a reader at the end never stops the follow; a gesture does', async () => {
+  const engine = engineWithTurns(10)
+  render(<BoardHarness engine={engine}><SingleSessionView onOpenProviders={() => {}} /></BoardHarness>)
+  // The final answer grows 400 px between the program's scroll and its event.
+  listScroll(300)
+  expect(screen.queryByRole('button', { name: /final|bottom/i })).toBeNull()
+  scrollToIndex.mockClear()
+  await vi.waitFor(() => expect(scrollToIndex).toHaveBeenCalledWith(9, { align: 'end' }))
+  // A click in the chat and then a wheel up: the person is reading now.
+  fireEvent.pointerDown(scroller())
+  fireEvent.pointerUp(window)
+  scrollTo(100)
+  expect(screen.getByRole('button', { name: /final|bottom/i })).toBeTruthy()
 })

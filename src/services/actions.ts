@@ -9,6 +9,8 @@ export type DesktopAction =
   | 'report-bug'
   | 'about'
   | 'sidebar'
+  /** Oculta o vuelve a mostrar el panel lateral de la sesión destino (#47). */
+  | 'side-panel'
   | 'files'
   /** Abre el dock de la sesión en la superficie de navegador (doc 03 §1). */
   | 'browser'
@@ -43,6 +45,10 @@ export type DesktopAction =
   | 'collapse-finished-panes'
   | 'toggle-focus-mode'
   | 'mark-all-board-results-read'
+  /** Boards: el siguiente panel que te necesita (Ctrl+J, plan-boards B.4.1). */
+  | 'board-next-needs-you'
+  /** Todos los resultados sin leer de todas las conversaciones (#84): bandeja, barra de tareas, campana. */
+  | 'mark-all-read'
 
 export function dispatchAction(action: DesktopAction) {
   window.dispatchEvent(new CustomEvent('rinari-action', { detail: action }))

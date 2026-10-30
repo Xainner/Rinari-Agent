@@ -125,8 +125,15 @@ export default function XtermView({ ptyId, fontSize, exited, autoFocus = false }
     let size = { cols: 0, rows: 0 }
     let timer: ReturnType<typeof setTimeout> | undefined
     const refit = () => {
-      if (element.clientWidth === 0 || element.clientHeight === 0) return
-      fit.fit()
+      if (disposed || element.clientWidth === 0 || element.clientHeight === 0) return
+      // xterm aún sin medir su renderizador (recién montada en una vista del
+      // panel lateral que entra) lanza «dimensions» de undefined: se reintenta
+      // con el próximo cambio de tamaño en lugar de romper la consola.
+      try {
+        fit.fit()
+      } catch {
+        return
+      }
       if (term.cols === size.cols && term.rows === size.rows) return
       size = { cols: term.cols, rows: term.rows }
       clearTimeout(timer)

@@ -21,6 +21,8 @@ export interface ProviderPreset {
   runtime?: string
   /** Ejecutable que instala el usuario; el alta guía en vez de pedir una clave. */
   requiresBinary?: string | null
+  /** Corre en este equipo (Ollama, LM Studio): sin clave por defecto. */
+  local?: boolean
 }
 
 /** Un provider servido por un CLI externo no pide credencial: la tiene el CLI. */
@@ -171,7 +173,7 @@ export function useProviderPresets() {
         provider_type: p.provider_type as ProviderPreset['provider_type'], endpoint: p.endpoint,
         auth: p.auth_methods[0] as ProviderAuth, authMethods: p.auth_methods as ProviderAuth[],
         experimental: p.experimental, brand: brandForProduct(p.id)?.id,
-        runtime: p.runtime, requiresBinary: p.requires_external_binary,
+        runtime: p.runtime, requiresBinary: p.requires_external_binary, local: p.local,
       })))
     }).catch(() => { /* Old engines retain their existing API-key wizard. */ })
     return () => { active = false }

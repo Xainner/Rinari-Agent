@@ -1,25 +1,31 @@
-import { BellRing, CalendarClock, CheckCheck, Library, TriangleAlert, X } from 'lucide-react'
-import { useState } from 'react'
+import { BellRing, Building2, CalendarClock, CheckCheck, Library, TriangleAlert, X } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
 import { useI18n, type I18nKey } from '../../i18n'
 import { art } from '../rinari/art'
 import { cn } from '../../lib/utils'
 import {
   NOTIFICATION_MODULES,
-  selectUnreadCount,
+  selectUnreadCountIn,
   useNotificationCenter,
+  visibleIn,
   type CenterNotification,
   type NotificationModule,
   type NotificationTarget,
 } from '../../stores/notificationCenter'
-import BoardAttentionSection, { useBoardAttentionTotal } from '../board/BoardAttentionSection'
+import BoardAttentionSection from '../board/BoardAttentionSection'
+import ConversationAttentionSection, { useConversationAttentionTotal } from './ConversationAttentionSection'
+import { useBoardAttentionStore } from '../../stores/boardAttention'
+import { markEverythingRead } from './attentionCommands'
+import { useProfileStore } from '../profiles/profileStore'
 
 const MODULE_TITLE: Record<NotificationModule, I18nKey> = {
   schedules: 'notifications.module.schedules',
+  agency: 'notifications.module.agency',
   skills: 'notifications.module.skills',
   system: 'notifications.module.system',
 }
-const MODULE_ICON = { schedules: CalendarClock, skills: Library, system: TriangleAlert } as const
+const MODULE_ICON = { schedules: CalendarClock, agency: Building2, skills: Library, system: TriangleAlert } as const
 const TONE_DOT: Record<NonNullable<CenterNotification['tone']>, string> = {
   info: 'bg-[var(--accent)]',
   success: 'bg-[var(--success)]',
@@ -30,6 +36,7 @@ const PER_MODULE = 8
 
 export interface NotificationCenterProps {
   labelFor: (sessionId: string) => string
+  projectFor?: (sessionId: string) => string | null
   goBoard: () => void
   onOpenTarget: (target: NotificationTarget) => void
   disabled?: boolean
@@ -49,20 +56,25 @@ function ago(at: number, lang: string): string {
  * deriva en vivo de los paneles; tareas programadas y skills se guardan aquí
  * cuando llegan, además del aviso emergente.
  */
-export default function NotificationCenter({ labelFor, goBoard, onOpenTarget, disabled = false }: NotificationCenterProps) {
+export default function NotificationCenter({ labelFor, projectFor, goBoard, onOpenTarget, disabled = false }: NotificationCenterProps) {
   const { t, lang } = useI18n()
   const [open, setOpen] = useState(false)
-  const items = useNotificationCenter((state) => state.items)
-  const unread = useNotificationCenter(selectUnreadCount)
+  // Cada perfil ve sus avisos y los de toda la app (#13 de la auditoría de la Agency).
+  const activeProfile = useProfileStore((state) => state.activeId)
+  const allItems = useNotificationCenter((state) => state.items)
+  const items = useMemo(() => allItems.filter((item) => visibleIn(item, activeProfile)), [allItems, activeProfile])
+  const unread = useNotificationCenter(selectUnreadCountIn(activeProfile))
   const markRead = useNotificationCenter((state) => state.markRead)
   const dismiss = useNotificationCenter((state) => state.dismiss)
-  const boardTotal = useBoardAttentionTotal()
-  const total = boardTotal + unread
+  // Conversaciones que piden algo (todas, también las de Boards) + avisos sin leer.
+  const conversationsTotal = useConversationAttentionTotal()
+  const unreadResults = useBoardAttentionStore((state) => Object.values(state.sessions).some((session) => Object.values(session.turns).some((receipt) => receipt.state === 'unread')))
+  const total = conversationsTotal + unread
 
   // Abrir la campana es verlas: al cerrarla, por la vía que sea, quedan leídas.
   const close = () => {
     setOpen(false)
-    if (useNotificationCenter.getState().items.some((item) => !item.read)) markRead()
+    if (useNotificationCenter.getState().items.some((item) => !item.read && visibleIn(item, activeProfile))) markRead(undefined, activeProfile)
   }
   const go = (item: CenterNotification) => {
     close()
@@ -90,21 +102,26 @@ export default function NotificationCenter({ labelFor, goBoard, onOpenTarget, di
       <PopoverContent align="end" className="notify-pop max-h-[70vh] w-96 overflow-y-auto p-2" aria-label={t('notifications.title')}>
         <div className="flex items-center gap-2 px-2 pt-1 pb-2">
           <span className="mr-auto font-display text-[15px] font-bold text-[var(--text)]">{t('notifications.title')}</span>
-          {unread > 0 && (
-            <button type="button" className="inline-flex items-center gap-1 text-[11px] text-[var(--accent-2)] hover:underline" onClick={() => markRead()}>
+          {(unread > 0 || unreadResults) && (
+            <button type="button" className="inline-flex items-center gap-1 text-[11px] text-[var(--accent-2)] hover:underline" onClick={() => markEverythingRead()}>
               <CheckCheck size={12} aria-hidden="true" /> {t('notifications.markAll')}
             </button>
           )}
           {items.length > 0 && (
-            <button type="button" className="btn btn-quiet btn-xs" onClick={() => useNotificationCenter.getState().clear()}>
+            <button type="button" className="btn btn-quiet btn-xs" onClick={() => useNotificationCenter.getState().clear(undefined, activeProfile)}>
               {t('notifications.clearAll')}
             </button>
           )}
         </div>
-        {boardTotal === 0 && items.length === 0 && (
+        {conversationsTotal === 0 && items.length === 0 && (
           <div className="notify-empty"><img src={art.chibi('sleep')} alt="" draggable={false} /><p>{t('notifications.empty')}</p></div>
         )}
         <div className="space-y-3">
+          <ConversationAttentionSection
+            labelFor={labelFor}
+            projectFor={projectFor}
+            onOpen={(sessionId, turnId) => { close(); onOpenTarget({ kind: 'session', sessionId, turnId }) }}
+          />
           <BoardAttentionSection labelFor={labelFor} goBoard={goBoard} onNavigate={close} />
           {NOTIFICATION_MODULES.map((module) => {
             const entries = items.filter((item) => item.module === module).slice(0, PER_MODULE)

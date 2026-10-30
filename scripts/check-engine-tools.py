@@ -49,7 +49,8 @@ def check_ocr(python):
             creationflags=subprocess.CREATE_NO_WINDOW,
         )
         assert extraction.returncode == 0, "Packaged PDF extraction failed: " + extraction.stderr
-        extracted, used_ocr, warning = json.loads(extraction.stdout)
+        # Texto, si corrió el OCR, el aviso y la cobertura de lectura (lote 4).
+        extracted, used_ocr, warning, _coverage = json.loads(extraction.stdout)
         assert used_ocr and warning is None
         assert all(word in extracted for word in ("Ma\u00f1ana", "caf\u00e9", "a\u00f1o")), extracted
     print("Packaged OCR: hashes, Spanish recognition and scanned PDF extraction OK")

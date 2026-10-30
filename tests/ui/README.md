@@ -44,6 +44,11 @@ también `failure.png` y el final del texto visible en la consola.
 | [activity-disclosure](activity-disclosure/README.md) | Avances visibles en vivo, operaciones plegadas y resumen al terminar en Normal y Boards |
 | [attention-taskbar](attention-taskbar/README.md) | Un resultado en otro chat de Normal sube el número de pendientes |
 | [boards-fit](boards-fit/README.md) | Ajustar a la vista en Boards |
+| [image-create](image-create/scenario.cjs) | Crear imágenes con un servicio falso en loopback: la clave se guarda como referencia, Rinari pregunta con el servicio y el costo, y la imagen llega con su tarjeta (#28) |
+| [boards-shortcuts](boards-shortcuts/scenario.cjs) | Ctrl+1…9 (composer o vistazo si está plegado), Ctrl+J sin pendientes, soltar una conversación de la barra lateral entre dos paneles y la barra solo con contadores, ajuste, «⋯» y «Añadir panel» (B.4) |
+| [boards-switch-blank](boards-switch-blank/scenario.cjs) | Una conversación larga pasa de Normal a Boards 14 veces a distintas alturas y con cambio de tamaño: el panel nunca queda en blanco (C9) |
+| [boards-collapsed-live](boards-collapsed-live/scenario.cjs) | Un panel plegado es una columna que sigue su lista, su paso y su resultado sin desplegarse; el vistazo tras una pausa; la tira de 48 px cuando no cabe (B.2) |
+| [boards-pane-quiet](boards-pane-quiet/scenario.cjs) | Enviar en un panel: ni «Preparando el turno…» ni la fila viva aparecen en ningún cuadro hasta que hay algo que contar (C1) |
 | [boards-remove-all](boards-remove-all/README.md) | Quitar todos los paneles, con confirmación |
 | [boards-side-panel](boards-side-panel/README.md) | Panel lateral cerrado por defecto en Boards |
 | [chat-image-overlay](chat-image-overlay/README.md) | Visor de adjuntos sobre toda la ventana |
@@ -55,6 +60,8 @@ también `failure.png` y el final del texto visible en la consola.
 | [document-preview](document-preview/README.md) | Un PPTX del workspace se ve renderizado, con su contenido, su verificación y sus revisiones |
 | [file-media](file-media/README.md) | Video, imagen grande, PDF y audio del workspace; tonos de aviso |
 | [memory-proposal](memory-proposal/scenario.cjs) | Memoria visible: la propuesta llega como tarjeta al chat, se aprueba, aparece en Ajustes > Memoria; en modo automático se guarda sola y «Deshacer» la olvida |
+| [startup-timing](startup-timing/scenario.cjs) | Arranque: el Engine se lanza antes de que cargue la ventana, la ventana se muestra sin el respaldo de 1,5 s, Avanzado tiene la línea de tiempos y el saludo medido queda en `host-settings.json` para el límite «Automático» |
+| [spell-check](spell-check/scenario.cjs) | Corrector del composer: con clic derecho sobre una palabra mal escrita, el menú nativo trae hasta 5 sugerencias y «Agregar al diccionario» antes de la edición; elegir una la reemplaza; fuera de un campo sigue el menú de la app |
 | [followup-note](followup-note/scenario.cjs) | Nota de Rinari: un turno deja dos notas, se ve una con «+1» y no empieza nada; «Hacer en otra conversación» crea la conversación con el título de la nota y ejecuta la tarea; «Descartar» quita la otra y no vuelve al recargar |
 | [checklist-dock](checklist-dock/scenario.cjs) | Lista de tareas en vivo: Rinari la arma y la marca, queda «Quedan 2 pasos» sobre el composer (una línea, sin taparlo), desplegada muestra cada estado, recargar la conserva quieta, el turno siguiente la completa y el otro la retira; una charla simple nunca la muestra |
 | [memory-portability](memory-portability/scenario.cjs) | Ajustes > Memoria: importar un archivo de otra instalación muestra el resumen (nuevos, olvidados) y espera confirmación; lo exportado lleva su digest y no lo olvidado; reimportarlo no añade nada; un archivo cambiado se rechaza |
@@ -63,13 +70,22 @@ también `failure.png` y el final del texto visible en la consola.
 | [model-change-notice](model-change-notice/README.md) | Aviso «Se cambió de modelo de A a B» |
 | [project-reveal](project-reveal/README.md) | Desplegar el proyecto al crear una conversación |
 | [provider-limit](provider-limit/README.md) | Cuota agotada: la razón real y «Revisar uso y límites» del proveedor que falló |
+| [chat-follow-live](chat-follow-live/README.md) | Seguir el final mientras Rinari escribe una respuesta pesada: sin flecha, sin apagarse con un clic, ≤ 2 px del fondo |
+| [provider-toggle](provider-toggle/README.md) | Desactivar un proveedor: dependencias, reemplazo, «Desactivado» y «Activar» desde la tarjeta de error |
 | [session-menu-id](session-menu-id/README.md) | ID de sesión en una sola línea |
 | [session-title](session-title/README.md) | Título que resume el primer mensaje, en vivo |
 | [project-create](project-create/scenario.cjs) | «Nuevo proyecto» abre una ventana: carpetas del selector (la primera principal), una que ya es de otro proyecto se explica y no deja crear, confiar en todas, resumen y crear deja el proyecto con dos carpetas de confianza y su primera conversación |
 | [profiles-switch](profiles-switch/scenario.cjs) | Perfiles como espacios de trabajo: lo existente está en «Predeterminado», cambiar a uno nuevo vacía la barra con transición y Rinari saluda, lo creado ahí se queda ahí, «Mover a perfil» y el perfil activo sobrevive a reiniciar |
 | [title-rename-motion](title-rename-motion/scenario.cjs) | Cuando Rinari renombra la conversación el título cambia con una animación breve en su sitio: la fila no cambia de alto cuadro a cuadro y al volver a abrirla no se repite |
+| [agency](agency/scenario.cjs) | Rinari Agency (A1 y A2): la tarjeta encima de Ajustes, el tutorial de la primera vez (una vez por perfil), «Nuevo agente» en la vista principal, su chat directo fuera de las conversaciones de Rinari, «Agencia» deshabilitada con «Pronto», «Reglas» en el panel lateral, volver a Rinari, Ajustes y «Detener a todos»; un equipo con su oficina, una @mención que responde desde el puesto (modelo falso), un recado entregado y aceptado, «Pizarra» en el puesto y la Vía 2 con «Pronto» |
 | [full-access-confirm](full-access-confirm/scenario.cjs) | «Acceso completo» pide confirmación con lo que permite, lo que sigue preguntando y cómo quitarlo; cancelar deja workspace, confirmar aplica full-access y bajar el permiso no pregunta |
+| [steer-now](steer-now/scenario.cjs) | Un comando que no termina pasa a segundo plano con su botón y sigue vivo como proceso del chat; Ctrl+Enter manda un mensaje «ahora»: la respuesta en curso se corta, el turno lo lee y la burbuja dice «Interrumpió el paso» |
+| [approval-scopes](approval-scopes/scenario.cjs) | En un chat suelto la aprobación ofrece «Denegar», «Permitir una vez» y «En este chat», sin «Siempre…», con el motivo en español; el mismo chat no vuelve a preguntar y otro chat sí |
+| [question-steps](question-steps/scenario.cjs) | Tres preguntas: un solo botón «Continuar» / «Enviar respuestas», puntos de progreso, y la pregunta entra desde el lado hacia el que se avanzó (sin desplazarse con movimiento reducido) |
+| [child-sessions](child-sessions/scenario.cjs) | Sesiones hijas: pedir «en otra sesión» abre una hija anidada; su informe llega a la madre en una tarjeta y la madre hace un turno corto («Informe de…»); una oferta «¿Lo hago en una sesión nueva?» con «Hazlo aquí» no abre nada; la hija empieza con el encargo de su madre |
 | [subagent-follow](subagent-follow/README.md) | La actividad de un subagente sigue su final |
+| [connectors-oauth](connectors-oauth/README.md) | Conectores: catálogo, OAuth con un servidor falso en loopback (el navegador del equipo no se abre), permisos por herramienta, reconectar y desconectar la cuenta |
+| [connectors-import](connectors-import/README.md) | Conectores: importar de Codex y pegar JSON sin mostrar secretos, la pregunta del .mcp.json de un proyecto de confianza una sola vez, y su ámbito con la confianza |
 
 ## Escribir un escenario
 

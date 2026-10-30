@@ -52,13 +52,12 @@ New capabilities: `agent_inheritance_v1`, `agent_activity_v1`, `browser_view_v1`
 Update the packaged engine and restart `npm run desktop:dev` to load the new
 Electron host command and protocol. No publication is implied by this step.
 
-## Subagents vs. peers of a session
+## Subagents, child sessions and (retired) peers
 
 Subagents (`agent.spawn`) run inside the owner turn, inherit a narrowed
-context and report back as evidence. **Peers** are other top-level sessions
-on the same board: their messages arrive as separate turns marked
-`origin.kind = "peer"`, never inherit anything from the sender and are
-untrusted data for the receiver. A peer-originated turn cannot spawn
-subagents either; the owner forwards the message as their own task when it
-should become work. See `docs/interactive-workspace.md` › "Boards: mensajería
-entre paneles".
+context and report back as evidence. Child sessions are separate
+conversations a mother opens and follows (`session.start`, `session.message`
+to her own children; see `docs/planes/plan-sesiones-hijas.md`). Messaging
+between the panes of a board (peers) was retired in 0.4.0; turns that already
+carry `origin.kind = "peer"` stay readable in history. Agents that talk to
+each other belong to Rinari Agency.

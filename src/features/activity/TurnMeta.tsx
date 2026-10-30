@@ -1,9 +1,10 @@
-import { CheckCheck, FileDiff, GraduationCap, Play, RotateCcw } from 'lucide-react'
+import { FileDiff, GraduationCap, Play, RotateCcw } from 'lucide-react'
 import { memo, useMemo, useState } from 'react'
 import { useI18n, type I18nKey } from '../../i18n'
 import type { ChatMessage, TurnStopReason } from '../../types'
 import { terminalOutcomeOf } from '../engine/sessionSelectors'
 import { useBoardAttentionStore } from '../../stores/boardAttention'
+import { useSessionDockStore } from '../../stores/sessionDock'
 import { useReadTracking } from '../board/useResultVisibility'
 import { cn } from '../../lib/utils'
 import { usePrepareRetry } from './usePrepareRetry'
@@ -49,7 +50,6 @@ function TurnMeta({ timeline, user, actions, emphasis, durationInHeader = false,
   const tracking = useReadTracking()
   const sessionId = tracking?.sessionId ?? null
   const receipt = useBoardAttentionStore((state) => (sessionId ? state.sessions[sessionId]?.turns[timeline.turnId] : undefined))
-  const markTurnSeen = useBoardAttentionStore((state) => state.markTurnSeen)
   const messages = useMemo<readonly ChatMessage[]>(() => (user ? [user] : []), [user])
   const { retry, dialog } = usePrepareRetry(sessionId, timeline, messages)
   const commands = useOptionalEngineCommands()
@@ -113,17 +113,17 @@ function TurnMeta({ timeline, user, actions, emphasis, durationInHeader = false,
       {actions > 0 && <>{(hasPrefix || timeline.usage) && <span aria-hidden="true">·</span>}<span>{actions} {lang === 'es' ? 'acciones' : 'actions'}</span></>}
       {filesChanged !== null && <>{(hasPrefix || timeline.usage || actions > 0) && <span aria-hidden="true">·</span>}<span>{t('board.result.files', { n: filesChanged })}</span></>}
       {executor && <>{(hasPrefix || timeline.usage || actions > 0 || filesChanged !== null) && <span aria-hidden="true">·</span>}<span>{t('board.result.model', { model: executor })}</span></>}
-      {outcome === 'stopped' && timeline.stopReason && <>{(hasPrefix || timeline.usage || actions > 0 || filesChanged !== null || executor) && <span aria-hidden="true">·</span>}<span title={timeline.stopReason.loop || timeline.stopReason.budget ? timeline.stopReason.message : undefined}>{stopText(timeline.stopReason, t)}</span></>}
-      {unread && <span className="turn-meta-new">{t('board.status.new')}</span>}
+      {outcome === 'stopped' && timeline.stopReason && <>{(hasPrefix || timeline.usage || actions > 0 || filesChanged !== null || executor) && <span aria-hidden="true">·</span>}<span title={timeline.stopReason.loop || timeline.stopReason.budget || timeline.stopReason.code === 'empty_response' ? timeline.stopReason.message : undefined}>{stopText(timeline.stopReason, t)}</span></>}
+      {/* Si terminó mientras no estabas, «Nuevo» ya lo dice la marca de arriba del resultado (#62). */}
+      {unread && !receipt?.away && <span className="turn-meta-new">{t('board.status.new')}</span>}
       <span className="turn-meta-actions ml-auto inline-flex items-center gap-1">
         {onReviewChanges && filesChanged !== null && (
-          <button type="button" className="turn-meta-action" onClick={onReviewChanges}>
+          <button type="button" className="turn-meta-action" onClick={() => {
+            // El mismo «Revisar» que la tarjeta: Cambios del panel lateral, en este turno (#41).
+            if (sessionId) useSessionDockStore.getState().reviewTurn(sessionId, timeline.turnId)
+            else onReviewChanges()
+          }}>
             <FileDiff size={11} aria-hidden="true" /> {t('board.result.review')}
-          </button>
-        )}
-        {unread && sessionId && (
-          <button type="button" className="turn-meta-action" onClick={() => markTurnSeen(sessionId, timeline.turnId)}>
-            <CheckCheck size={11} aria-hidden="true" /> {t('board.result.markRead')}
           </button>
         )}
         {canContinue && (
@@ -131,8 +131,9 @@ function TurnMeta({ timeline, user, actions, emphasis, durationInHeader = false,
             <Play size={11} aria-hidden="true" /> {t('turn.continue')}
           </button>
         )}
+        {/* Como «Copiar respuesta»: aparece al pasar por el turno o con el foco. */}
         {canSaveLesson && (
-          <button type="button" className="turn-meta-action" data-testid="turn-lesson" disabled={saving} title={t('turn.lessonHint')} onClick={() => void saveLesson()}>
+          <button type="button" className="turn-meta-action is-on-hover" data-testid="turn-lesson" disabled={saving} title={t('turn.lessonHint')} onClick={() => void saveLesson()}>
             <GraduationCap size={11} aria-hidden="true" /> {t('turn.lesson')}
           </button>
         )}
@@ -154,6 +155,8 @@ const LOOP_KINDS = ['same-tool-args', 'two-action-oscillation', 'repeated-rewrit
 
 /** Un corte por bucle se dice en el idioma de la app; el texto técnico del Engine queda en el título. */
 export function stopText(reason: TurnStopReason, t: (key: I18nKey, vars?: Record<string, string | number>) => string): string {
+  // Dos respuestas vacías seguidas (#66a): el texto del Engine es técnico y en inglés.
+  if (reason.code === 'empty_response') return t('turn.emptyResponse')
   if (reason.loop) return t(`turn.loop.${LOOP_KINDS.includes(reason.loop) ? reason.loop : 'other'}` as I18nKey)
   if (reason.budget) {
     const key = BUDGET_KINDS.includes(reason.budget) && reason.limit !== undefined ? reason.budget : 'other'

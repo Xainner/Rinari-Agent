@@ -32,8 +32,12 @@ export function useBrowserFrame(
   options: { active: boolean; targetId?: string; enabled?: boolean; probe?: number },
 ): BrowserFrameState {
   const { active, targetId = '', enabled = true, probe = 0 } = options
-  const [frame, setFrame] = useState<BrowserFrame | null>(null)
-  const [error, setError] = useState('')
+  // La captura y el error son de una conversación: en la vista Normal el hook
+  // sigue montado al cambiar de conversación, y sin la marca la nueva mostraba
+  // la última captura de la anterior (botón Navegador «en vivo» sin usarlo).
+  const [seen, setSeen] = useState<{ sessionId: string; frame: BrowserFrame | null; error: string }>({ sessionId, frame: null, error: '' })
+  const frame = seen.sessionId === sessionId ? seen.frame : null
+  const error = seen.sessionId === sessionId ? seen.error : ''
   const [connectedInstance, setConnectedInstance] = useState<string | null>(null)
   const activeRef = useRef(active)
   activeRef.current = active
@@ -46,8 +50,7 @@ export function useBrowserFrame(
     try {
       const next = await platform().command<BrowserFrame>('browser_view_get', { session_id: sessionId, target_id: targetId || null })
       if (!alive()) return
-      setFrame(next)
-      setError(next.error ?? '')
+      setSeen({ sessionId, frame: next, error: next.error ?? '' })
       if (next.state === 'connected' && next.instance && next.instance !== instanceRef.current) {
         instanceRef.current = next.instance
         setConnectedInstance(next.instance)
@@ -55,8 +58,11 @@ export function useBrowserFrame(
       if (next.state !== 'connected') instanceRef.current = undefined
     } catch (reason) {
       if (!alive()) return
-      setError(reason instanceof Error ? reason.message : String(reason))
-      setFrame((previous) => (previous ? { ...previous, state: 'disconnected', image: undefined } : null))
+      const message = reason instanceof Error ? reason.message : String(reason)
+      setSeen((previous) => {
+        const mine = previous.sessionId === sessionId ? previous.frame : null
+        return { sessionId, frame: mine ? { ...mine, state: 'disconnected', image: undefined } : null, error: message }
+      })
       instanceRef.current = undefined
     }
   }

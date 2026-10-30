@@ -182,3 +182,47 @@ it('resets local state when request_id changes and localizes English controls', 
   expect(screen.getByText('Question 1 of 1')).toBeTruthy()
   expect((screen.getByText('Send response') as HTMLButtonElement).disabled).toBe(true)
 })
+
+it('one main button: «Continuar» while questions remain, «Enviar respuestas» on the last (#37)', async () => {
+  const user = userEvent.setup()
+  const two = {
+    ...request,
+    questions: [
+      { id: 'first', title: '¿Dónde?', options: [{ label: 'Aquí' }] },
+      { id: 'second', title: '¿Cuándo?', options: [{ label: 'Hoy' }] },
+    ],
+  }
+  render(<I18nProvider lang="es"><QuestionCard request={two} onResolved={vi.fn()} /></I18nProvider>)
+  // «Otra» with no text cannot continue, and there is only one «Continuar».
+  await user.click(screen.getByRole('radio', { name: 'Otra' }))
+  expect(screen.getAllByRole('button', { name: 'Continuar' })).toHaveLength(1)
+  expect(screen.getByRole('button', { name: 'Continuar' }).hasAttribute('disabled')).toBe(true)
+  expect(screen.queryByRole('button', { name: 'Enviar respuestas' })).toBeNull()
+  await user.type(screen.getByLabelText('Tu respuesta'), 'En la otra carpeta')
+  await user.click(screen.getByRole('button', { name: 'Continuar' }))
+  expect(screen.getByRole('heading', { name: /¿Cuándo\?/ })).toBeTruthy()
+  // The new question came in moving forward; the dots say where we are.
+  expect(document.querySelector('.question-step')?.getAttribute('data-direction')).toBe('forward')
+  expect([...document.querySelectorAll('.question-dot')].map((dot) => dot.getAttribute('data-state'))).toEqual(['answered', 'current'])
+  await user.click(screen.getByRole('radio', { name: /Hoy/ }))
+  await user.click(screen.getByRole('button', { name: 'Enviar respuestas' }))
+  expect(desktopApi.answer).toHaveBeenCalledWith(two, { first: 'En la otra carpeta', second: 'Hoy' }, false)
+})
+
+it('going back comes in from the other side (#63)', async () => {
+  const user = userEvent.setup()
+  const two = {
+    ...request,
+    questions: [
+      { id: 'first', title: '¿Dónde?', options: [{ label: 'Aquí' }] },
+      { id: 'second', title: '¿Cuándo?', options: [{ label: 'Hoy' }] },
+    ],
+  }
+  render(<I18nProvider lang="es"><QuestionCard request={two} onResolved={vi.fn()} /></I18nProvider>)
+  expect(document.querySelector('.question-step')?.hasAttribute('data-direction')).toBe(false)
+  await user.click(screen.getByRole('radio', { name: /Aquí/ }))
+  expect(document.querySelector('.question-step')?.getAttribute('data-direction')).toBe('forward')
+  await user.click(screen.getByLabelText('Pregunta anterior'))
+  expect(document.querySelector('.question-step')?.getAttribute('data-direction')).toBe('back')
+  expect(screen.getByRole('heading', { name: /¿Dónde\?/ })).toBeTruthy()
+})

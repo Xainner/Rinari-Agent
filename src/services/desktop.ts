@@ -45,6 +45,12 @@ export const desktopApi = {
       session_id,
       preview_id,
     }),
+  /** Lo que está en marcha en el proyecto: «En marcha» del navegador (plan 0.4.0 #46). */
+  listPreviews: (session_id: string) =>
+    platform().command<{ previews: Array<{ preview_id: string; session_id: string; url: string; label: string; kind: string }> }>(
+      'workspace_preview_list',
+      { session_id },
+    ),
   /** El Engine valida la ruta y el host la abre; no es un método del Engine. */
   openFile: (session_id: string, path: string, turn_id?: string) =>
     platform().files.openExternal({ session_id, path, turn_id }),

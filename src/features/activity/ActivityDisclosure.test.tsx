@@ -3,6 +3,12 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import { activityKey, useActivityDisclosure } from '../../stores/activityDisclosure'
+// Estas pruebas miran la estructura del timeline; el revelado del texto en
+// vivo (#52) tiene las suyas en LiveText.test.tsx.
+vi.mock('./LiveText', async () => {
+  const { default: Markdown } = await import('../../components/Markdown')
+  return { default: ({ content }: { content: string }) => <Markdown>{content}</Markdown> }
+})
 import TurnTimelineView from './TurnTimelineView'
 import type { ModelTimelineItem, ToolTimelineItem, TurnTimeline } from './types'
 
@@ -54,7 +60,8 @@ it('stops motion while a subagent approval is pending and resumes after it is re
 it('keeps progress in place until completion and renders the final once', () => {
   const rendered = render(view())
   const publicNode = screen.getByText('Texto público')
-  expect(screen.getByText('En proceso desde hace 4s')).toBeTruthy()
+  // La tarjeta del turno en curso (#49): el tiempo total va a la derecha.
+  expect(screen.getByTestId('turn-total-time').textContent).toBe('4 s')
   expect(screen.queryByTestId('turn-result')).toBeNull()
   expect(screen.queryByRole('button', { name: 'Ver actividad del turno' })).toBeNull()
   const progress: TurnTimeline = { ...base, items: [{ ...model, outputKind: 'progress', status: 'completed' }] }
@@ -162,8 +169,13 @@ it('keeps large closed activity unmounted and exposes incidents without declarin
   const rendered = render(view({ ...base, status: 'completed', completedAt: 5000, items }))
   expect(rendered.container.querySelectorAll('*').length).toBeLessThan(70)
   expect(screen.getByText('Ha trabajado durante 4s')).toBeTruthy()
-  fireEvent.click(screen.getByRole('button', { name: /incidencia/ }))
+  // Las incidencias van dentro de la tarjeta del turno terminado: en un chip y en la descripción de su botón.
+  expect(screen.getByText('1 incidencia', { selector: '.turn-done-issues' })).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Ver actividad del turno', description: '1 incidencia' }))
   expect(rendered.container.querySelectorAll('pre').length).toBe(0)
+  // Dentro, la fila agrupada no repite la incidencia ni pinta su punto de rojo: un fallo que no bloquea ya lo dice la tarjeta.
+  expect(screen.queryByRole('button', { name: /incidencia/ })).toBeNull()
+  expect(rendered.container.querySelector('.turn-node[data-state="failed"]')).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: 'Ver operaciones' }))
   expect(rendered.container.querySelectorAll('details').length).toBe(500)
   expect(rendered.container.querySelectorAll('pre').length).toBe(0)

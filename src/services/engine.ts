@@ -12,16 +12,35 @@ import type {
   ProjectSummary as ProtocolProjectSummary,
   SessionSummary as ProtocolSessionSummary,
   MessageOrigin,
-  PeerGroup,
-  PeerGroupMember,
-  PeerMessage,
   QueuedPromptEntry,
 } from '../types/protocol.generated'
-import type { Checklist, FollowupSuggestion, ProjectFolderCheck } from '../types/protocol.generated'
-import type { AttachmentRef } from '../types'
+import type { Checklist, FollowupSuggestion, Goal, GoalBudget, ProjectFolderCheck, ConversationSummary, RepoStatus, SessionResume } from '../types/protocol.generated'
+import type { AttachmentRef, Language } from '../types'
+import type {
+  AgencyAgent,
+  AgencyAgentInput,
+  AgencyAgentSession,
+  AgencySettingsData,
+  AgencyStatus,
+  AgencyTeam,
+  AgencyTeamInput,
+  AgentBudget,
+  Errand,
+  ErrandInput,
+  ErrandMode,
+  OfficeMessage,
+  AgencyTemplateSummary,
+  TeamTemplate,
+  AgencyFlow,
+  FlowInput,
+  FlowRun,
+  TeamOverview,
+  TeamRoutine,
+} from '../features/agency/types'
+import type { MemoryRecord } from '../features/memory/types'
 
 import { platform, type Unsubscribe } from '../platform'
-import { translate, type I18nKey } from '../i18n'
+import { hasTranslation, translate, type I18nKey } from '../i18n'
 import { useUIStore } from '../stores/ui'
 
 /** Texto de la app para errores que nacen aquí y se muestran tal cual. */
@@ -78,6 +97,7 @@ export interface PreparedAttachmentResult {
   sha256?: string
   kind?: string
   derived_uri?: string
+  duration_s?: number
   ocr?: boolean
   keep_image?: boolean
   coverage?: Record<string, unknown>
@@ -109,6 +129,7 @@ export interface HistoryMessage {
     size?: number;
     kind?: string;
     derived_uri?: string;
+    duration_s?: number;
     images?: Array<{ uri: string; sha256?: string }>;
     ocr?: boolean;
     keep_image?: boolean;
@@ -120,8 +141,9 @@ export interface HistoryMessage {
 
 export interface TimelineEvent {
   event: string;
-  turn_id: string;
-  session_id: string;
+  /** Una página de `session.timeline` los dice en el turno, no en cada fila (#91). */
+  turn_id?: string;
+  session_id?: string;
   activity_seq: number;
   occurred_at?: string;
   [key: string]: unknown;
@@ -209,6 +231,8 @@ export interface ProviderSummary extends Partial<ProviderIdentity> {
   last_used_model_id: string | null;
   active: boolean;
   has_credential: boolean;
+  /** Off: its models leave every picker and nothing calls it (plan 0.4.0 #97). */
+  enabled?: boolean;
 }
 
 export interface ModelSummary {
@@ -342,6 +366,8 @@ export interface SoulDetail extends SoulSummary {
 
 /** Proyecto registrado en el engine (project.list_recent). */
 export type ProjectSummary = ProtocolProjectSummary
+/** Lo que `project.update` cambia; `permission_profile: ''` quita el valor por defecto (P-5). */
+export type ProjectPatch = { name?: string; description?: string; pinned?: boolean; archived?: boolean; permission_profile?: '' | 'read-only' | 'workspace' | 'full-access' }
 
 export interface ProjectGitStatus {
   available: boolean;
@@ -414,16 +440,31 @@ export interface SessionDeleteResult {
 /** Horario de una tarea programada, en la hora local de este equipo. */
 export type ScheduleSpec =
   | { kind: 'once'; at: string }
-  | { kind: 'interval'; minutes: number }
+  /** En minutos o en segundos (desde 5 s): el Engine guarda minutos cuando son enteros. */
+  | { kind: 'interval'; minutes: number; seconds?: never }
+  | { kind: 'interval'; seconds: number; minutes?: never }
   | { kind: 'daily'; time: string }
   | { kind: 'weekly'; days: number[]; time: string }
+  /** Cinco campos: minuto hora día mes día-de-semana (#50). */
+  | { kind: 'cron'; expr: string }
+
+/** Lo que corre una tarea «Comando» y qué pasa con su salida (#50). */
+export interface ScheduledCommand {
+  command: string
+  shell?: 'default' | 'cmd' | 'powershell' | 'bash'
+  cwd?: string | null
+  timeout_s?: number
+  env?: Record<string, string>
+  on_result?: 'nothing' | 'notify_failure' | 'agent'
+}
 
 export interface ScheduleGrant {
   capability: string
   target: string | null
 }
 
-export type ScheduledRunStatus = 'running' | 'needs_you' | 'completed' | 'failed' | 'cancelled' | 'blocked' | 'skipped'
+/** `queued`: «Repetir aquí» esperando su turno en la cola de la conversación. */
+export type ScheduledRunStatus = 'queued' | 'running' | 'needs_you' | 'completed' | 'failed' | 'cancelled' | 'blocked' | 'skipped'
 
 export interface ScheduledRun {
   id: string
@@ -440,21 +481,74 @@ export interface ScheduledRun {
 }
 
 /** Lo que se envía al crear o editar una tarea (`scheduled_tasks_v1`). */
+/** Rinari Agency: una llamada a un conector con argumentos fijos, sin modelo. */
+export interface ScheduledToolCall {
+  server: string
+  tool: string
+  arguments: Record<string, unknown>
+}
+
+/** Rinari Agency: lo que hace una regla de tipo «tool» y adónde va su resultado. */
+export interface ScheduledToolSpec extends ScheduledToolCall {
+  on_result: 'nothing' | 'notify' | 'agent' | 'deliver'
+  deliver?: ScheduledToolCall
+  max_per_day?: number | null
+  /** Condición exacta sobre el resultado (CI: «failure»), sin modelo. */
+  only_if_contains?: string | null
+}
+
 export interface ScheduledTaskInput {
   name: string
-  kind: 'agent' | 'reminder'
+  kind: 'agent' | 'reminder' | 'command' | 'tool'
   schedule: ScheduleSpec
   prompt: string
+  command?: ScheduledCommand | null
+  /** Rinari Agency: la regla de un agente. */
+  tool?: ScheduledToolSpec | null
+  /** Rinari Agency: corre solo si esta carpeta cambió desde la última revisión. */
+  watch?: { path: string } | null
+  agent_id?: string | null
   project_id?: string | null
   mode?: 'plan' | 'build' | 'review'
+  /** Sin valor: el modo por defecto del proyecto, o Proyecto (permisos v4 P-5). */
+  permission_profile?: 'read-only' | 'workspace' | 'full-access' | null
   model?: string | null
   skills?: string[]
   grants?: ScheduleGrant[]
   enabled?: boolean
+  /**
+   * Dónde corre una tarea de agente: una conversación nueva cada vez, o la
+   * conversación donde se pidió, con su historial («Repetir aquí»,
+   * `schedule_target_v1`). Ahí usa el modelo, el modo y los permisos de esa
+   * conversación y no lleva permisos concedidos.
+   */
+  target?: 'new_session' | 'this_conversation'
+  session_id?: string | null
+  /**
+   * Rinari Agency (`agency_audit_v1`): la regla de un agente entrega su
+   * resultado en la oficina de un equipo o a otro agente; null, en su chat.
+   */
+  deliver_to?: ScheduleDeliverTo | null
+  /** Cuánto avisa (`schedule_notify_v1`): cada vuelta, solo problemas o nada que salte. */
+  notify?: ScheduleNotify
 }
 
-export interface ScheduledTask extends Required<Omit<ScheduledTaskInput, 'project_id' | 'model'>> {
+export type ScheduleNotify = 'all' | 'problems' | 'none'
+
+/** A dónde entrega su resultado la regla de un agente (`agency_audit_v1`). */
+export type ScheduleDeliverTo = { kind: 'office'; team_id: string } | { kind: 'agent'; agent_id: string }
+
+export interface ScheduledTask extends Required<Omit<ScheduledTaskInput, 'project_id' | 'model' | 'command' | 'permission_profile' | 'tool' | 'agent_id' | 'watch' | 'target' | 'session_id' | 'deliver_to' | 'notify'>> {
   id: string
+  notify?: ScheduleNotify
+  deliver_to?: ScheduleDeliverTo | null
+  target?: ScheduledTaskInput['target']
+  session_id?: string | null
+  command?: ScheduledCommand | null
+  tool?: ScheduledToolSpec | null
+  watch?: { path: string } | null
+  agent_id?: string | null
+  permission_profile?: ScheduledTaskInput['permission_profile']
   project_id: string | null
   model: string | null
   next_run_at: number | null
@@ -560,6 +654,18 @@ export interface SkillDetail extends SkillEntry {
   previous?: { version: string | null; skill_md: string } | null
 }
 
+/** Fallback and auxiliary model ids (plan 0.4.0 #80); null = the conversation's model. */
+/** `session.turn.start` origin for a plan action (plan 0.4.0 #55). */
+export type PlanTurnOrigin =
+  | { kind: 'user'; source: 'plan_implement'; plan_turn_id: string }
+  | { kind: 'user'; source: 'plan_adjust'; plan_turn_id: string; comment: string }
+
+export interface ModelRoles {
+  fallback: string | null
+  auxiliary: string | null
+  auxiliary_compaction: boolean
+}
+
 export interface SkillCandidate {
   name: string
   description: string
@@ -567,10 +673,17 @@ export interface SkillCandidate {
   format: string | null
   path: string
   error: SkillIssue | null
-  review: SkillReview
+  /**
+   * `null` cuando aún no se revisó: la lista rápida de importar y los repos
+   * con muchas skills grandes (solo trajeron su SKILL.md). Se revisa al elegirla.
+   */
+  review: SkillReview | null
   installed: { origin: SkillOrigin; source: string | null } | null
   /** Solo en la importación: claude | codex | agents. */
   kind?: string
+  /** Solo en la importación: todos los lugares donde está la misma skill. */
+  kinds?: string[]
+  paths?: string[]
 }
 
 export interface SkillPage {
@@ -597,6 +710,8 @@ export interface SpeechStatus {
   language: string
   vocabulary: string
   binary_found: boolean
+  /** El Engine corre desde un checkout: whisper.cpp no viene incluido. */
+  from_source?: boolean
   model_installed: boolean
   ready: boolean
   models: SpeechModelInfo[]
@@ -664,18 +779,55 @@ export interface McpSecretView {
   env_var?: string;
 }
 
+/** Estado de la conexión en segundo plano (`mcp_background_connect_v1`). */
+export type McpStatus = 'idle' | 'connecting' | 'connected' | 'reauth_required' | 'error' | 'disabled'
+
+export interface McpConnection {
+  code?: string | null;
+  hint?: string | null;
+  message?: string | null;
+  tools: number;
+  resources: boolean;
+  attempts: number;
+  retry_in_s?: number | null;
+  changed_at?: string | null;
+}
+
+export type McpAuthKind = 'none' | 'bearer' | 'headers' | 'oauth'
+
+/** La autorización de un servidor guardado: tipos y estados, nunca un valor secreto. */
+export interface McpAuthView {
+  kind: McpAuthKind;
+  token?: McpSecretView;
+  /** OAuth (`mcp_oauth_v1`): el cliente propio del dueño, si lo hay. */
+  client_id?: string | null;
+  client_secret?: McpSecretView | null;
+  scopes?: string[];
+  redirect_port?: number | null;
+  client_metadata_url?: string | null;
+  authorize_params?: Record<string, string>;
+}
+
 export interface McpServer {
   name: string;
   transport: string;
   command: string;
   argv?: string[];
   url?: string;
+  /** La URL entera está en el almacén (traía un secreto en la query): `url` lleva `***`. */
+  url_secret?: McpSecretView;
   scope: string;
+  /** Carpeta del proyecto al que pertenece (C4); null: cualquier proyecto de confianza. */
+  project_root?: string | null;
+  /** Rinari Agency (C8): `agent:ID` cuando la cuenta es de un agente; null: de todos. */
+  owner?: string | null;
   enabled: boolean;
   connected: boolean;
   updated_at: string | null;
   timeout_s?: number | null;
-  auth?: { kind: 'none' | 'bearer' | 'headers'; token?: McpSecretView };
+  auth?: McpAuthView;
+  status?: McpStatus;
+  connection?: McpConnection;
   headers?: Array<{ name: string; secret: boolean; configured?: boolean; value?: string; source?: string | null; env_var?: string }>;
   env?: Array<{ name: string; configured: boolean; source: string | null; env_var?: string }>;
   warnings?: string[];
@@ -697,6 +849,170 @@ export interface McpTest {
   http_status?: number | null;
   hint?: string | null;
   retryable?: boolean;
+  /** Servidores http con auth `none` u `oauth`: si inicia sesión con OAuth y qué cliente usaría. */
+  oauth?: McpOAuthSupport | null;
+}
+
+export interface McpOAuthSupport {
+  available: boolean;
+  client: 'configured' | 'registration' | 'metadata_document' | 'required';
+  issuer?: string;
+  resource?: string;
+  registration?: boolean;
+  client_metadata_document?: boolean;
+  revocation?: boolean;
+}
+
+export interface McpAuthError { code: string; message: string; hint?: string }
+
+export interface McpAuthStart {
+  name: string;
+  flow_id: string;
+  authorize_url: string;
+  redirect_uri: string;
+  browser_opened: boolean;
+  expires_at?: string | null;
+  client: 'configured' | 'registered' | 'metadata_document';
+  issuer?: string;
+}
+
+export interface McpAuthOutcome {
+  flow_id: string;
+  outcome: 'signed_in' | 'failed' | 'cancelled' | 'timed_out';
+  finished_at?: string | null;
+  error?: McpAuthError;
+}
+
+export interface McpAuthStatus {
+  name: string;
+  kind: McpAuthKind;
+  signed_in: boolean;
+  reauth_required: boolean;
+  expires_at?: string | null;
+  has_refresh_token: boolean;
+  scopes: string[];
+  issuer?: string | null;
+  client?: 'configured' | 'registered' | 'metadata_document' | null;
+  pending?: { flow_id: string; authorize_url: string; started_at?: string; expires_at?: string | null } | null;
+  last?: McpAuthOutcome | null;
+}
+
+export type McpDecision = 'allow' | 'ask' | 'deny'
+export type McpHintKey = 'readOnlyHint' | 'destructiveHint' | 'openWorldHint'
+export type McpHints = Partial<Record<McpHintKey, boolean | null>>
+
+/** Una herramienta de un servidor con su ajuste (`mcp_tool_permissions_v1`). */
+export interface McpToolPermission {
+  /** El nombre que da el servidor (`read_notes`): el `tool` de `mcp.tools.set`. */
+  name: string;
+  /** El id completo en Rinari (`mcp.notas.read_notes`). */
+  tool: string;
+  /** `annotations.title` del servidor, si lo da. */
+  title: string | null;
+  description: string;
+  /** false: un ajuste guardado de una herramienta que el servidor ya no ofrece. */
+  listed: boolean;
+  annotations: { server?: McpHints; owner?: McpHints; effective?: McpHints };
+  kind: 'read' | 'write' | 'destructive';
+  sends_out: boolean;
+  setting: McpDecision | null;
+  decision: McpDecision | null;
+  decision_source: 'tool' | 'server' | 'mode';
+  by_mode: Partial<Record<'read-only' | 'workspace' | 'full-access', string>>;
+}
+
+export interface McpToolPermissions {
+  name: string;
+  scope: 'global' | 'project';
+  status: McpStatus;
+  default: McpDecision | null;
+  tools: McpToolPermission[];
+}
+
+export interface McpCatalogText { es: string; en: string }
+export type McpSetupKind = 'registration' | 'client_metadata' | 'own_client' | 'token' | 'secrets'
+export type McpSetupField = 'client_id' | 'client_secret' | 'redirect_port' | 'token' | 'connection_string'
+
+export interface McpCatalogSetup {
+  kind: McpSetupKind;
+  fields?: Array<{ name: McpSetupField; required: boolean }>;
+  console_url?: string;
+  help?: McpCatalogText;
+  alternatives?: McpCatalogSetup[];
+}
+
+export interface McpCatalogEnvSpec { name: string; label: McpCatalogText; secret: boolean; required: boolean; default?: string }
+
+/** Una entrada del catálogo de conectores (`mcp_catalog_v1`). `logo` es un identificador, no una imagen. */
+export interface McpCatalogEntry {
+  id: string;
+  name: string;
+  logo: string;
+  category: 'google' | 'work' | 'dev' | 'design' | 'files' | 'crm' | 'media' | 'data';
+  group?: string;
+  preview?: boolean;
+  description: McpCatalogText;
+  notes?: McpCatalogText;
+  docs_url: string;
+  tools?: string[];
+  server:
+    | { transport: 'http'; url: string; auth: { kind: 'oauth' | 'bearer'; scopes?: string[] } }
+    | { transport: 'stdio'; command: string[]; env?: McpCatalogEnvSpec[]; connection_string?: { schemes: string[] } };
+  setup: McpCatalogSetup;
+  added: boolean;
+  servers: Array<{ name: string; scope: string; enabled: boolean; status?: McpStatus | null }>;
+}
+
+export interface McpCatalogAddInput {
+  id: string;
+  name?: string;
+  /** Rinari Agency (C8): `agent:ID` para que la cuenta sea solo de ese agente. */
+  owner?: string;
+  client_id?: string;
+  client_secret?: string;
+  redirect_port?: number;
+  token?: string;
+  secrets?: Record<string, string>;
+  connection_string?: string;
+}
+
+export interface McpImportSecret { where: 'env' | 'header' | 'url'; name: string; kind: 'value' | 'env_ref'; /** env_ref: la variable tuya que lee (el nombre, nunca el valor). */ variable?: string }
+
+export interface McpImportCandidate {
+  key: string;
+  name: string;
+  source: 'claude_desktop' | 'claude_code' | 'cursor' | 'vscode' | 'codex' | 'pasted' | 'project';
+  source_label?: string;
+  path?: string | null;
+  project_root?: string | null;
+  transport: 'stdio' | 'http' | null;
+  command: string[];
+  url: string;
+  secrets: McpImportSecret[];
+  warnings: string[];
+  importable: boolean;
+  reason?: string | null;
+  suggested_name?: string;
+  existing?: string | null;
+  changed?: boolean;
+  previous_decision?: 'accepted' | 'rejected' | null;
+}
+
+export interface McpImportSource { source: string; label?: string; path: string; found: boolean; servers: number; error?: string | null }
+
+export interface McpImportResult {
+  created: Array<{ key: string; server: McpServer }>;
+  failed: Array<{ key: string; code: string; message: string }>;
+  rejected?: string[];
+  project?: string;
+}
+
+export interface McpProjectOffers {
+  project: string;
+  trusted: boolean;
+  offers: McpImportCandidate[];
+  answered: number;
+  files?: McpImportSource[];
 }
 
 /**
@@ -709,7 +1025,10 @@ export interface McpConfig {
   command?: string[];
   url?: string;
   env?: Record<string, string | null>;
-  auth?: { kind: 'none' | 'bearer' | 'headers'; token?: string };
+  auth?:
+    | { kind: 'none' | 'bearer' | 'headers'; token?: string }
+    /** `mcp_oauth_v1`: se fusiona con lo guardado; `null` borra una clave. */
+    | { kind: 'oauth'; client_id?: string | null; client_secret?: string | null; scopes?: string[] | null; redirect_port?: number | null; authorize_params?: Record<string, string> | null };
   headers?: Record<string, string | { value: string; secret?: boolean } | null>;
   timeout_s?: number;
 }
@@ -766,7 +1085,7 @@ export interface ProfileBundle {
   description: string;
   soul_id: string | null;
   mode: string | null;
-  agents: Record<string, { model?: string; fallback?: string }>;
+  agents: Record<string, { model?: string; fallback?: string; effort?: string; enabled?: boolean }>;
   /** The built-in default profile: always exists, never removed. */
   builtin?: boolean;
   /** Present on `bundle_list` with `rinari_profiles_v1`. */
@@ -793,8 +1112,53 @@ export function isCommandError(value: unknown): value is CommandError {
   );
 }
 
+/**
+ * Códigos cuyo mensaje trae palabras de afuera que ayudan (las del proveedor,
+ * de git, de la herramienta): van después del texto traducido.
+ */
+const ERROR_WITH_DETAIL = new Set([
+  'NETWORK_FAILURE', 'PROVIDER_MODEL_FAILURE', 'TOOL_FAILURE', 'CONFIGURATION_ERROR', 'MODEL_DISCOVERY_FAILED',
+  'DOWNLOAD_FAILED', 'SKILL_JOB_FAILED', 'PR_CREATE_FAILED', 'VALIDATION_FAILED', 'BLOCKED',
+  // Códigos amplios: el motor explica el caso concreto («Checkpoints require a
+  // Git repository…») y perderlo deja al dueño sin saber qué pasó.
+  'INVALID_PARAMS', 'INVALID_ARGUMENT', 'INVALID_USAGE', 'NOT_FOUND', 'CONFLICT', 'PERMISSION_DENIED',
+])
+
+/**
+ * Un error del motor en el idioma de la app, por su código y no por su texto
+ * (#68). En español, un código conocido se dice con su frase; el texto del
+ * Engine queda de respaldo para uno desconocido y en la consola. En inglés
+ * se prefiere el texto del Engine, que es más preciso.
+ */
+export function errorText(code: string, message: string | undefined, lang: Language = useUIStore.getState().lang): string {
+  const key = `error.${code}`
+  const detail = message?.trim()
+  if (!hasTranslation(key)) return detail || translate(lang, 'error.unknown', { code })
+  if (lang === 'en' && detail) return detail
+  const text = translate(lang, key)
+  return ERROR_WITH_DETAIL.has(code) && detail ? `${text.replace(/\.$/, '')}: ${detail}` : text
+}
+
+/** «Sobre ti» (#71): el nombre siempre entra al prompt; usos y preferencias orientan. */
+export interface AboutMe {
+  name: string | null
+  uses: string[]
+  preferences: string | null
+  updated_at: string | null
+}
+
+/** Lo que ocupa cada apartado de la carpeta de Rinari (Ajustes → Avanzado). */
+export interface StorageUsage {
+  home: string
+  sections: { id: string; bytes: number; files: number; cleanable?: boolean; reclaimable?: number }[]
+  total: number
+}
+
 export function commandMessage(error: unknown): string {
-  if (isCommandError(error)) return `${error.code}: ${error.message}`;
+  if (isCommandError(error)) {
+    if (error.message) console.warn(`[rinari] ${error.code}: ${error.message}`)
+    return errorText(error.code, error.message)
+  }
   return String(error);
 }
 
@@ -803,6 +1167,8 @@ export interface PermissionGrant {
   /** Raíz del proyecto, o "chats" para todas las conversaciones sueltas. */
   scope: string
   scope_kind: 'project' | 'chats'
+  /** Un antiguo «Siempre en los chats»: ya no se aplica, se lista para quitarlo (#56). */
+  legacy?: boolean
   scope_label: string
   capability: string
   rule_id: string | null
@@ -811,8 +1177,66 @@ export interface PermissionGrant {
   granted_at: string
 }
 
+/** A conversation another one opened for a separate piece of work (plan-sesiones-hijas 5). */
+export interface WorkspaceDirEntry {
+  name: string
+  relative_path: string
+  path: string
+  kind: 'dir' | 'file'
+  /** M modified · A added · D deleted · U untracked; a folder, what changed inside. */
+  git?: 'M' | 'A' | 'D' | 'U'
+}
+export interface WorkspaceDirListing { root: string; path: string; entries: WorkspaceDirEntry[]; truncated: boolean; git: boolean }
+export type TimeoutKey = 'connect' | 'first_byte' | 'idle' | 'total'
+export interface ExecutionPolicy {
+  max_concurrency: number
+  providers: Record<string, number>
+  models: Record<string, number>
+  timeouts?: Partial<Record<TimeoutKey, number>>
+  provider_timeouts?: Record<string, Partial<Record<TimeoutKey, number>>>
+}
+export interface ExecutionSettingsResult {
+  settings: ExecutionPolicy
+  defaults: { max_concurrency: number; timeouts: Record<TimeoutKey, number> }
+}
+export interface AdvancedSetting {
+  key: string
+  type: 'int' | 'float' | 'bool'
+  value: number | boolean
+  default: number | boolean
+  min: number | null
+  max: number | null
+}
+
+export interface ChildSession {
+  child_session_id: string
+  parent_session_id: string
+  title?: string
+  /** start: the owner asked · offer: accepted offer · note / plan_step: a card the owner started. */
+  origin: 'start' | 'offer' | 'note' | 'plan_step'
+  context: 'brief' | 'fork'
+  isolation: 'same' | 'worktree'
+  worktree_path: string | null
+  branch: string | null
+  state: 'working' | 'completed' | 'failed' | 'cancelled' | 'waiting'
+  report: { summary?: string; text?: string; files?: string[]; terminal?: string; error?: string } | null
+  reported: boolean
+  resolution: 'integrated' | 'discarded' | null
+  busy?: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface ChildIntegrateResult {
+  child_session_id: string
+  integrated: boolean
+  conflicts: string[]
+  message?: string
+  files?: string[]
+}
+
 export type SteerResult =
-  | { session_id: string; delivery: 'steer'; turn_id: string; steer_id: string }
+  | { session_id: string; delivery: 'steer'; turn_id: string; steer_id: string; interrupted?: string[] }
   | { session_id: string; delivery: 'queued'; position: number }
 
 export const engineApi = {
@@ -836,7 +1260,8 @@ export const engineApi = {
       chat: options?.chat ?? false,
       title: options?.title ?? null,
       mode: options?.mode ?? 'build',
-      permission_profile: options?.permission_profile ?? 'workspace',
+      // Sin elegir: el valor por defecto del proyecto (o Proyecto) lo pone el Engine.
+      permission_profile: options?.permission_profile ?? null,
       project_id: options?.project_id ?? null,
     }),
   openSession: (reference: string) =>
@@ -858,13 +1283,15 @@ export const engineApi = {
     platform().command<{ session: SessionSummary }>('session_restore', { reference }),
   forkSession: (reference: string, title?: string) =>
     platform().command<{ session: SessionSummary }>('session_fork', { reference, title: title ?? null }),
-  sessionHistory: (reference: string, limit?: number) =>
+  sessionHistory: (reference: string, limit?: number, beforeSeq?: number) =>
     platform().command<{
       session_id: string;
       messages: HistoryMessage[];
       total: number;
       has_more: boolean;
-    }>("session_history", { reference, limit: limit ?? null }),
+      /** Cursor de «Cargar anteriores» (#70); `null` sin más. */
+      next_before_seq?: number | null;
+    }>("session_history", { reference, limit: limit ?? null, before_seq: beforeSeq ?? null }),
   sessionTimeline: (reference: string, beforeTurnIndex?: number, limit?: number) =>
     platform().command<{
       session_id: string;
@@ -918,14 +1345,109 @@ export const engineApi = {
   followupDismiss: (suggestionId: string) =>
     platform().command<{ suggestion: FollowupSuggestion }>('followup_dismiss', { suggestion_id: suggestionId }),
   /** Opens a new conversation (same project and profile) that starts the task. */
-  followupAccept: (suggestionId: string) =>
-    platform().command<{ suggestion: FollowupSuggestion; session: SessionSummary; turn: { turn_id: string } | null; already_accepted: boolean }>('followup_accept', { suggestion_id: suggestionId }),
+  /** `context` / `isolation`: how the child opens, as chosen on the card (plan-sesiones-hijas 5.5). */
+  followupAccept: (suggestionId: string, options: { context?: 'brief' | 'fork'; isolation?: 'auto' | 'worktree' | 'same' } = {}) =>
+    platform().command<{ suggestion: FollowupSuggestion; session: SessionSummary; turn: { turn_id: string } | null; child?: ChildSession; already_accepted: boolean }>('followup_accept', {
+      suggestion_id: suggestionId,
+      ...(options.context ? { context: options.context } : {}),
+      ...(options.isolation ? { isolation: options.isolation } : {}),
+    }),
+  /** The owner opens a child by hand (a message's menu, /child): it starts now. */
+  sessionChildStart: (sessionId: string, prompt: string, title?: string) =>
+    platform().command<ChildSession & { title: string; turn_id?: string | null }>('session_child_start', { sessionId, prompt, ...(title ? { title } : {}) }),
+  /** The children this conversation opened. */
+  sessionChildrenList: (sessionId: string) =>
+    platform().command<{ session_id: string; children: ChildSession[] }>('session_children_list', { sessionId }),
+  /** Merge a child's branch into the project: the owner's decision, never the model's. */
+  sessionChildIntegrate: (childSessionId: string) =>
+    platform().command<ChildIntegrateResult>('session_child_integrate', { childSessionId }),
+  sessionChildDiscard: (childSessionId: string) =>
+    platform().command<{ child_session_id: string; discarded: boolean }>('session_child_discard', { childSessionId }),
+  /** «Use the same folder in this project» (or back to a branch per child). */
+  sessionChildrenIsolation: (sessionId: string, isolation: 'same' | 'worktree') =>
+    platform().command<{ session_id: string; isolation: string }>('session_children_isolation', { sessionId, isolation }),
   /** The live checklist of a conversation; null when there is none to show. */
   sessionChecklist: (sessionId: string) =>
     platform().command<{ checklist: Checklist | null }>('session_checklist_get', { sessionId }),
   /** The user dismisses a finished or interrupted list. */
   clearSessionChecklist: (sessionId: string) =>
     platform().command<{ checklist: Checklist | null }>('session_checklist_clear', { sessionId }),
+  /** El dueño marca como hecha una lista que quedó abierta (plan 0.4.0 #59). */
+  completeSessionChecklist: (sessionId: string) =>
+    platform().command<{ checklist: Checklist | null }>('session_checklist_complete', { sessionId }),
+  // El objetivo de la conversación (plan 0.4.0 #23).
+  sessionGoal: (sessionId: string) =>
+    platform().command<{ goal: Goal | null }>('session_goal_get', { sessionId }),
+  goalSet: (sessionId: string, objective: string, options: { budget?: GoalBudget; start?: boolean } = {}) =>
+    platform().command<{ goal: Goal | null; turn?: { turn_id: string } }>('session_goal_set', {
+      sessionId,
+      objective,
+      budget: options.budget ?? null,
+      start: options.start ?? null,
+    }),
+  /** `/init` (#81): un turno de solo lectura que propone el RINARI.md del proyecto. */
+  projectInitStart: (sessionId: string) =>
+    platform().command<{ status: string; turn_id: string; session_id: string }>('project_init_start', { sessionId }),
+  /** Guarda (tal cual o editado) o descarta la propuesta de `/init`. */
+  projectInstructionsResolve: (sessionId: string, proposalId: string, decision: 'save' | 'discard', content?: string) =>
+    platform().command<{ proposal_id: string; status: 'saved' | 'discarded'; path: string; edited?: boolean }>('project_instructions_resolve', {
+      sessionId,
+      proposalId,
+      decision,
+      content: content ?? null,
+    }),
+  goalPause: (sessionId: string) =>
+    platform().command<{ goal: Goal | null }>('session_goal_pause', { sessionId }),
+  goalResume: (sessionId: string, options: { start?: boolean } = {}) =>
+    platform().command<{ goal: Goal | null; turn?: { turn_id: string } }>('session_goal_resume', { sessionId, start: options.start ?? null }),
+  goalClear: (sessionId: string) =>
+    platform().command<{ goal: Goal | null }>('session_goal_clear', { sessionId }),
+  goalBudget: (sessionId: string, budget: GoalBudget) =>
+    platform().command<{ goal: Goal | null }>('session_goal_budget', { sessionId, budget }),
+  // Continuar sola cuando se restablezca el límite del proveedor (plan 0.4.0 #24).
+  sessionResume: (sessionId: string) =>
+    platform().command<{ resume: SessionResume | null }>('session_resume_get', { sessionId }),
+  resumeArm: (sessionId: string, resetsAt?: string) =>
+    platform().command<{ resume: SessionResume | null }>('session_resume_arm', { sessionId, resets_at: resetsAt ?? null }),
+  resumeCancel: (sessionId: string) =>
+    platform().command<{ resume: SessionResume | null }>('session_resume_cancel', { sessionId }),
+  resumeNow: (sessionId: string) =>
+    platform().command<{ resume: SessionResume | null; continued: boolean }>('session_resume_now', { sessionId }),
+  // Modelo de respaldo y auxiliar (plan 0.4.0 #80).
+  modelRoles: () => platform().command<{ roles: ModelRoles }>('models_roles_get'),
+  setModelRoles: (changes: Partial<{ fallback: string | null; auxiliary: string | null; auxiliary_compaction: boolean }>) =>
+    platform().command<{ roles: ModelRoles }>('models_roles_set', {
+      fallback: 'fallback' in changes ? changes.fallback ?? '' : undefined,
+      auxiliary: 'auxiliary' in changes ? changes.auxiliary ?? '' : undefined,
+      auxiliary_compaction: changes.auxiliary_compaction,
+    }),
+  /**
+   * The conversation's repository for «Resumen» (plan 0.4.0 #82), read-only.
+   * Git answers now; with `remote_pending` the GitHub part (gh, PRs, checks)
+   * follows as `repo.status.updated` with the same shape.
+   */
+  repoStatus: (sessionId: string, refresh?: boolean) =>
+    platform().command<RepoStatus & { session_id: string }>('repo_status', { sessionId, refresh: refresh ?? null }),
+  /**
+   * Open a pull request with gh after the owner confirmed. Checks that need no
+   * network fail at once (NOT_PUSHED, UNPUSHED_COMMITS, NOT_GITHUB…); gh runs
+   * in the background and ends with `repo.pr.created` {job_id, url, number}
+   * or `repo.pr.failed` {job_id, error}.
+   */
+  repoPrCreate: (sessionId: string, input: { title: string; base: string; body?: string }) =>
+    platform().command<{ status: 'started'; job_id: string; session_id: string }>('repo_pr_create', {
+      sessionId,
+      title: input.title,
+      base: input.base,
+      body: input.body ?? '',
+    }),
+  /** Sources, results, connectors and background work (#82); `session.summary.changed` says when to read again. */
+  sessionSummary: (sessionId: string) =>
+    platform().command<ConversationSummary>('session_summary', { sessionId }),
+  resumeSettings: () =>
+    platform().command<{ auto_resume_on_limits: 'ask' | 'always' | 'never' }>('resume_settings_get'),
+  setResumeSettings: (mode: 'ask' | 'always' | 'never') =>
+    platform().command<{ auto_resume_on_limits: 'ask' | 'always' | 'never' }>('resume_settings_set', { auto_resume_on_limits: mode }),
   turnChanges: (turnId: string) =>
     platform().command<TurnChangeSet>('turn_changes_get', { turn_id: turnId }),
   reviewTurnChanges: (turnId: string, path?: string) =>
@@ -943,6 +1465,9 @@ export const engineApi = {
       'turn_changes_undo',
       { turn_id: turnId, paths: paths ?? null, apply_safe_only: applySafeOnly },
     ),
+  /** One folder of the conversation's workspace, for the Files tree (#98). */
+  workspaceDirList: (sessionId: string, path = '') =>
+    platform().command<WorkspaceDirListing>('workspace_dir_list', { session_id: sessionId, path }),
   searchWorkspaceFiles: (sessionId: string, query: string, limit = 30) =>
     platform().command<{ root: string; files: Array<{ path: string; relative_path: string; name: string }> }>(
       "workspace_file_search",
@@ -1068,9 +1593,14 @@ export const engineApi = {
     }),
   soulRemove: (id: string) => platform().command<{ removed: { id: string } }>("soul_remove", { id }),
   soulActivate: (id: string) => platform().command<{ soul: SoulSummary }>("soul_activate", { id }),
+  /** Plan 0.4.0 #87: su `soul.toml` e `identity.md` en una carpeta elegida en el diálogo. */
+  soulExport: (id: string, folder: string) => platform().command<{ path: string; files: string[] }>("soul_export", { id, folder }),
+  /** Una carpeta de alma, o su `.toml` y su `.md`; se guarda como alma nueva. */
+  soulImport: (paths: string[]) => platform().command<{ soul: SoulDetail }>("soul_import", { paths }),
   mcpList: () => platform().command<{ servers: McpServer[] }>("mcp_list"),
-  mcpCreate: (name: string, config: McpConfig) =>
-    platform().command<{ server: McpServer }>("mcp_create", { name, ...config }),
+  /** `owner` (Rinari Agency, C8): la cuenta es solo de ese agente o equipo (`agent:ID`). */
+  mcpCreate: (name: string, config: McpConfig, owner?: string) =>
+    platform().command<{ server: McpServer }>("mcp_create", { name, ...config, ...(owner ? { owner } : {}) }),
   /** Edita un servidor guardado; los secretos que no se envían se conservan. */
   mcpUpdate: (name: string, config: McpConfig) =>
     platform().command<{ server: McpServer }>("mcp_update", { name, ...config }),
@@ -1081,6 +1611,34 @@ export const engineApi = {
   mcpSetEnabled: (name: string, enabled: boolean) =>
     platform().command<{ server: McpServer }>("mcp_set_enabled", { name, enabled }),
   mcpTest: (name: string) => platform().command<{ test: McpTest }>("mcp_test", { name }),
+  /** «Reconectar»: vuelve a conectar ya, en segundo plano; el resultado llega con `mcp.status.changed`. */
+  mcpReconnect: (name: string) => platform().command<{ server: McpServer }>("mcp_reconnect", { name }),
+  /** Inicia sesión con OAuth: Rinari abre el navegador predeterminado y espera la vuelta. */
+  mcpAuthStart: (name: string, options: { open_browser?: boolean; timeout_s?: number } = {}) =>
+    platform().command<McpAuthStart>("mcp_auth_start", { name, ...options }),
+  mcpAuthStatus: (name: string) => platform().command<McpAuthStatus>("mcp_auth_status", { name }),
+  mcpAuthCancel: (name: string) => platform().command<{ name: string, cancelled: boolean }>("mcp_auth_cancel", { name }),
+  mcpAuthSignout: (name: string) =>
+    platform().command<{ name: string, revoked: boolean, removed: boolean, cancelled: boolean }>("mcp_auth_signout", { name }),
+  mcpToolsList: (name: string, scope?: string) =>
+    platform().command<{ server: McpToolPermissions }>("mcp_tools_list", { name, scope }),
+  /** `decision: null` vuelve al valor por defecto del servidor; una anotación `null`, a la del servidor. */
+  mcpToolsSet: (request: { name: string; tool: string; decision?: McpDecision | null; annotations?: McpHints | null; scope?: string }) =>
+    platform().command<{ server: McpToolPermissions, tool: McpToolPermission }>("mcp_tools_set", { request }),
+  mcpToolsSetDefault: (request: { name: string; decision: McpDecision | null; scope?: string }) =>
+    platform().command<{ server: McpToolPermissions }>("mcp_tools_set_default", { request }),
+  mcpCatalogList: () =>
+    platform().command<{ version: string | number, verified_at?: string | null, entries: McpCatalogEntry[] }>("mcp_catalog_list"),
+  mcpCatalogAdd: (input: McpCatalogAddInput) =>
+    platform().command<{ server: McpServer, entry_id: string, next: 'sign_in' | 'connect' }>("mcp_catalog_add", { ...input }),
+  /** Lo que otras apps de este equipo declaran, o un JSON pegado: solo nombres de secretos, nunca valores. */
+  mcpImportScan: (input: { sources?: string[]; json?: unknown } = {}) =>
+    platform().command<{ sources: McpImportSource[], candidates: McpImportCandidate[] }>("mcp_import_scan", { ...input }),
+  mcpImportApply: (input: { keys: string[]; names?: Record<string, string>; sources?: string[]; json?: unknown }) =>
+    platform().command<McpImportResult>("mcp_import_apply", { ...input }),
+  mcpProjectOffersList: (path: string) => platform().command<McpProjectOffers>("mcp_project_offers_list", { path }),
+  mcpProjectOffersDecide: (path: string, decisions: Array<{ key: string; accept: boolean; name?: string }>) =>
+    platform().command<McpImportResult & { project: string }>("mcp_project_offers_decide", { path, decisions }),
   soulSettingsGet: () =>
     platform().command<{ settings: { character_intensity: 'minimal' | 'balanced' | 'full'; options: string[]; default: string } }>("soul_settings_get"),
   soulSettingsSet: (character_intensity: 'minimal' | 'balanced' | 'full') =>
@@ -1137,6 +1695,8 @@ export const engineApi = {
     name?: string
     expectedHash?: string
     force?: boolean
+    /** «Instalar igual» una skill que pasa de los topes. */
+    allowLarge?: boolean
   }) =>
     platform().command<{ job_id: string; action: SkillJobAction; status: string }>('skill_job_start', {
       action: input.action,
@@ -1144,6 +1704,7 @@ export const engineApi = {
       name: input.name ?? null,
       expected_hash: input.expectedHash ?? null,
       force: input.force ?? null,
+      allow_large: input.allowLarge ?? null,
     }),
   skillJobGet: (jobId: string) =>
     platform().command<{ job: { job_id: string; status: string; result?: unknown; error?: SkillJobError } }>(
@@ -1171,6 +1732,157 @@ export const engineApi = {
   ptyTerminate: (ptyId: string) =>
     platform().command<{ pty_id: string; alive: boolean; exit_code: number | null }>('pty_terminate', { pty_id: ptyId }),
   // Tareas programadas: las corre el Engine, con la app abierta o en la bandeja.
+  // Rinari Agency (agency_agents_v1): agentes del perfil activo y su tarjeta.
+  agencyAgents: (options?: { includeArchived?: boolean }) =>
+    platform().command<{ agents: AgencyAgent[] }>('agency_agent_list', {
+      rinari_profile_id: 'active',
+      include_archived: options?.includeArchived ?? null,
+    }),
+  agencyAgent: (agentId: string) =>
+    platform().command<{ agent: AgencyAgent; sessions: Array<SessionSummary & AgencyAgentSession> }>('agency_agent_get', { agent_id: agentId }),
+  agencyCreateAgent: (agent: AgencyAgentInput) =>
+    platform().command<{ agent: AgencyAgent }>('agency_agent_create', {
+      agent: agent as unknown as Record<string, unknown>,
+      rinari_profile_id: null,
+    }),
+  agencyUpdateAgent: (agentId: string, patch: Partial<AgencyAgentInput>) =>
+    platform().command<{ agent: AgencyAgent }>('agency_agent_update', {
+      agent_id: agentId,
+      patch: patch as unknown as Record<string, unknown>,
+    }),
+  agencyArchiveAgent: (agentId: string) =>
+    platform().command<{ agent: AgencyAgent }>('agency_agent_archive', { agent_id: agentId }),
+  // -- agency_audit_v1 (auditoría del 21-oct): en un solo sitio, por si el Engine cambia un nombre.
+  /** Vuelve a la Agency un agente archivado (no vuelve a los equipos de los que salió). */
+  agencyUnarchiveAgent: (agentId: string) =>
+    platform().command<{ agent: AgencyAgent }>('agency_agent_unarchive', { agent_id: agentId }),
+  /** Solo un agente archivado: se lleva sus conversaciones, reglas y memoria. */
+  agencyDeleteAgent: (agentId: string) =>
+    platform().command<{ deleted: string; deleted_sessions: number; deleted_rules: number }>('agency_agent_delete', { agent_id: agentId }),
+  /** Equipos listos para empezar (10.4). */
+  /** Las plantillas de equipo del Engine, en el idioma de la app (el Engine cae al inglés). */
+  agencyTemplates: (language?: string) =>
+    platform()
+      .command<{ templates: Array<{ id: string; team?: { name?: string; purpose?: string }; agents?: { name: string; role?: string }[] }> }>(
+        'agency_templates_list',
+        language ? { language } : {},
+      )
+      .then((result) => ({
+        templates: result.templates.map((template): AgencyTemplateSummary => ({
+          id: template.id,
+          name: template.team?.name ?? template.id,
+          purpose: template.team?.purpose ?? '',
+          agents: (template.agents ?? []).map((agent) => ({ name: agent.name, role: agent.role ?? '' })),
+        })),
+      })),
+  /** Crea el equipo de una plantilla con agentes nuevos; `model`: el de todos ellos (null: el de siempre). */
+  agencyTeamFromTemplate: (templateId: string, model: string | null, language?: string) =>
+    platform().command<{ team: AgencyTeam; agents: AgencyAgent[] }>('agency_team_from_template', { template_id: templateId, model, ...(language ? { language } : {}) }),
+  agencyStatus: () => platform().command<AgencyStatus>('agency_status', { rinari_profile_id: 'active' }),
+  /** «Detener a todos»: corta los turnos de los agentes y pausa sus reglas activas. */
+  agencyStopAll: () =>
+    platform().command<{ cancelled_turns: number; paused_rules: number; blocked_errands?: number }>('agency_stop_all', { rinari_profile_id: 'active' }),
+  /** Después de «Detener a todos»: el tablero vuelve a trabajar (lo trabado sigue trabado). */
+  agencyResume: () => platform().command<{ resumed: boolean; resumed_rules?: number; restored_errands?: number }>('agency_resume', { rinari_profile_id: 'active' }),
+  /** La memoria propia de un agente (D-24); se edita y olvida con memoryApi. */
+  agencyAgentMemory: (agentId: string) =>
+    platform().command<{ records: MemoryRecord[]; count: number }>('agency_agent_memory_list', { agent_id: agentId }),
+  agencyAgentRemember: (agentId: string, topic: string, text: string) =>
+    platform().command<{ record: MemoryRecord }>('agency_agent_memory_add', { agent_id: agentId, topic, text, kind: null }),
+  /** «Créalo con Rinari»: responde con un job; el borrador llega como `agency.draft.ready`. */
+  agencyDraft: (description: string) =>
+    platform().command<{ status: 'started'; job_id: string }>('agency_agent_draft', { description }),
+  // Rinari Agency A2 (agency_teams_v1): equipos, oficina, pizarra y ajustes.
+  agencyTeams: () =>
+    platform().command<{ teams: AgencyTeam[] }>('agency_team_list', { rinari_profile_id: 'active' }),
+  agencyTeam: (teamId: string) =>
+    platform().command<{ team: AgencyTeam; errands: Errand[]; messages: OfficeMessage[] }>('agency_team_get', { team_id: teamId }),
+  agencyCreateTeam: (team: AgencyTeamInput) =>
+    platform().command<{ team: AgencyTeam }>('agency_team_create', {
+      team: team as unknown as Record<string, unknown>,
+      rinari_profile_id: null,
+    }),
+  agencyUpdateTeam: (teamId: string, patch: Partial<AgencyTeamInput>) =>
+    platform().command<{ team: AgencyTeam }>('agency_team_update', {
+      team_id: teamId,
+      patch: patch as unknown as Record<string, unknown>,
+    }),
+  /** Archivar detiene el equipo del todo: turnos, esperas, recados y sus reglas. */
+  agencyArchiveTeam: (teamId: string) =>
+    platform().command<{ team: AgencyTeam; paused_rules?: number }>('agency_team_archive', { team_id: teamId }),
+  agencyUnarchiveTeam: (teamId: string) =>
+    platform().command<{ team: AgencyTeam; resumed_rules: number }>('agency_team_unarchive', { team_id: teamId }),
+  agencyArchivedTeams: () =>
+    platform().command<{ teams: AgencyTeam[] }>('agency_team_list', { rinari_profile_id: 'active', archived: true }),
+  /** «Detener equipo»: ese equipo solo, hasta que el dueño lo reanude o escriba en su oficina. */
+  agencyStopTeam: (teamId: string) =>
+    platform().command<{ team: AgencyTeam; blocked_errands: number; paused_rules: number }>('agency_team_stop', { team_id: teamId }),
+  agencyResumeTeam: (teamId: string) =>
+    platform().command<{ team: AgencyTeam; restored_errands: number; resumed_rules: number }>('agency_team_resume', { team_id: teamId }),
+  /** Solo un equipo archivado: se lleva sus conversaciones, reglas y memoria. */
+  agencyDeleteTeam: (teamId: string) =>
+    platform().command<{ deleted: string; deleted_sessions: number; deleted_rules: number }>('agency_team_delete', { team_id: teamId }),
+  /** El equipo en una llamada (fase 4): miembros, rutinas, flujos, pizarra, actividad y gasto. */
+  agencyTeamOverview: (teamId: string) =>
+    platform().command<TeamOverview>('agency_team_overview', { team_id: teamId }),
+  agencyRoutines: (teamId: string) =>
+    platform().command<{ routines: TeamRoutine[] }>('agency_routine_list', { team_id: teamId }),
+  /** Una rutina de un agente en su puesto; el mismo nombre otra vez la actualiza. */
+  agencyCreateRoutine: (teamId: string, agentId: string, name: string, schedule: ScheduleSpec, prompt: string) =>
+    platform().command<{ routine: TeamRoutine }>('agency_routine_create', {
+      team_id: teamId,
+      agent_id: agentId,
+      name,
+      schedule: schedule as unknown as Record<string, unknown>,
+      prompt,
+    }),
+  agencyFlows: (teamId: string) =>
+    platform().command<{ flows: AgencyFlow[]; runs: FlowRun[] }>('agency_flow_list', { team_id: teamId }),
+  agencySaveFlow: (teamId: string, flow: FlowInput) =>
+    platform().command<{ flow: AgencyFlow }>('agency_flow_save', { team_id: teamId, flow: flow as unknown as Record<string, unknown> }),
+  agencyDeleteFlow: (flowId: string) =>
+    platform().command<{ deleted: string }>('agency_flow_delete', { flow_id: flowId }),
+  agencyStartFlow: (teamId: string, flowId: string, input: string) =>
+    platform().command<{ run: FlowRun }>('agency_flow_start', { team_id: teamId, flow_id: flowId, input: input || null }),
+  agencyCancelFlowRun: (runId: string) =>
+    platform().command<{ run: FlowRun }>('agency_flow_run_cancel', { run_id: runId }),
+  agencyJoinTeam: (teamId: string, agentId: string) =>
+    platform().command<{ team: AgencyTeam }>('agency_team_join', { team_id: teamId, agent_id: agentId }),
+  agencyLeaveTeam: (teamId: string, agentId: string) =>
+    platform().command<{ team: AgencyTeam }>('agency_team_leave', { team_id: teamId, agent_id: agentId }),
+  agencyTeamTemplate: (teamId: string) =>
+    platform().command<{ template: TeamTemplate }>('agency_team_template', { team_id: teamId }),
+  /** Plantilla (10.4): copia oficios, conectores marcados y presupuesto; nunca cuentas ni memoria. */
+  agencyDuplicateTeam: (teamId: string, name: string, newAgents = true) =>
+    platform().command<{ team: AgencyTeam }>('agency_team_duplicate', { team_id: teamId, name, new_agents: newAgents }),
+  agencyTeamMemory: (teamId: string) =>
+    platform().command<{ records: MemoryRecord[]; count: number }>('agency_team_memory_list', { team_id: teamId }),
+  agencyTeamRemember: (teamId: string, topic: string, text: string) =>
+    platform().command<{ record: MemoryRecord }>('agency_team_memory_add', { team_id: teamId, topic, text, kind: null }),
+  agencyOffice: (teamId: string) =>
+    platform().command<{ messages: OfficeMessage[] }>('agency_office_list', { team_id: teamId }),
+  /** Solo una @mención despierta a un agente (D-1). */
+  agencyOfficePost: (teamId: string, text: string) =>
+    platform().command<{ message: OfficeMessage }>('agency_office_post', { team_id: teamId, text }),
+  agencyCreateErrand: (teamId: string, errand: ErrandInput) =>
+    platform().command<{ errand: Errand }>('agency_errand_create', {
+      team_id: teamId,
+      errand: errand as unknown as Record<string, unknown>,
+    }),
+  agencyErrands: (teamId: string) =>
+    platform().command<{ errands: Errand[] }>('agency_errand_list', { team_id: teamId }),
+  agencyReviewErrand: (errandId: string, accepted: boolean, reason?: string) =>
+    platform().command<{ errand: Errand }>('agency_errand_review', { errand_id: errandId, accepted, reason: reason ?? null }),
+  agencyCancelErrand: (errandId: string) =>
+    platform().command<{ errand: Errand }>('agency_errand_cancel', { errand_id: errandId }),
+  agencyRetryErrand: (errandId: string) =>
+    platform().command<{ errand: Errand }>('agency_errand_retry', { errand_id: errandId }),
+  agencySettings: () => platform().command<AgencySettingsData>('agency_settings_get'),
+  agencySetSettings: (patch: { budget?: AgentBudget; errand_mode?: ErrandMode }) =>
+    platform().command<AgencySettingsData>('agency_settings_set', {
+      budget: patch.budget ?? null,
+      errand_mode: patch.errand_mode ?? null,
+    }),
   scheduleList: () => platform().command<{ tasks: ScheduledTask[]; now: number }>('schedule_list'),
   scheduleGet: (taskId: string) =>
     platform().command<{ task: ScheduledTask; runs: ScheduledRun[] }>('schedule_get', { task_id: taskId }),
@@ -1180,6 +1892,12 @@ export const engineApi = {
     platform().command<{ task: ScheduledTask }>('schedule_update', { task_id: taskId, patch: patch as unknown as Record<string, unknown> }),
   scheduleDelete: (taskId: string) =>
     platform().command<{ deleted: boolean }>('schedule_delete', { task_id: taskId }),
+  /** «Probar» una regla propuesta: responde con un job; el resultado llega como `schedule.rehearsed`. */
+  scheduleRehearse: (task: ScheduledTaskInput) =>
+    platform().command<{ status: 'started'; job_id: string }>('schedule_rehearse', { task: task as unknown as Record<string, unknown> }),
+  /** Las últimas ejecuciones de una tarea (o regla), la más reciente primero. */
+  scheduleRuns: (taskId: string, limit = 10) =>
+    platform().command<{ runs: ScheduledRun[] }>('schedule_runs', { task_id: taskId, limit }),
   scheduleRunNow: (taskId: string) =>
     platform().command<{ run: ScheduledRun }>('schedule_run_now', { task_id: taskId }),
   /** «Permitir para esta tarea»: por tarea o por la sesión de la ejecución. */
@@ -1212,6 +1930,27 @@ export const engineApi = {
   attachmentPreview: (uri: string, max_bytes?: number, max_dimension?: number) =>
     platform().command<Record<string, unknown>>('attachment_preview', { uri, max_bytes: max_bytes ?? null, max_dimension: max_dimension ?? null }),
   visionSettingsGet: () => platform().command<import('../types/protocol.generated').VisionSettings>('vision_settings_get'),
+  /** Ajustes → Avanzado: model execution with its own pair (plan 0.4.0 #96). */
+  executionSettingsGet: () => platform().command<ExecutionSettingsResult>('execution_settings_get'),
+  executionSettingsSet: (settings: ExecutionPolicy) => platform().command<ExecutionSettingsResult>('execution_settings_set', { settings }),
+  /** The turn's limits and Ajustes → Permisos' switch: value, default and range of each. */
+  advancedSettingsGet: () => platform().command<{ limits: AdvancedSetting[] }>('advanced_settings_get'),
+  /** `null` puts the default back. */
+  advancedSettingsSet: (values: Record<string, number | boolean | null>) => platform().command<{ limits: AdvancedSetting[] }>('advanced_settings_set', { values }),
+  /** Red: proxy and certificates of every outgoing request of the Engine (plan 0.4.0 #96). */
+  networkSettingsGet: () => platform().command<import('../types/protocol.generated').NetworkSettings>('network_settings_get'),
+  networkSettingsSet: (patch: { proxy?: unknown; certificates?: unknown }) =>
+    platform().command<import('../types/protocol.generated').NetworkSettings>('network_settings_set', { proxy: patch.proxy ?? null, certificates: patch.certificates ?? null }),
+  /** «Probar conexión»: one request without credentials to each enabled provider. */
+  networkTest: () => platform().command<import('../types/protocol.generated').NetworkTest>('network_test', { provider_ids: null }),
+  /** How much each part of Rinari's folder takes. */
+  storageUsage: () => platform().command<StorageUsage>('storage_usage'),
+  /** Lo que el dueño contó de sí en la bienvenida (#71). */
+  aboutGet: () => platform().command<AboutMe>('memory_about_get'),
+  aboutSet: (about: { name: string | null; uses: string[]; preferences: string | null }) =>
+    platform().command<AboutMe>('memory_about_set', { name: about.name ?? '', uses: about.uses, preferences: about.preferences ?? '' }),
+  /** «Limpiar» un apartado de Almacenamiento (#91): nada se borra solo. */
+  storageClean: (section: string) => platform().command<{ section: string; freed: number; removed: number; kept: number; usage: StorageUsage }>('storage_clean', { section }),
   contextSettingsGet: () => platform().command<import('../types/protocol.generated').ContextSettings>('context_settings_get'),
   // snake_case: el contrato lee `session_id`; con `sessionId` el Engine recibía
   // la petición sin sesión y la compactación manual fallaba.
@@ -1226,6 +1965,16 @@ export const engineApi = {
     platform().command<{ models: import('../features/context/contextStatus').ModelContext[] }>('context_models', { refresh }),
   contextSettingsSet: (settings: import('../types/protocol.generated').ContextSettings) => platform().command<import('../types/protocol.generated').ContextSettings>('context_settings_set', { settings }),
   visionSettingsSet: (settings: import('../types/protocol.generated').VisionSettings) => platform().command<import('../types/protocol.generated').VisionSettings>('vision_settings_set', { settings }),
+  /** Ajustes → Creación de imágenes (plan 0.4.0 #28). `api_key` solo viaja de ida. */
+  imagesSettingsGet: () => platform().command<import('../types/protocol.generated').ImageCreationSettings>('images_settings_get'),
+  imagesSettingsSet: (settings: Omit<import('../types/protocol.generated').ImageCreationSettings, 'kinds' | 'subscriptions'>) =>
+    platform().command<import('../types/protocol.generated').ImageCreationSettings>('images_settings_set', { settings }),
+  imagesConnectorTest: (connector_id: string) =>
+    platform().command<{ connector_id: string; ok: boolean; model?: string; code?: string; message?: string }>('images_connector_test', { connector_id }),
+  /** «Volver a activar la visión»: olvida lo que Rinari aprendió de ese modelo (#14). */
+  /** El sitio pide una verificación humana: la sesión sigue en un Chrome/Edge de verdad (plan 0.4.0 #45). */
+  browserExternalOpen: (session_id: string, url: string) => platform().command<{ session_id: string; state: string }>('browser_external_open', { session_id, url }),
+  visionModelReset: (modelId: string) => platform().command<import('../types/protocol.generated').VisionSettings>('vision_model_reset', { model_id: modelId }),
   sessionImageSupport: (session_id: string | null, model_id?: string) => platform().command<import('../types/protocol.generated').VisualRouteStatus>('session_image_support', { session_id, model_id }),
   attachmentPrepareStart: (session_id: string, attachments: AttachmentInput[]) =>
     platform().command<Record<string, unknown>>('attachment_prepare_start', { session_id, attachments }),
@@ -1246,15 +1995,49 @@ export const engineApi = {
    * Mensaje para el turno en curso: Rinari lo lee al terminar el paso actual,
    * sin cortar nada. Sin turno en marcha es un mensaje normal (`queued`).
    */
-  turnSteer: (session_id: string, message: string) =>
-    platform().command<SteerResult>("turn_steer", { session_id, message }),
+  /** Message for the running turn; its files go with it (plan 0.4.0 #54). */
+  turnSteer: (session_id: string, message: string, attachments: Array<AttachmentInput | AttachmentRef> = []) =>
+    platform().command<SteerResult>("turn_steer", {
+      session_id,
+      message,
+      attachments: attachments.length ? attachmentInputs(attachments) : null,
+    }),
+  /**
+   * «Enviar ahora» (#31): Rinari lo lee ya. Corta la respuesta que está
+   * escribiendo, pasa a segundo plano el comando en curso y una aprobación
+   * pendiente cuenta como «no». El turno sigue.
+   */
+  turnSteerNow: (session_id: string, message: string, attachments: Array<AttachmentInput | AttachmentRef> = []) =>
+    platform().command<SteerResult>("turn_steer_now", {
+      session_id,
+      message,
+      attachments: attachments.length ? attachmentInputs(attachments) : null,
+    }),
+  /**
+   * «Enviar ahora» sobre un mensaje que ya espera (P7, como Claude Code): el
+   * Engine corta el paso en seco —la respuesta, la llamada que escribe, la
+   * herramienta o la espera en curso— y lo lee ya. STEER_ALREADY_READ si lo leyó.
+   */
+  turnSteerPromote: (session_id: string, steer_id: string) =>
+    platform().command<{ status: 'promoted'; steer_id: string; interrupted: string[] }>("turn_steer_promote", { session_id, steer_id }),
+  /** Move a foreground command of this session to the background (#32). */
+  /** La salida entera de un comando que el historial recortó (#91). */
+  toolOutput: (session_id: string, tool_call_id: string) =>
+    platform().command<{ tool_call_id: string; stdout: string | null; stderr: string | null; data?: unknown }>("session_tool_output", { session_id, tool_call_id }),
+  toolBackground: (session_id: string, tool_call_id: string) =>
+    platform().command<{ session_id: string; tool_call_id: string; requested: boolean }>("session_tool_background", { session_id, tool_call_id }),
+  /** Edit an unread message sent during the turn; STEER_ALREADY_READ once read (#54). */
+  turnSteerUpdate: (session_id: string, steer_id: string, message: string) =>
+    platform().command<{ status: 'updated'; steer_id: string; message: string }>("turn_steer_update", { session_id, steer_id, message }),
+  /** Withdraw an unread message sent during the turn (#54). */
+  turnSteerCancel: (session_id: string, steer_id: string) =>
+    platform().command<{ status: 'cancelled'; steer_id: string }>("turn_steer_cancel", { session_id, steer_id }),
   queueList: (session_id: string) =>
     platform().command<{
       session_id: string
       queue: string[]
       pending: number
-      // Typed entries (manual + peer inbox); absent on engines without
-      // `session_peer_messaging_v1`.
+      // Typed entries; absent on older engines.
       entries?: QueuedPromptEntry[]
     }>("queue_list", {
       session_id,
@@ -1263,44 +2046,6 @@ export const engineApi = {
     platform().command<{ session_id: string; removed: number }>("queue_clear", { session_id }),
   queueResume: (session_id: string) =>
     platform().command<{ session_id: string; resumed: number }>("queue_resume", { session_id }),
-  // -- peer messaging between the sessions of a board ------------------------
-  peerGroupSet: (input: {
-    board_id: string
-    group_id?: string | null
-    expected_revision: number
-    enabled: boolean
-    members: PeerGroupMember[]
-  }) =>
-    platform().command<PeerGroup & { warnings?: string[] }>("peer_group_set", {
-      board_id: input.board_id,
-      group_id: input.group_id ?? null,
-      expected_revision: input.expected_revision,
-      enabled: input.enabled,
-      members: input.members,
-    }),
-  peerGroupGet: (selector: { board_id?: string; session_id?: string; group_id?: string }) =>
-    platform().command<{ group: PeerGroup | null }>("peer_group_get", {
-      board_id: selector.board_id ?? null,
-      session_id: selector.session_id ?? null,
-      group_id: selector.group_id ?? null,
-    }),
-  peerGroupRevoke: (group_id: string) => platform().command<PeerGroup>("peer_group_revoke", { group_id }),
-  peerMessageList: (session_id: string) =>
-    platform().command<{ session_id: string; messages: PeerMessage[] }>("peer_message_list", { session_id }),
-  peerMessageCancel: (message_id: string) =>
-    platform().command<PeerMessage>("peer_message_cancel", { message_id }),
-  peerMessageForward: (input: {
-    target_session_id: string
-    message: string
-    source_session_id?: string | null
-    quoted_source?: Record<string, unknown> | null
-  }) =>
-    platform().command<PeerMessage>("peer_message_forward", {
-      target_session_id: input.target_session_id,
-      message: input.message,
-      source_session_id: input.source_session_id ?? null,
-      quoted_source: input.quoted_source ?? null,
-    }),
   bundleList: () => platform().command<{ profiles: ProfileBundle[]; active_id?: string }>("bundle_list"),
   bundleActive: () => platform().command<{ active_id: string; profile: ProfileBundle }>('bundle_active'),
   /** Switch the workspace: new work goes there and the lists show its work. */
@@ -1329,7 +2074,8 @@ export const engineApi = {
       project_policy: projectPolicy ?? null,
     }),
   bundleCreate: (input: {
-    id: string;
+    /** Advanced: without it the Engine makes one from the name (#86). */
+    id?: string;
     name: string;
     description?: string;
     soul_id?: string;
@@ -1337,7 +2083,7 @@ export const engineApi = {
     agents?: Record<string, { model?: string; fallback?: string }>;
   }) =>
     platform().command<{ profile: ProfileBundle }>("bundle_create", {
-      id: input.id,
+      id: input.id ?? null,
       name: input.name,
       description: input.description ?? null,
       soul_id: input.soul_id ?? null,
@@ -1376,6 +2122,20 @@ export const engineApi = {
       command: command ?? null,
     })
   },
+  /**
+   * Implement or adjust a finished plan (plan 0.4.0 #55): no typed message.
+   * The Engine checks the plan turn, writes the instruction, switches the
+   * mode (BUILD to implement, PLAN to adjust) and, to implement, seeds the
+   * checklist with the plan's steps. The turn's origin draws a separator.
+   */
+  startPlanTurn: (sessionId: string, origin: PlanTurnOrigin, reasoningEffort?: string | null) =>
+    platform().command<{ status: string; turn_id: string; session_id: string }>("turn_start", {
+      session_id: sessionId,
+      message: '',
+      reasoning_effort: reasoningEffort ?? null,
+      attachments: [],
+      origin,
+    }),
   commandList: (sessionId?: string) =>
     platform().command<{ commands: SlashCommand[] }>('command_list', { session_id: sessionId ?? null }),
   cancelTurn: (sessionId: string) =>
@@ -1408,7 +2168,7 @@ export const engineApi = {
     }),
   projectUpdate: (
     projectId: string,
-    patch: { name?: string; description?: string; pinned?: boolean; archived?: boolean },
+    patch: ProjectPatch,
   ) =>
     platform().command<{ project: ProjectSummary }>('project_update', {
       project_id: projectId,
@@ -1416,6 +2176,8 @@ export const engineApi = {
       description: patch.description ?? null,
       pinned: patch.pinned ?? null,
       archived: patch.archived ?? null,
+      // '' lo quita: las conversaciones nuevas vuelven a Proyecto (P-5).
+      permission_profile: patch.permission_profile ?? null,
     }),
   projectRemove: (projectId: string, sessionPolicy: 'keep' | 'archive' | 'delete' = 'archive') =>
     platform().command<{
@@ -1502,6 +2264,7 @@ export const engineApi = {
       account_hint?: string;
       secret?: string;
       secret_env?: string;
+      enabled?: boolean;
     },
   ) =>
     platform().command<{ provider: ProviderSummary }>("provider_update", {
@@ -1524,9 +2287,11 @@ export const engineApi = {
       { reference },
     ),
 
-  modelList: (provider?: string) =>
+  /** Without `includeDisabled`, a turned-off provider's models are left out (#97). */
+  modelList: (provider?: string, includeDisabled?: boolean) =>
     platform().command<{ models: ModelSummary[] }>("model_list", {
       provider: provider ?? null,
+      include_disabled: includeDisabled ?? null,
     }),
   modelGet: (reference: string, provider?: string) =>
     platform().command<{ model: ModelSummary }>("model_get", {
@@ -1547,6 +2312,10 @@ export const engineApi = {
       new_alias: newAlias,
       provider: provider ?? null,
     }),
+  /** Models the owner removed: hidden from refreshes until «Mostrar» (#93). */
+  modelHiddenList: (provider: string) => platform().command<{ hidden: string[] }>('model_hidden_list', { provider }),
+  modelUnhide: (provider: string, providerModelId: string) =>
+    platform().command<{ model: ModelSummary }>('model_unhide', { provider, provider_model_id: providerModelId }),
   modelRemove: (reference: string, provider?: string) =>
     platform().command<{ removed: { id: string; alias: string } }>("model_remove", {
       reference,
@@ -1568,6 +2337,8 @@ export const engineApi = {
       status: 'running' | 'completed';
       cached: boolean;
       providers?: Record<string, DiscoveredModel[]>;
+      /** Aliases the Engine saved, per provider (#93). */
+      added?: Record<string, string[]>;
     }>('model_discovery_start', { provider: provider ?? null }),
   /** `addNew` also saves the models a provider started offering (desktop refresh). */
   modelRefresh: (provider?: string, addNew = false) =>
@@ -1625,6 +2396,7 @@ function mapPreparedAttachment(item: PreparedAttachmentResult, attachments: Atta
     uri: item.uri || item.images?.[0]?.uri || attachments.uri,
     sha256: item.sha256 || attachments.sha256,
     derivedUri: item.derived_uri || attachments.derivedUri,
+    durationS: item.duration_s ?? attachments.durationS,
     images: item.images || attachments.images,
     ocr: item.ocr ?? attachments.ocr,
     keepImage: item.ocr ? (item.keep_image ?? attachments.keepImage) : undefined,
@@ -1716,4 +2488,4 @@ export function onEngineEvent(callback: (event: EngineEventMsg) => void): Promis
   return platform().events.onEngineEvent(callback);
 }
 
-export type { FlowResult, FlowStage, FlowSummary, MessageOrigin, PeerGroup, PeerGroupMember, PeerMessage, QueuedPromptEntry }
+export type { FlowResult, FlowStage, FlowSummary, MessageOrigin, QueuedPromptEntry }

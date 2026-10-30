@@ -2,7 +2,7 @@
 // actividad y subagente, composer y sus menús, panel lateral, Boards, Flujos,
 // Ajustes, notificaciones) para revisar el diseño antes y después de cambiarlo.
 // No afirma comportamiento: cada paso opcional se registra y el recorrido sigue.
-const { click, clickText, command, evaluate, input, key, menuShortcut, report, scenario, screenshot, until, wait, delay, size, useLocalModel, reload, ui } = require('../harness.cjs')
+const { click, clickText, command, evaluate, input, key, menuShortcut, report, scenario, screenshot, toggleDockView, until, wait, delay, size, useLocalModel, reload, ui } = require('../harness.cjs')
 
 const steps = []
 async function step(name, body) {
@@ -107,38 +107,55 @@ scenario(async () => {
     await screenshot('07b-slash-menu')
     await input('.composer-surface textarea', '')
   })
+  // /usage (#78): the report card in the chat, without a turn.
+  await step('usage-report', async () => {
+    await input('.composer-surface textarea', '/usage')
+    await click('.composer-surface button[aria-label="Enviar mensaje"]')
+    await wait(`Boolean(document.querySelector('[data-testid="usage-report"]'))`, 30_000)
+    await evaluate(`document.querySelector('[data-testid="usage-report"]').scrollIntoView({ block: 'center' })`)
+    await delay(500)
+    await screenshot('07c-usage-report')
+  })
   await step('sidebar-context', () => rightClick(`[...document.querySelectorAll('aside button')].find(b=>b.textContent.includes('Recorrido visual'))`, '08-sidebar-context-menu'))
   await step('message-context', () => rightClick(`[...document.querySelectorAll('[data-testid="turn-result"], .markdown')].pop()`, '08b-message-context-menu'))
   await popoversIn('aside', '09-sidebar')
+  // Panel lateral (#47): una captura por vista, abierta desde su botón de la barra de título, y el mosaico.
   await step('dock', async () => {
-    await click('button[aria-label="Panel lateral"]')
-    await delay(700)
-    const tabSel = '.pane-dock-tabs [role="tab"]'
-    const tabs = await evaluate(`[...document.querySelectorAll(${JSON.stringify(tabSel)})].map(b=>b.textContent.trim())`)
-    for (const [i, label] of tabs.entries()) {
-      await step(`dock-${label}`, async () => {
-        await evaluate(`document.querySelectorAll(${JSON.stringify(tabSel)})[${i}].click()`)
+    // Las de la barra y, desde el menú «⋮», Agentes y Flujos.
+    const bar = await evaluate(`[...document.querySelectorAll('.dock-view-bar > button[data-view]')].map(b=>b.dataset.view).filter(v=>v!=='summary'&&v!=='more')`)
+    const views = [...bar, 'agents', 'flow']
+    for (const [i, view] of views.entries()) {
+      await step(`dock-${view}`, async () => {
+        await toggleDockView(view)
         await delay(900)
-        await screenshot(`10-dock-${i}-${slug(label)}`)
-        const innerSel = `[...document.querySelectorAll('[data-testid="session-dock"] [role="tab"]')].filter(b=>!b.closest('.pane-dock-tabs'))`
-        const inner = await evaluate(`${innerSel}.map(b=>b.textContent.trim())`)
-        for (const [j, sub] of inner.entries()) {
-          await evaluate(`${innerSel}[${j}]?.click()`)
-          await delay(700)
-          await screenshot(`10-dock-${i}-${j}-${slug(sub)}`)
-        }
+        await screenshot(`10-dock-${i + 1}-${view}`)
+        await toggleDockView(view)
+        await delay(450)
       })
     }
-    // La píldora de las pestañas no debe rebotar al cambiar el ancho: se
-    // muestrea cuadro a cuadro y se registra cuánto se separa de la pestaña activa.
-    await step('dock-pill-resize', async () => {
-      const drift = []
-      for (const [w, h] of [[1100, 900], [1500, 900], [1250, 900]]) {
-        await size(w, h)
-        drift.push(await evaluate(`new Promise(done => { let worst = 0, n = 0; const tick = () => { const pill = document.querySelector('.pane-dock-pill'); const tab = document.querySelector('.pane-dock-tabs [role="tab"][aria-selected="true"]'); if (pill && tab) worst = Math.max(worst, Math.abs(pill.getBoundingClientRect().left - tab.getBoundingClientRect().left)); if (++n < 30) requestAnimationFrame(tick); else done(Math.round(worst)) }; requestAnimationFrame(tick) })`))
+    await step('dock-more-menu', async () => {
+      await click('.dock-view-bar button[data-view="more"]')
+      await delay(500)
+      await screenshot('10-dock-more-menu')
+      await key('Escape')
+      await delay(300)
+    })
+    await step('dock-summary', async () => {
+      await click('.dock-view-bar button[data-view="summary"]')
+      await delay(900)
+      await screenshot('10-dock-summary')
+      await click('.dock-view-bar button[data-view="summary"]')
+      await delay(450)
+    })
+    await step('dock-mosaic', async () => {
+      for (const view of ['browser', 'terminal', 'files', 'changes']) {
+        if (await evaluate(`Boolean(document.querySelector('.dock-view-bar button[data-view="${view}"]'))`)) await click(`.dock-view-bar button[data-view="${view}"]`)
       }
-      steps.push({ name: 'dock-pill-drift-px', ok: drift.every((d) => d <= 1), detail: drift })
-      await size(1500, 900)
+      await delay(900)
+      await screenshot('10-dock-mosaic')
+      await click('.composer-surface textarea')
+      await key('B', ['control'])
+      await delay(500)
     })
   })
   await step('boards', async () => {
@@ -161,14 +178,17 @@ scenario(async () => {
       await delay(300)
     })
   })
-  await step('flows', async () => {
-    await evaluate(`[...document.querySelectorAll('.view-switcher button')].find(b=>/Flujo/i.test(b.getAttribute('aria-label')||b.textContent))?.click()`)
-    await delay(1300)
-    await screenshot('12-flows')
-  })
   await step('back-normal', async () => {
     await click('.view-switcher button[aria-label="Normal"]')
     await delay(700)
+  })
+  // El Flujo es una vista del panel lateral (#43), ya no un modo de arriba.
+  await step('flows', async () => {
+    await toggleDockView('flow')
+    await delay(1300)
+    await screenshot('12-flows')
+    await toggleDockView('flow')
+    await delay(450)
   })
   await popoversIn('header', '13-header')
   await popoversIn('footer', '14-statusbar')
@@ -191,10 +211,14 @@ scenario(async () => {
       })
     }
   })
+  // Conectores (C3): el catálogo de «Agregar conector» y, dentro, «Agregar servidor MCP».
   await step('mcp-add', async () => {
-    await evaluate(`[...document.querySelectorAll('nav button')].find(b=>b.textContent.trim()==='MCP')?.click()`)
+    await evaluate(`[...document.querySelectorAll('nav button')].find(b=>b.textContent.trim()==='Conectores')?.click()`)
     await delay(700)
-    await evaluate(`[...document.querySelectorAll('main button, [role="dialog"] button')].find(b=>/Agregar|Añadir|Nuevo/.test(b.textContent))?.click()`)
+    await evaluate(`[...document.querySelectorAll('main button')].find(b=>b.textContent.includes('Agregar conector'))?.click()`)
+    await delay(800)
+    await screenshot('17-connectors-catalog')
+    await evaluate(`document.querySelector('[data-testid="catalog-manual"]')?.click()`)
     await delay(800)
     await screenshot('17-mcp-add')
     await key('Escape')
@@ -202,6 +226,18 @@ scenario(async () => {
   await step('close-settings', async () => {
     await key('Escape')
     await delay(500)
+  })
+  // Rinari Agency (A1): el tutorial y el inicio de la Agency.
+  await step('agency', async () => {
+    if (!(await evaluate(`Boolean(document.querySelector('[data-testid="agency-card"]'))`))) return
+    await evaluate(`document.querySelector('[data-testid="agency-card"]').click()`)
+    await delay(900)
+    await screenshot('19-agency-tutorial')
+    await key('Escape')
+    await delay(600)
+    await screenshot('19-agency-home')
+    await evaluate(`document.querySelector('[data-testid="agency-card"][data-mode="leave"]')?.click()`)
+    await delay(600)
   })
   await step('narrow', async () => {
     await size(1000, 760)

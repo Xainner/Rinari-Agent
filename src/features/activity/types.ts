@@ -13,7 +13,7 @@ export type TimelineStatus =
 
 interface TimelineItemBase {
   id: string
-  type: 'model' | 'tool' | 'approval' | 'agent' | 'context' | 'verification' | 'changeset' | 'system' | 'question' | 'vision' | 'steer' | 'memory' | 'skill'
+  type: 'model' | 'tool' | 'approval' | 'agent' | 'context' | 'verification' | 'changeset' | 'system' | 'question' | 'vision' | 'steer' | 'memory' | 'skill' | 'instructions' | 'present'
   activitySeq: number
   occurredAt: number
 }
@@ -30,6 +30,8 @@ export interface ModelTimelineItem extends TimelineItemBase {
   modelChange?: ModelChange
   /** `model.retrying`: la llamada falló de forma transitoria y se repite. */
   retry?: ModelRetry
+  /** `model.tool_input`: lo que lleva escrito de una llamada a herramienta larga (F26). */
+  toolInput?: { tool: string; chars: number; path?: string }
 }
 
 export interface ModelRetry {
@@ -63,6 +65,8 @@ export interface ToolTimelineItem extends TimelineItemBase {
   arguments?: string
   result?: string
   error?: string
+  /** El código del fallo (`NOT_FOUND`, `TIMEOUT`…): la causa se dice en el idioma de la app (#68). */
+  errorCode?: string
   durationMs?: number
   presentation?: ToolPresentation
 }
@@ -81,6 +85,8 @@ export interface ToolPresentation {
   stderr?: string
   running?: boolean
   truncated?: boolean
+  /** The history page cut this output; `session.tool.output` has it whole (#91). */
+  page_truncated?: boolean
   /** The persisted full-capture artifact reached its hard byte limit. */
   capture_truncated?: boolean
   artifacts?: string[]
@@ -124,6 +130,8 @@ export interface AgentTimelineItem extends TimelineItemBase {
   phase: 'started' | 'terminal'
   status: 'running' | 'completed' | 'failed'
   agent: string
+  /** Apodo para mostrar (#73): «Vega». El id sigue siendo la clave. */
+  nickname?: string
   objective?: string
   items?: TimelineItem[]
   summary?: string
@@ -146,13 +154,16 @@ export interface ContextTimelineItem extends TimelineItemBase {
 export interface VerificationTimelineItem extends TimelineItemBase {
   type: 'verification'
   status: 'running' | 'completed' | 'failed'
+  /** DONE | IMPLEMENTED_UNVERIFIED | PARTIAL | BLOCKED | FAILED (compuerta del Engine). */
   outcome?: string
   detail?: string
+  /** Por qué la compuerta decidió eso: se ven al abrir la fila. */
+  reasons?: string[]
 }
 
 export interface SystemTimelineItem extends TimelineItemBase {
   type: 'system'
-  kind: 'turn_preparing' | 'governor' | 'terminal' | 'reasoning_dropped'
+  kind: 'turn_preparing' | 'governor' | 'terminal' | 'reasoning_dropped' | 'model_fallback' | 'protocol_learned' | 'speech_setup'
   status?: string
   label?: string
 }
@@ -178,6 +189,8 @@ export interface VisionTimelineItem extends TimelineItemBase {
   error?: string
   /** `without_images`: el modelo no ve imágenes y el turno siguió sin ellas. */
   fallback?: string
+  /** Quién lo decidió (#14): `auto` (Rinari), `turn` (solo este turno), `owner`, `endpoint`. */
+  markedBy?: string
   images: import('../../types/protocol.generated').ViewedImage[]
   cached: boolean
 }
@@ -191,6 +204,15 @@ export interface SteerTimelineItem extends TimelineItemBase {
   steerId: string
   content: string
   status: 'pending' | 'applied'
+  /** `coordinator`: una instrucción de Rinari a un subagente (#25). */
+  source?: string
+  /** La instrucción volvió a poner en marcha a un subagente que ya había terminado. */
+  followUp?: boolean
+  /** «Enviar ahora» (#31): cortó el paso en curso para leerse ya. */
+  interrupted?: boolean
+  /** `child_report` (#100): las hijas cuyo informe leyó la madre a mitad de turno, y lo que dijo cada una. */
+  children?: string[]
+  reports?: Record<string, string>
 }
 
 /**
@@ -209,6 +231,9 @@ export interface MemoryTimelineItem extends TimelineItemBase {
   scope?: string
   reason?: string
   sensitive?: boolean
+  /** Recuerdos: dónde quedó (#75), para decirlo y ofrecer «Mover». */
+  place?: string
+  placeRef?: string
   /** Propuestas: `pending` hasta `memory.candidate.resolved`. Recuerdos: `remembered`. */
   status: 'pending' | 'approved' | 'denied' | 'remembered'
 }
@@ -243,9 +268,43 @@ export interface SkillTimelineItem extends TimelineItemBase {
   turnedOn?: string[]
 }
 
+/** La propuesta de RINARI.md de `/init` (#81): nada se escribe sin «Guardar». */
+export interface InstructionsTimelineItem extends TimelineItemBase {
+  type: 'instructions'
+  proposalId: string
+  path: string
+  content: string
+  /** El RINARI.md que había, para ver los cambios; `null` si no existía. */
+  previous: string | null
+  summary: string
+  reuses: string[]
+  status: 'pending' | 'saved' | 'discarded'
+}
+
+/** Un archivo, carpeta o página que Rinari entregó con `file.present` (#35). */
+export interface PresentedFile {
+  kind: string
+  name: string
+  path?: string
+  uri?: string
+  url?: string
+  mime?: string
+  size_bytes?: number
+  caption?: string
+  entry_count?: number
+  entries?: string[]
+}
+
+export interface PresentTimelineItem extends TimelineItemBase {
+  type: 'present'
+  files: PresentedFile[]
+}
+
 export type TimelineItem =
+  | PresentTimelineItem
   | MemoryTimelineItem
   | SkillTimelineItem
+  | InstructionsTimelineItem
   | SteerTimelineItem
   | VisionTimelineItem
   | QuestionTimelineItem

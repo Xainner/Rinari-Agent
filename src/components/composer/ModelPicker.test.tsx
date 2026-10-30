@@ -66,3 +66,40 @@ it('summarizes added aliases and failing providers, and tolerates older Engines'
     b: { saved: 0, still_available: 0, marked_unavailable: 0, discovered: 3, added: ['x', 'y'], error: null },
   } })).toEqual({ added: ['x', 'y'], failed: [] })
 })
+
+it('puts a provider\'s free models in their own group, named in each language (#13)', async () => {
+  const mixed = [
+    { id: 'm1', alias: 'glm', provider: 'opencode-go', provider_id: 'p', provider_model_id: 'glm-5.3', saved: true, capabilities: { pricing: 'paid' } },
+    { id: 'm2', alias: 'longcat', provider: 'opencode-go', provider_id: 'p', provider_model_id: 'longcat-2.5-preview-free', saved: true, capabilities: { pricing: 'free' } },
+  ] as never
+  for (const [lang, header] of [['es', 'opencode-go (gratis)'], ['en', 'opencode-go (free)']] as const) {
+    render(
+      <I18nProvider lang={lang}>
+        <ModelPicker models={mixed} activeAlias="glm" onUseModel={vi.fn()} onDiscoverModels={vi.fn()} onOpenProviders={vi.fn()} />
+      </I18nProvider>,
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'glm' }))
+    const free = screen.getByRole('region', { name: header })
+    expect(free.textContent).toContain('longcat')
+    expect(free.textContent).not.toContain('glm-5.3')
+    expect(screen.getByRole('region', { name: 'opencode-go' }).textContent).toContain('glm-5.3')
+    cleanup()
+  }
+})
+
+it('lists a model Rinari cannot speak to yet, without letting it be chosen (#94)', async () => {
+  const onUseModel = vi.fn()
+  const mixed = [
+    { id: 'm1', alias: 'glm', provider: 'opencode-go', provider_id: 'p', provider_model_id: 'glm-5.3', saved: true, capabilities: {} },
+    { id: 'm2', alias: 'exotic', provider: 'opencode-go', provider_id: 'p', provider_model_id: 'exotic-1', saved: true, capabilities: { route_supported: false } },
+  ] as never
+  render(
+    <I18nProvider lang="es">
+      <ModelPicker models={mixed} activeAlias="glm" onUseModel={onUseModel} onDiscoverModels={vi.fn()} onOpenProviders={vi.fn()} />
+    </I18nProvider>,
+  )
+  await userEvent.click(screen.getByRole('button', { name: 'glm' }))
+  const exotic = screen.getByRole('button', { name: /exotic/ }) as HTMLButtonElement
+  expect(exotic.disabled).toBe(true)
+  expect(exotic.textContent).toContain('No compatible todavía')
+})

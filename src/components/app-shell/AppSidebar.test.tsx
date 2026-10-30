@@ -5,8 +5,10 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import type { ProjectSummary, SessionSummary } from '../../services/engine'
+import { bornAt } from '../../features/projects/workspaceModel'
 import { AppSidebar, type AppSidebarProps } from './AppSidebar'
 import { useUIStore } from '../../stores/ui'
+import { useProfileStore } from '../../features/profiles/profileStore'
 import { useProjectExpansionStore } from '../../stores/projectExpansion'
 
 const now = '2026-09-09T00:00:00Z'
@@ -147,6 +149,21 @@ describe('AppSidebar project and session lifecycle', () => {
     await user.click(screen.getAllByRole('button', { name: 'Opciones de sesión' }).at(-1)!)
     await user.click(screen.getByRole('menuitem', { name: /Restaurar/ }))
     expect(props.onRestoreSession).toHaveBeenCalledWith('archived')
+  })
+
+  it('shows only the archived work of the active profile, and no section when it has none (#85)', () => {
+    useProfileStore.setState({ activeId: 'trabajo' })
+    try {
+      renderSidebar({
+        archivedProjects: [{ ...project('other', 'Other profile project', true), rinari_profile_id: 'default' } as ProjectSummary],
+        archivedSessions: [{ ...session('mine', 'Mine archived', null, 'archived'), rinari_profile_id: 'trabajo' } as SessionSummary],
+      })
+      expect(screen.queryByText(/Other profile project/)).toBeNull()
+      expect(screen.queryByRole('button', { name: /Proyectos archivados/ })).toBeNull()
+      expect(screen.getByRole('button', { name: /Sesiones archivadas/ })).toBeTruthy()
+    } finally {
+      useProfileStore.setState({ activeId: null })
+    }
   })
 
   it('exposes fork, archive and rename instead of hiding engine lifecycle actions', async () => {
@@ -486,5 +503,116 @@ describe('AppSidebar destinations', () => {
     const props = renderSidebar({ onOpenSchedules: vi.fn() })
     await userEvent.click(screen.getByRole('button', { name: 'Tareas programadas' }))
     expect(props.onOpenSchedules).toHaveBeenCalled()
+  })
+})
+
+// #83: la rama sale de la barra lateral; ni siquiera una rama larga le quita sitio al nombre.
+it('las filas de proyecto no llevan la rama de git', () => {
+  renderSidebar({ projects: [{ ...project('project', 'Rinari CLI'), git_head: { branch: 'fix/wizard-qa-status-reconcile', detached: false, sha_short: null, operation: null } }] })
+  expect(screen.getByText('Rinari CLI')).toBeTruthy()
+  expect(screen.queryByTestId('project-branch')).toBeNull()
+  expect(screen.queryByText(/fix\/wizard/)).toBeNull()
+})
+
+describe('AppSidebar signals for every conversation (#33)', () => {
+  it('a conversation outside Boards waiting for an approval shows «needs you» instead of the working circle', () => {
+    renderSidebar({ busySessionIds: new Set(['chat']), signalBySession: { chat: 'needs_you' } })
+    const row = screen.getByText('Research').closest('button')!
+    expect(within(row).queryByLabelText('Sesión en curso')).toBeNull()
+    expect(within(row).getByTestId('sidebar-signal').getAttribute('data-signal')).toBe('needs_you')
+  })
+
+  it('a collapsed project shows the most urgent signal of its conversations', () => {
+    renderSidebar({ signalBySession: { 'project-session': 'failed' } })
+    // The project is collapsed (the active conversation is a loose chat).
+    expect(screen.queryByText('Fix governor')).toBeNull()
+    expect(screen.getByTestId('sidebar-project-signal').getAttribute('data-signal')).toBe('failed')
+  })
+})
+
+describe('child sessions under their mother (#40)', () => {
+  const child = (id: string, title: string, parent: string, projectId: string | null = null): SessionSummary => ({
+    ...session(id, title, projectId),
+    parent_session_id: parent,
+    lineage_kind: 'note',
+  })
+
+  it('a note and a fork hang from their mother, always in view, without a counter (#40)', () => {
+    renderSidebar({
+      sessions: [session('mother', 'Parser'), child('ses_01_a', 'Pruebas', 'mother'), child('ses_02_b', 'Docs', 'mother'), session('other', 'Suelta')],
+      busySessionIds: new Set(['ses_02_b']),
+      activeId: 'other',
+    })
+    const nested = screen.getByTestId('session-children')
+    expect(within(nested).getAllByRole('listitem').map((item) => item.textContent)).toEqual([expect.stringContaining('Pruebas'), expect.stringContaining('Docs')])
+    // The working one shows its spinner; the other, its state icon (check when done, the «hangs from» arrow before).
+    expect(within(nested).getAllByTestId('session-child-icon')).toHaveLength(1)
+    expect(screen.queryByTestId('session-children-chip')).toBeNull()
+    expect(screen.getByText('Parser').closest('li')?.textContent).not.toMatch(/\d\/\d/)
+  })
+
+  it('a grandchild hangs from the same root as its mother, one indent only (P8, like Claude Code)', () => {
+    // A session opened from a child used to vanish. Chains do not indent
+    // further: every descendant sits one level under the root, by birth.
+    renderSidebar({
+      sessions: [session('root', 'Raíz'), child('ses_01_h', 'Hija', 'root'), child('ses_02_n', 'Nieta', 'ses_01_h'), child('ses_03_b', 'Bisnieta', 'ses_02_n')],
+      activeId: 'root',
+    })
+    const levels = screen.getAllByTestId('session-children')
+    expect(levels).toHaveLength(1)
+    expect(within(levels[0]).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      expect.stringContaining('Hija'), expect.stringContaining('Nieta'), expect.stringContaining('Bisnieta'),
+    ])
+  })
+
+  it('a child whose mother is not in the list stays on its own', () => {
+    renderSidebar({ sessions: [child('ses_03_c', 'Huérfana', 'gone')], activeId: 'ses_03_c' })
+    expect(screen.queryByTestId('session-children')).toBeNull()
+    expect(screen.getByText('Huérfana')).toBeTruthy()
+  })
+
+  it('works inside a project too', () => {
+    renderSidebar({
+      sessions: [session('mother', 'Parser', 'project'), child('ses_04_d', 'Pruebas', 'mother', 'project')],
+      activeId: 'mother',
+    })
+    expect(within(screen.getByTestId('session-children')).getByText('Pruebas')).toBeTruthy()
+  })
+
+  /** Un id de sesión real (ULID con prefijo) nacido en `ms`. */
+  const ulidAt = (ms: number) => {
+    const alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
+    let time = ''
+    for (let value = ms, i = 0; i < 10; i += 1, value = Math.floor(value / 32)) time = alphabet[value % 32] + time
+    return `ses_${time}${'0'.repeat(16)}`
+  }
+
+  it('reads when a session was born from its ULID', () => {
+    expect(bornAt(ulidAt(1_760_000_000_000))).toBe(1_760_000_000_000)
+    expect(bornAt('ses_01_a')).toBeNull()
+  })
+
+  it('a new child comes out of its mother; one that was there at mount does not move', () => {
+    const fresh = ulidAt(Date.now())
+    const props = renderSidebar({ sessions: [session('mother', 'Parser'), child('ses_01_a', 'Pruebas', 'mother')], activeId: 'mother' })
+    cleanup()
+    const view = render(<I18nProvider lang="es"><AppSidebar {...props} /></I18nProvider>)
+    expect(screen.getByText('Pruebas').closest('li')?.hasAttribute('data-entering')).toBe(false)
+    view.rerender(<I18nProvider lang="es"><AppSidebar {...props} sessions={[...props.sessions, child(fresh, 'Docs', 'mother')]} busySessionIds={new Set([fresh])} /></I18nProvider>)
+    expect(screen.getByText('Docs').closest('li')?.hasAttribute('data-entering')).toBe(true)
+    // Remounting with it already there replays nothing.
+    cleanup()
+    render(<I18nProvider lang="es"><AppSidebar {...props} sessions={[...props.sessions, child(fresh, 'Docs', 'mother')]} /></I18nProvider>)
+    expect(screen.getByText('Docs').closest('li')?.hasAttribute('data-entering')).toBe(false)
+  })
+
+  it('a child that finishes reads like any session: no check, its branch mark stays', () => {
+    const fresh = ulidAt(Date.now())
+    const props = renderSidebar({ sessions: [session('mother', 'Parser'), child(fresh, 'Docs', 'mother')], activeId: 'mother' })
+    cleanup()
+    const view = render(<I18nProvider lang="es"><AppSidebar {...props} busySessionIds={new Set([fresh])} /></I18nProvider>)
+    view.rerender(<I18nProvider lang="es"><AppSidebar {...props} busySessionIds={new Set()} /></I18nProvider>)
+    expect(screen.queryByRole('img', { name: 'Terminada' })).toBeNull()
+    expect(screen.getByText('Docs').closest('li')?.querySelector('[data-testid="session-child-icon"]')).toBeTruthy()
   })
 })

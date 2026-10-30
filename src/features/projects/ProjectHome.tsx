@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Archive, ArrowLeft, Copy, Folder, MessageSquare, Pin, Plus, ShieldCheck } from 'lucide-react'
+import { Archive, ArrowLeft, Copy, Eye, Folder, MessageSquare, Pin, Plus, ShieldAlert, ShieldCheck } from 'lucide-react'
 import type {
   ProjectIntelligence,
+  ProjectPatch,
   ProjectStatus,
   ProjectSummary,
   SessionSummary,
@@ -11,6 +12,14 @@ import { useI18n } from '../../i18n'
 import { copyText } from '../../lib/clipboard'
 import { ProjectBranch } from './ProjectBranch'
 import { ProjectFolders } from './ProjectFolders'
+import { FullAccessDialog } from '../permissions/FullAccessDialog'
+
+/** Los tres modos de las conversaciones nuevas del proyecto (permisos v4, P-5), con el icono de la barra del chat. */
+const PERMISSION_MODES = [
+  { mode: 'read-only', label: 'perm.readOnly', hint: 'perm.readOnlyHint', Icon: Eye },
+  { mode: 'workspace', label: 'perm.workspace', hint: 'perm.workspaceHint', Icon: ShieldCheck },
+  { mode: 'full-access', label: 'perm.fullAccess', hint: 'perm.fullAccessHint', Icon: ShieldAlert },
+] as const
 
 export interface ProjectHomeProps {
   root: string
@@ -26,7 +35,7 @@ export interface ProjectHomeProps {
   /** Carga perezosa: estado git (siempre) e inteligencia (solo si falta). */
   onEnsure: () => void
   onTrust: () => void
-  onUpdate: (changes: { name?: string; description?: string; pinned?: boolean }) => Promise<boolean>
+  onUpdate: (changes: ProjectPatch) => Promise<boolean>
   onArchive: () => void
 }
 
@@ -54,6 +63,7 @@ export default function ProjectHome({
   const { t } = useI18n()
   const [name, setName] = useState(project?.name ?? projectDisplayName(root))
   const [description, setDescription] = useState(project?.description ?? '')
+  const [confirmFull, setConfirmFull] = useState(false)
 
   useEffect(() => {
     setName(project?.name ?? projectDisplayName(root))
@@ -128,6 +138,41 @@ export default function ProjectHome({
               <Archive size={13} /> {t('project.archive')}
             </button>
           </div>
+          <div className="pt-1">
+            <p id="project-permission-label" className="text-[11px] font-semibold text-[var(--text-subtle)]">{t('project.permission')}</p>
+            <div role="radiogroup" aria-labelledby="project-permission-label" className="perm-picker" data-testid="project-permission" data-value={project.permission_profile ?? 'workspace'}>
+              {PERMISSION_MODES.map(({ mode, label, Icon }) => (
+                <button
+                  key={mode}
+                  type="button"
+                  role="radio"
+                  aria-checked={(project.permission_profile ?? 'workspace') === mode}
+                  className="perm-option"
+                  data-mode={mode}
+                  onClick={() => {
+                    if ((project.permission_profile ?? 'workspace') === mode) return
+                    if (mode === 'full-access') setConfirmFull(true)
+                    else void onUpdate({ permission_profile: mode === 'workspace' ? '' : mode })
+                  }}
+                >
+                  <Icon size={14} aria-hidden="true" />
+                  <span>{t(label)}</span>
+                </button>
+              ))}
+            </div>
+            <p className="perm-picker-hint" data-mode={project.permission_profile ?? 'workspace'}>
+              {t(PERMISSION_MODES.find((item) => item.mode === (project.permission_profile ?? 'workspace'))?.hint ?? 'perm.workspaceHint')}
+            </p>
+            <p className="mt-1 text-[11px] text-[var(--text-subtle)]">{t('project.permissionHint')}</p>
+          </div>
+          <FullAccessDialog
+            open={confirmFull}
+            onCancel={() => setConfirmFull(false)}
+            onConfirm={() => {
+              setConfirmFull(false)
+              void onUpdate({ permission_profile: 'full-access' })
+            }}
+          />
         </section>
       )}
 

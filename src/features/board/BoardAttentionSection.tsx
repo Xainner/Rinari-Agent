@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { CheckCheck, CircleHelp, Columns3, MessageSquareShare, ShieldAlert } from 'lucide-react'
+import { CheckCheck, CircleHelp, Columns3, ShieldAlert } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { useBoardStore } from '../../stores/board'
 import { selectAttentionCounts, useBoardStatusStore } from '../../stores/boardStatus'
@@ -47,8 +47,7 @@ export default function BoardAttentionSection({ labelFor, goBoard, onNavigate }:
       seen.add(pane.sessionId)
       const unread = unreadTurnIds(sessions[pane.sessionId])
       const needsYou = status.kind === 'needs_you'
-      const peers = (status.unreadPeerCount ?? 0) > 0
-      if (unread.length === 0 && !needsYou && !peers) continue
+      if (unread.length === 0 && !needsYou) continue
       out.push({ sessionId: pane.sessionId, label: labelFor(pane.sessionId), status, unreadTurns: unread })
     }
     return out
@@ -92,11 +91,6 @@ export default function BoardAttentionSection({ labelFor, goBoard, onNavigate }:
                 {row.unreadTurns.length > 0 && (
                   <span className="rounded-full bg-[color-mix(in_srgb,var(--success,#3fbf7f)_20%,transparent)] px-1.5 text-[10px] font-bold text-[var(--success,#3fbf7f)]" title={t('board.attention.results')}>
                     {row.unreadTurns.length}
-                  </span>
-                )}
-                {(row.status.unreadPeerCount ?? 0) > 0 && (
-                  <span className="inline-flex items-center gap-1 text-[var(--accent-2)]" title={t('board.attention.peerMessages')}>
-                    <MessageSquareShare size={12} aria-hidden="true" />{row.status.unreadPeerCount}
                   </span>
                 )}
               </button>

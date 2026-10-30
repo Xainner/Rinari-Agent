@@ -2,6 +2,55 @@
 // Source: docs/migration/desktop-command-contract.json (inventario vigente de comandos de Electron).
 
 export type DesktopCommand =
+  | "advanced_settings_get"
+  | "advanced_settings_set"
+  | "agency_agent_archive"
+  | "agency_agent_create"
+  | "agency_agent_delete"
+  | "agency_agent_draft"
+  | "agency_agent_get"
+  | "agency_agent_list"
+  | "agency_agent_memory_add"
+  | "agency_agent_memory_list"
+  | "agency_agent_unarchive"
+  | "agency_agent_update"
+  | "agency_errand_cancel"
+  | "agency_errand_create"
+  | "agency_errand_list"
+  | "agency_errand_retry"
+  | "agency_errand_review"
+  | "agency_flow_delete"
+  | "agency_flow_list"
+  | "agency_flow_run_cancel"
+  | "agency_flow_save"
+  | "agency_flow_start"
+  | "agency_office_list"
+  | "agency_office_post"
+  | "agency_resume"
+  | "agency_routine_create"
+  | "agency_routine_list"
+  | "agency_settings_get"
+  | "agency_settings_set"
+  | "agency_status"
+  | "agency_stop_all"
+  | "agency_team_archive"
+  | "agency_team_create"
+  | "agency_team_delete"
+  | "agency_team_duplicate"
+  | "agency_team_from_template"
+  | "agency_team_get"
+  | "agency_team_join"
+  | "agency_team_leave"
+  | "agency_team_list"
+  | "agency_team_memory_add"
+  | "agency_team_memory_list"
+  | "agency_team_overview"
+  | "agency_team_resume"
+  | "agency_team_stop"
+  | "agency_team_template"
+  | "agency_team_unarchive"
+  | "agency_team_update"
+  | "agency_templates_list"
   | "agent_config_get"
   | "agent_config_set"
   | "agent_list"
@@ -14,6 +63,7 @@ export type DesktopCommand =
   | "attachment_prepare_get"
   | "attachment_prepare_start"
   | "attachment_preview"
+  | "browser_external_open"
   | "browser_view_get"
   | "bundle_activate"
   | "bundle_active"
@@ -46,18 +96,39 @@ export type DesktopCommand =
   | "engine_shutdown"
   | "engine_start"
   | "engine_status"
+  | "execution_settings_get"
+  | "execution_settings_set"
   | "followup_accept"
   | "followup_dismiss"
   | "followup_list"
+  | "images_connector_test"
+  | "images_settings_get"
+  | "images_settings_set"
   | "initial_open_request"
+  | "mcp_auth_cancel"
+  | "mcp_auth_signout"
+  | "mcp_auth_start"
+  | "mcp_auth_status"
+  | "mcp_catalog_add"
+  | "mcp_catalog_list"
   | "mcp_create"
   | "mcp_get"
+  | "mcp_import_apply"
+  | "mcp_import_scan"
   | "mcp_list"
   | "mcp_probe"
+  | "mcp_project_offers_decide"
+  | "mcp_project_offers_list"
+  | "mcp_reconnect"
   | "mcp_remove"
   | "mcp_set_enabled"
   | "mcp_test"
+  | "mcp_tools_list"
+  | "mcp_tools_set"
+  | "mcp_tools_set_default"
   | "mcp_update"
+  | "memory_about_get"
+  | "memory_about_set"
   | "memory_candidate_resolve"
   | "memory_candidates_list"
   | "memory_export"
@@ -65,6 +136,7 @@ export type DesktopCommand =
   | "memory_get"
   | "memory_import"
   | "memory_list"
+  | "memory_move"
   | "memory_search"
   | "memory_settings_get"
   | "memory_settings_set"
@@ -74,23 +146,28 @@ export type DesktopCommand =
   | "model_discover"
   | "model_discovery_start"
   | "model_get"
+  | "model_hidden_list"
   | "model_list"
   | "model_refresh"
   | "model_remove"
   | "model_test"
+  | "model_unhide"
   | "model_use"
-  | "peer_group_get"
-  | "peer_group_revoke"
-  | "peer_group_set"
-  | "peer_message_cancel"
-  | "peer_message_forward"
-  | "peer_message_list"
+  | "models_roles_get"
+  | "models_roles_set"
+  | "network_settings_get"
+  | "network_settings_set"
+  | "network_test"
   | "permission_grants_list"
   | "permission_grants_revoke"
   | "plugin_diagnostics"
   | "plugin_list"
   | "plugin_set_enabled"
   | "policy_get"
+  | "process_orphan_stop"
+  | "process_orphans_list"
+  | "process_persistent_list"
+  | "process_persistent_stop"
   | "project_add"
   | "project_changes"
   | "project_create"
@@ -100,6 +177,8 @@ export type DesktopCommand =
   | "project_folder_remove"
   | "project_folders_validate"
   | "project_get"
+  | "project_init_start"
+  | "project_instructions_resolve"
   | "project_intelligence"
   | "project_list"
   | "project_list_recent"
@@ -140,23 +219,40 @@ export type DesktopCommand =
   | "queue_clear"
   | "queue_list"
   | "queue_resume"
+  | "repo_pr_create"
+  | "repo_status"
+  | "resume_settings_get"
+  | "resume_settings_set"
   | "schedule_create"
   | "schedule_delete"
   | "schedule_get"
   | "schedule_grant"
   | "schedule_list"
+  | "schedule_rehearse"
   | "schedule_run_now"
   | "schedule_runs"
   | "schedule_update"
   | "session_archive"
   | "session_checklist_clear"
+  | "session_checklist_complete"
   | "session_checklist_get"
+  | "session_child_discard"
+  | "session_child_integrate"
+  | "session_child_start"
+  | "session_children_isolation"
+  | "session_children_list"
   | "session_close"
   | "session_create"
   | "session_delete"
   | "session_events"
   | "session_fork"
   | "session_get"
+  | "session_goal_budget"
+  | "session_goal_clear"
+  | "session_goal_get"
+  | "session_goal_pause"
+  | "session_goal_resume"
+  | "session_goal_set"
   | "session_history"
   | "session_image_support"
   | "session_list"
@@ -170,7 +266,15 @@ export type DesktopCommand =
   | "session_pin"
   | "session_rename"
   | "session_restore"
+  | "session_resume_arm"
+  | "session_resume_cancel"
+  | "session_resume_get"
+  | "session_resume_now"
+  | "session_review_export"
+  | "session_summary"
   | "session_timeline"
+  | "session_tool_background"
+  | "session_tool_output"
   | "skill_disable"
   | "skill_duplicates_dismiss"
   | "skill_duplicates_list"
@@ -192,7 +296,9 @@ export type DesktopCommand =
   | "snapshot_get"
   | "soul_activate"
   | "soul_create"
+  | "soul_export"
   | "soul_get"
+  | "soul_import"
   | "soul_list"
   | "soul_remove"
   | "soul_settings_get"
@@ -204,6 +310,8 @@ export type DesktopCommand =
   | "speech_settings_set"
   | "speech_status"
   | "speech_transcribe"
+  | "storage_clean"
+  | "storage_usage"
   | "task_get"
   | "task_tree"
   | "tool_list"
@@ -214,17 +322,26 @@ export type DesktopCommand =
   | "turn_changes_undo_preview"
   | "turn_start"
   | "turn_steer"
+  | "turn_steer_cancel"
+  | "turn_steer_now"
+  | "turn_steer_promote"
+  | "turn_steer_update"
   | "usage_get"
+  | "usage_report"
+  | "usage_report_list"
   | "verification_latest"
   | "verification_plan"
+  | "vision_model_reset"
   | "vision_settings_get"
   | "vision_settings_set"
+  | "workspace_dir_list"
   | "workspace_file_open"
   | "workspace_file_read"
   | "workspace_file_resolve"
   | "workspace_file_search"
   | "workspace_file_unwatch"
   | "workspace_file_watch"
+  | "workspace_preview_list"
   | "workspace_preview_start"
   | "workspace_preview_status"
   | "workspace_preview_stop"
@@ -233,6 +350,55 @@ export type DesktopCommand =
   | "workspace_process_stop"
 
 export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
+  "advanced_settings_get",
+  "advanced_settings_set",
+  "agency_agent_archive",
+  "agency_agent_create",
+  "agency_agent_delete",
+  "agency_agent_draft",
+  "agency_agent_get",
+  "agency_agent_list",
+  "agency_agent_memory_add",
+  "agency_agent_memory_list",
+  "agency_agent_unarchive",
+  "agency_agent_update",
+  "agency_errand_cancel",
+  "agency_errand_create",
+  "agency_errand_list",
+  "agency_errand_retry",
+  "agency_errand_review",
+  "agency_flow_delete",
+  "agency_flow_list",
+  "agency_flow_run_cancel",
+  "agency_flow_save",
+  "agency_flow_start",
+  "agency_office_list",
+  "agency_office_post",
+  "agency_resume",
+  "agency_routine_create",
+  "agency_routine_list",
+  "agency_settings_get",
+  "agency_settings_set",
+  "agency_status",
+  "agency_stop_all",
+  "agency_team_archive",
+  "agency_team_create",
+  "agency_team_delete",
+  "agency_team_duplicate",
+  "agency_team_from_template",
+  "agency_team_get",
+  "agency_team_join",
+  "agency_team_leave",
+  "agency_team_list",
+  "agency_team_memory_add",
+  "agency_team_memory_list",
+  "agency_team_overview",
+  "agency_team_resume",
+  "agency_team_stop",
+  "agency_team_template",
+  "agency_team_unarchive",
+  "agency_team_update",
+  "agency_templates_list",
   "agent_config_get",
   "agent_config_set",
   "agent_list",
@@ -245,6 +411,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "attachment_prepare_get",
   "attachment_prepare_start",
   "attachment_preview",
+  "browser_external_open",
   "browser_view_get",
   "bundle_activate",
   "bundle_active",
@@ -277,18 +444,39 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "engine_shutdown",
   "engine_start",
   "engine_status",
+  "execution_settings_get",
+  "execution_settings_set",
   "followup_accept",
   "followup_dismiss",
   "followup_list",
+  "images_connector_test",
+  "images_settings_get",
+  "images_settings_set",
   "initial_open_request",
+  "mcp_auth_cancel",
+  "mcp_auth_signout",
+  "mcp_auth_start",
+  "mcp_auth_status",
+  "mcp_catalog_add",
+  "mcp_catalog_list",
   "mcp_create",
   "mcp_get",
+  "mcp_import_apply",
+  "mcp_import_scan",
   "mcp_list",
   "mcp_probe",
+  "mcp_project_offers_decide",
+  "mcp_project_offers_list",
+  "mcp_reconnect",
   "mcp_remove",
   "mcp_set_enabled",
   "mcp_test",
+  "mcp_tools_list",
+  "mcp_tools_set",
+  "mcp_tools_set_default",
   "mcp_update",
+  "memory_about_get",
+  "memory_about_set",
   "memory_candidate_resolve",
   "memory_candidates_list",
   "memory_export",
@@ -296,6 +484,7 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "memory_get",
   "memory_import",
   "memory_list",
+  "memory_move",
   "memory_search",
   "memory_settings_get",
   "memory_settings_set",
@@ -305,23 +494,28 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "model_discover",
   "model_discovery_start",
   "model_get",
+  "model_hidden_list",
   "model_list",
   "model_refresh",
   "model_remove",
   "model_test",
+  "model_unhide",
   "model_use",
-  "peer_group_get",
-  "peer_group_revoke",
-  "peer_group_set",
-  "peer_message_cancel",
-  "peer_message_forward",
-  "peer_message_list",
+  "models_roles_get",
+  "models_roles_set",
+  "network_settings_get",
+  "network_settings_set",
+  "network_test",
   "permission_grants_list",
   "permission_grants_revoke",
   "plugin_diagnostics",
   "plugin_list",
   "plugin_set_enabled",
   "policy_get",
+  "process_orphan_stop",
+  "process_orphans_list",
+  "process_persistent_list",
+  "process_persistent_stop",
   "project_add",
   "project_changes",
   "project_create",
@@ -331,6 +525,8 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "project_folder_remove",
   "project_folders_validate",
   "project_get",
+  "project_init_start",
+  "project_instructions_resolve",
   "project_intelligence",
   "project_list",
   "project_list_recent",
@@ -371,23 +567,40 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "queue_clear",
   "queue_list",
   "queue_resume",
+  "repo_pr_create",
+  "repo_status",
+  "resume_settings_get",
+  "resume_settings_set",
   "schedule_create",
   "schedule_delete",
   "schedule_get",
   "schedule_grant",
   "schedule_list",
+  "schedule_rehearse",
   "schedule_run_now",
   "schedule_runs",
   "schedule_update",
   "session_archive",
   "session_checklist_clear",
+  "session_checklist_complete",
   "session_checklist_get",
+  "session_child_discard",
+  "session_child_integrate",
+  "session_child_start",
+  "session_children_isolation",
+  "session_children_list",
   "session_close",
   "session_create",
   "session_delete",
   "session_events",
   "session_fork",
   "session_get",
+  "session_goal_budget",
+  "session_goal_clear",
+  "session_goal_get",
+  "session_goal_pause",
+  "session_goal_resume",
+  "session_goal_set",
   "session_history",
   "session_image_support",
   "session_list",
@@ -401,7 +614,15 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "session_pin",
   "session_rename",
   "session_restore",
+  "session_resume_arm",
+  "session_resume_cancel",
+  "session_resume_get",
+  "session_resume_now",
+  "session_review_export",
+  "session_summary",
   "session_timeline",
+  "session_tool_background",
+  "session_tool_output",
   "skill_disable",
   "skill_duplicates_dismiss",
   "skill_duplicates_list",
@@ -423,7 +644,9 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "snapshot_get",
   "soul_activate",
   "soul_create",
+  "soul_export",
   "soul_get",
+  "soul_import",
   "soul_list",
   "soul_remove",
   "soul_settings_get",
@@ -435,6 +658,8 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "speech_settings_set",
   "speech_status",
   "speech_transcribe",
+  "storage_clean",
+  "storage_usage",
   "task_get",
   "task_tree",
   "tool_list",
@@ -445,17 +670,26 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "turn_changes_undo_preview",
   "turn_start",
   "turn_steer",
+  "turn_steer_cancel",
+  "turn_steer_now",
+  "turn_steer_promote",
+  "turn_steer_update",
   "usage_get",
+  "usage_report",
+  "usage_report_list",
   "verification_latest",
   "verification_plan",
+  "vision_model_reset",
   "vision_settings_get",
   "vision_settings_set",
+  "workspace_dir_list",
   "workspace_file_open",
   "workspace_file_read",
   "workspace_file_resolve",
   "workspace_file_search",
   "workspace_file_unwatch",
   "workspace_file_watch",
+  "workspace_preview_list",
   "workspace_preview_start",
   "workspace_preview_status",
   "workspace_preview_stop",
@@ -484,6 +718,55 @@ export const HOST_ONLY_COMMANDS: readonly HostOnlyCommand[] = [
 export type EngineBackedCommand = Exclude<DesktopCommand, HostOnlyCommand>
 
 export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
+  "advanced_settings_get",
+  "advanced_settings_set",
+  "agency_agent_archive",
+  "agency_agent_create",
+  "agency_agent_delete",
+  "agency_agent_draft",
+  "agency_agent_get",
+  "agency_agent_list",
+  "agency_agent_memory_add",
+  "agency_agent_memory_list",
+  "agency_agent_unarchive",
+  "agency_agent_update",
+  "agency_errand_cancel",
+  "agency_errand_create",
+  "agency_errand_list",
+  "agency_errand_retry",
+  "agency_errand_review",
+  "agency_flow_delete",
+  "agency_flow_list",
+  "agency_flow_run_cancel",
+  "agency_flow_save",
+  "agency_flow_start",
+  "agency_office_list",
+  "agency_office_post",
+  "agency_resume",
+  "agency_routine_create",
+  "agency_routine_list",
+  "agency_settings_get",
+  "agency_settings_set",
+  "agency_status",
+  "agency_stop_all",
+  "agency_team_archive",
+  "agency_team_create",
+  "agency_team_delete",
+  "agency_team_duplicate",
+  "agency_team_from_template",
+  "agency_team_get",
+  "agency_team_join",
+  "agency_team_leave",
+  "agency_team_list",
+  "agency_team_memory_add",
+  "agency_team_memory_list",
+  "agency_team_overview",
+  "agency_team_resume",
+  "agency_team_stop",
+  "agency_team_template",
+  "agency_team_unarchive",
+  "agency_team_update",
+  "agency_templates_list",
   "agent_config_get",
   "agent_config_set",
   "agent_list",
@@ -496,6 +779,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "attachment_prepare_get",
   "attachment_prepare_start",
   "attachment_preview",
+  "browser_external_open",
   "browser_view_get",
   "bundle_activate",
   "bundle_active",
@@ -524,17 +808,38 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "documents_range_get",
   "documents_report_get",
   "documents_revisions_list",
+  "execution_settings_get",
+  "execution_settings_set",
   "followup_accept",
   "followup_dismiss",
   "followup_list",
+  "images_connector_test",
+  "images_settings_get",
+  "images_settings_set",
+  "mcp_auth_cancel",
+  "mcp_auth_signout",
+  "mcp_auth_start",
+  "mcp_auth_status",
+  "mcp_catalog_add",
+  "mcp_catalog_list",
   "mcp_create",
   "mcp_get",
+  "mcp_import_apply",
+  "mcp_import_scan",
   "mcp_list",
   "mcp_probe",
+  "mcp_project_offers_decide",
+  "mcp_project_offers_list",
+  "mcp_reconnect",
   "mcp_remove",
   "mcp_set_enabled",
   "mcp_test",
+  "mcp_tools_list",
+  "mcp_tools_set",
+  "mcp_tools_set_default",
   "mcp_update",
+  "memory_about_get",
+  "memory_about_set",
   "memory_candidate_resolve",
   "memory_candidates_list",
   "memory_export",
@@ -542,6 +847,7 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "memory_get",
   "memory_import",
   "memory_list",
+  "memory_move",
   "memory_search",
   "memory_settings_get",
   "memory_settings_set",
@@ -551,23 +857,28 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "model_discover",
   "model_discovery_start",
   "model_get",
+  "model_hidden_list",
   "model_list",
   "model_refresh",
   "model_remove",
   "model_test",
+  "model_unhide",
   "model_use",
-  "peer_group_get",
-  "peer_group_revoke",
-  "peer_group_set",
-  "peer_message_cancel",
-  "peer_message_forward",
-  "peer_message_list",
+  "models_roles_get",
+  "models_roles_set",
+  "network_settings_get",
+  "network_settings_set",
+  "network_test",
   "permission_grants_list",
   "permission_grants_revoke",
   "plugin_diagnostics",
   "plugin_list",
   "plugin_set_enabled",
   "policy_get",
+  "process_orphan_stop",
+  "process_orphans_list",
+  "process_persistent_list",
+  "process_persistent_stop",
   "project_add",
   "project_changes",
   "project_create",
@@ -577,6 +888,8 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "project_folder_remove",
   "project_folders_validate",
   "project_get",
+  "project_init_start",
+  "project_instructions_resolve",
   "project_intelligence",
   "project_list",
   "project_list_recent",
@@ -617,23 +930,40 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "queue_clear",
   "queue_list",
   "queue_resume",
+  "repo_pr_create",
+  "repo_status",
+  "resume_settings_get",
+  "resume_settings_set",
   "schedule_create",
   "schedule_delete",
   "schedule_get",
   "schedule_grant",
   "schedule_list",
+  "schedule_rehearse",
   "schedule_run_now",
   "schedule_runs",
   "schedule_update",
   "session_archive",
   "session_checklist_clear",
+  "session_checklist_complete",
   "session_checklist_get",
+  "session_child_discard",
+  "session_child_integrate",
+  "session_child_start",
+  "session_children_isolation",
+  "session_children_list",
   "session_close",
   "session_create",
   "session_delete",
   "session_events",
   "session_fork",
   "session_get",
+  "session_goal_budget",
+  "session_goal_clear",
+  "session_goal_get",
+  "session_goal_pause",
+  "session_goal_resume",
+  "session_goal_set",
   "session_history",
   "session_image_support",
   "session_list",
@@ -647,7 +977,15 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "session_pin",
   "session_rename",
   "session_restore",
+  "session_resume_arm",
+  "session_resume_cancel",
+  "session_resume_get",
+  "session_resume_now",
+  "session_review_export",
+  "session_summary",
   "session_timeline",
+  "session_tool_background",
+  "session_tool_output",
   "skill_disable",
   "skill_duplicates_dismiss",
   "skill_duplicates_list",
@@ -669,7 +1007,9 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "snapshot_get",
   "soul_activate",
   "soul_create",
+  "soul_export",
   "soul_get",
+  "soul_import",
   "soul_list",
   "soul_remove",
   "soul_settings_get",
@@ -681,6 +1021,8 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "speech_settings_set",
   "speech_status",
   "speech_transcribe",
+  "storage_clean",
+  "storage_usage",
   "task_get",
   "task_tree",
   "tool_list",
@@ -691,16 +1033,25 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "turn_changes_undo_preview",
   "turn_start",
   "turn_steer",
+  "turn_steer_cancel",
+  "turn_steer_now",
+  "turn_steer_promote",
+  "turn_steer_update",
   "usage_get",
+  "usage_report",
+  "usage_report_list",
   "verification_latest",
   "verification_plan",
+  "vision_model_reset",
   "vision_settings_get",
   "vision_settings_set",
+  "workspace_dir_list",
   "workspace_file_read",
   "workspace_file_resolve",
   "workspace_file_search",
   "workspace_file_unwatch",
   "workspace_file_watch",
+  "workspace_preview_list",
   "workspace_preview_start",
   "workspace_preview_status",
   "workspace_preview_stop",

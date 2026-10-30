@@ -8,6 +8,10 @@
  * los generados en lugar de declararlos.
  */
 
+/** Dónde aplica un recuerdo (#75). */
+export type MemoryPlace = 'general' | 'profile' | 'project' | 'chat' | 'agent' | 'team'
+export const MEMORY_PLACES: readonly MemoryPlace[] = ['general', 'profile', 'project', 'chat']
+
 /** Qué hace Rinari con lo que aprende sin que se lo pidas. */
 export type LearnedFactsMode = 'ask' | 'auto'
 
@@ -27,7 +31,16 @@ export interface MemoryRecord {
   text: string
   kind: MemoryKind
   scope: string
+  /** Dónde aplica (#75): general, un perfil, un proyecto o un chat. */
+  place?: MemoryPlace
+  place_ref?: string | null
+  /** El nombre de ese perfil, proyecto o chat. */
+  place_label?: string | null
   provenance?: string | null
+  /** La conversación de la que salió (#75); `exists` falso si ya se borró. */
+  origin?: { session_id: string; title?: string | null; exists: boolean } | null
+  /** La última vez que entró a un prompt; nula si nunca (#75). */
+  last_used_at?: string | null
   created_at?: string | null
   updated_at?: string | null
   /** Concurrencia optimista: `memory.update`/`memory.forget` la exigen. */
@@ -74,6 +87,8 @@ export interface MemoryCandidate {
   text: string
   kind: MemoryKind
   scope?: string
+  place?: MemoryPlace | null
+  project_root?: string | null
   reason?: string | null
   sensitive?: boolean
   status: string
@@ -129,4 +144,4 @@ export function candidateStatus(value: unknown): CandidateStatus {
 }
 
 /** Orden y nombres de los filtros por tipo en Ajustes. */
-export const MEMORY_KINDS = ['environment', 'workflow', 'preference', 'fact'] as const
+export const MEMORY_KINDS = ['environment', 'workflow', 'preference', 'fact', 'person', 'resource', 'decision'] as const

@@ -1,26 +1,21 @@
-import { memo, useMemo, useRef } from 'react'
+import { memo, useMemo } from 'react'
 import {
   ArrowLeftRight,
-  CheckCheck,
   ChevronsLeft,
   CircleHelp,
   ExternalLink,
   GitBranch,
   LoaderCircle,
-  MessageSquareShare,
   MoreHorizontal,
   PanelRight,
   ShieldAlert,
-  SlidersHorizontal,
   X,
 } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu'
@@ -34,6 +29,7 @@ import { rinariStateForTurn } from '../rinari/turnState'
 import { activityState, turnIsActive } from '../activity/activityPresentation'
 import type { TurnTimeline } from '../activity/types'
 import { TitleSwap } from '../../components/TitleSwap'
+import { pendingLabel } from './paneDigest'
 
 /** Expresión de Rinari en la cabecera del panel, según su estado real. */
 const STATUS_FACE: Record<PaneStatusKind, RinariState> = {
@@ -86,33 +82,19 @@ export interface PaneHeaderProps {
   canMoveLeft: boolean
   canMoveRight: boolean
   onToggleWorkspace: () => void
-  /** Enfoca el Composer del panel: es el único lugar donde se editan modelo,
-   * modo, razonamiento y permisos de la siguiente petición. */
-  onConfigureComposer: () => void
   onOpenSingle: () => void
   onMoveLeft: () => void
   onMoveRight: () => void
   onRemove: () => void
-  onRemoveAndClose: () => void
   onCollapse: () => void
-  /** Mensajería entre paneles; `undefined` cuando el Engine no la anuncia. */
-  peers?: {
-    boardEnabled: boolean
-    receive: boolean
-    send: boolean
-    onReceiveChange: (value: boolean) => void
-    onSendChange: (value: boolean) => void
-    onForward: () => void
-    canForward: boolean
-  }
 }
 
 /**
- * Header local de un panel: identidad del proyecto/chat, rama, estado, no
- * leídos, peer, colapsar, dock y menú de ciclo de vida. No edita modelo,
- * modo, razonamiento ni permisos: eso pertenece al Composer de la sesión
- * («Configurar siguiente mensaje» lo enfoca). Es más compacto que la barra
- * superior y nunca la sustituye.
+ * Header local de un panel: la cara de Rinari (su estado), identidad del
+ * proyecto/chat, rama, no leídos, plegar, panel lateral y un menú corto
+ * (vista única, mover, quitar del board). No edita modelo, modo,
+ * razonamiento ni permisos: eso pertenece al Composer de la sesión. Es más
+ * compacto que la barra superior y nunca la sustituye.
  */
 function PaneHeader({
   session,
@@ -122,36 +104,19 @@ function PaneHeader({
   canMoveLeft,
   canMoveRight,
   onToggleWorkspace,
-  onConfigureComposer,
   onOpenSingle,
   onMoveLeft,
   onMoveRight,
   onRemove,
-  onRemoveAndClose,
   onCollapse,
-  peers,
 }: PaneHeaderProps) {
   const { t } = useI18n()
-  const { record, project, projectRoot, gitStatus, gitError, busy, approvals, pendingQuestions, status } = session
-  // El menú atrapa el foco mientras está abierto y lo devuelve al disparador
-  // al cerrarse; «Configurar siguiente mensaje» se ejecuta en ese cierre, ya
-  // sin trampa, y cede el foco al Composer en lugar de al botón.
-  const configureOnClose = useRef(false)
+  const { record, project, projectRoot, gitError, busy, approvals, pendingQuestions, status } = session
   const statusLabel = t(STATUS_LABEL_KEY[status.kind])
   const face = useMemo(() => paneFace(status.kind, session.timelines), [status.kind, session.timelines])
   const title = record?.title || t('sidebar.newChat')
   const projectName = project?.name ?? projectRoot
-  const git = gitStatus?.status.available ? gitStatus.status : null
   const interventions = approvals.length + pendingQuestions
-  const peerState = !peers ? null
-    : !peers.boardEnabled ? 'off'
-      : peers.receive && peers.send ? 'on'
-        : peers.receive ? 'receiveOnly'
-          : peers.send ? 'sendOnly' : 'off'
-  const peerLabel = peerState === 'on' ? t('board.peers.enabled')
-    : peerState === 'receiveOnly' ? t('board.peers.receiveOnly')
-      : peerState === 'sendOnly' ? t('board.peers.sendOnly')
-        : peers && !peers.boardEnabled ? t('board.peers.disabledBoard') : t('board.peers.off')
 
   return (
     <header className={cn('pane-header', focused && 'is-focused')} data-testid="pane-header">
@@ -165,11 +130,7 @@ function PaneHeader({
           >
             <GitBranch size={11} aria-hidden="true" />
             <span className="truncate">{projectDisplayName(projectName)}</span>
-            {gitError ? (
-              <span className="text-[var(--warning)]">· {t('project.gitMissing')}</span>
-            ) : git?.branch ? (
-              <span className="font-mono text-[var(--text-subtle)]">· {git.branch}{git.dirty ? ` · ${git.files.length}` : ''}</span>
-            ) : null}
+            {gitError && <span className="text-[var(--warning)]">· {t('project.gitMissing')}</span>}
           </span>
         )}
         {sharedRoot && (
@@ -182,7 +143,6 @@ function PaneHeader({
           className="pane-header-status"
           title={status.error ?? (status.stopReason?.message || statusLabel)}
         >
-          <span className="pane-header-status-dot" aria-hidden="true" />
           {statusLabel}
         </span>
         {status.unreadResultCount > 0 && (
@@ -203,21 +163,9 @@ function PaneHeader({
           </span>
         )}
         {interventions > 0 && (
-          <span className="pane-header-badge" role="status" aria-label={t('board.pane.pending', { n: interventions })} title={t('board.pane.pending', { n: interventions })}>
+          <span className="pane-header-badge" role="status" aria-label={pendingLabel(t, interventions)} title={pendingLabel(t, interventions)}>
             {approvals.length > 0 ? <ShieldAlert size={12} aria-hidden="true" /> : <CircleHelp size={12} aria-hidden="true" />}
             {interventions}
-          </span>
-        )}
-        {peers && (
-          <span
-            role="status"
-            data-testid="pane-peer-state"
-            data-state={peerState ?? 'off'}
-            aria-label={peerLabel}
-            title={peerLabel}
-            className={cn('pane-header-peer', peerState === 'on' && 'is-on', peerState === 'off' && 'is-off')}
-          >
-            <MessageSquareShare size={13} aria-hidden="true" />
           </span>
         )}
         <button
@@ -245,58 +193,13 @@ function PaneHeader({
               <MoreHorizontal size={15} />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            className="w-56"
-            onCloseAutoFocus={(event) => {
-              if (!configureOnClose.current) return
-              configureOnClose.current = false
-              event.preventDefault()
-              onConfigureComposer()
-            }}
-          >
-            <DropdownMenuItem
-              disabled={!record}
-              onSelect={() => {
-                configureOnClose.current = true
-              }}
-            >
-              <SlidersHorizontal size={13} /> {t('board.pane.configureComposer')}
-            </DropdownMenuItem>
+          <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuItem onSelect={onOpenSingle}><ExternalLink size={13} /> {t('board.pane.openSingle')}</DropdownMenuItem>
-            <DropdownMenuItem disabled={status.unreadResultCount === 0} onSelect={session.markAllSeen}><CheckCheck size={13} /> {t('board.pane.markRead')}</DropdownMenuItem>
-            <DropdownMenuItem onSelect={onToggleWorkspace}><PanelRight size={13} /> {t('board.pane.toggleWorkspace')}</DropdownMenuItem>
-            {peers && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel className="text-[11px] font-normal text-[var(--text-subtle)]">{t('board.peers.menu')}</DropdownMenuLabel>
-                <DropdownMenuCheckboxItem
-                  checked={peers.receive}
-                  disabled={!peers.boardEnabled}
-                  onCheckedChange={(value) => peers.onReceiveChange(value === true)}
-                >
-                  {t('board.peers.receive')}
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem
-                  checked={peers.send}
-                  disabled={!peers.boardEnabled}
-                  onCheckedChange={(value) => peers.onSendChange(value === true)}
-                >
-                  {t('board.peers.send')}
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuItem disabled={!peers.canForward} onSelect={peers.onForward}>
-                  <MessageSquareShare size={13} /> {t('board.peers.sendTo')}
-                </DropdownMenuItem>
-              </>
-            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem disabled={!canMoveLeft} onSelect={onMoveLeft}><ArrowLeftRight size={13} /> {t('board.pane.moveLeft')}</DropdownMenuItem>
             <DropdownMenuItem disabled={!canMoveRight} onSelect={onMoveRight}><ArrowLeftRight size={13} /> {t('board.pane.moveRight')}</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={onRemove}><X size={13} /> {t('board.pane.remove')}</DropdownMenuItem>
-            <DropdownMenuItem onSelect={onRemoveAndClose} className="text-[var(--danger)] focus:text-[var(--danger)]">
-              {t('board.pane.removeAndClose')}
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

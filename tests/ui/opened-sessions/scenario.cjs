@@ -50,6 +50,8 @@ scenario(async () => {
     return result ? Math.round(opened.getBoundingClientRect().top - result.getBoundingClientRect().bottom) : null
   })()`)
   assert.ok(gap !== null && gap >= 8, `the row is apart from the result (${gap} px)`)
+  // The meta line comes when the turn ends, a moment after its last words.
+  await wait(`Boolean(document.querySelector('${OPENED}')?.nextElementSibling)`)
   const below = await evaluate(`(() => {
     const opened = document.querySelector('${OPENED}')
     const meta = opened.nextElementSibling

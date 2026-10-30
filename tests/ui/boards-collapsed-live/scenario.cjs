@@ -29,8 +29,11 @@ scenario(async () => {
     focusedPaneId: 'pane_0',
   })
   await wait(`document.querySelector('${column}')?.dataset.variant === 'column'`)
-  const width = await evaluate(`Math.round(document.querySelector('${column}').getBoundingClientRect().width)`)
-  assert(Math.abs(width - 200) <= 2, 'the collapsed pane is a ~200 px column: ' + width)
+  // The variant switches first and the width follows: measure once it has settled.
+  const width = () => evaluate(`Math.round(document.querySelector('${column}').getBoundingClientRect().width)`)
+  await until(async () => Math.abs(await width() - 200) <= 2, 'the collapsed pane is a ~200 px column', 5_000).catch(() => {})
+  const settled = await width()
+  assert(Math.abs(settled - 200) <= 2, 'the collapsed pane is a ~200 px column: ' + settled)
 
   await command('turn_start', { session_id: ids[1], message: 'Migra los pagos a la versión nueva' })
   await step('first checklist')

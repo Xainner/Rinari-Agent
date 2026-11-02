@@ -998,7 +998,7 @@ export interface McpImportCandidate {
   previous_decision?: 'accepted' | 'rejected' | null;
 }
 
-export interface McpImportSource { source: string; label?: string; path: string; found: boolean; servers: number; error?: string | null }
+export interface McpImportSource { source: string; label?: string; /** Which install or file of the app it is, when it has several. */ variant?: string | null; path: string; found: boolean; servers: number; error?: string | null }
 
 export interface McpImportResult {
   created: Array<{ key: string; server: McpServer }>;

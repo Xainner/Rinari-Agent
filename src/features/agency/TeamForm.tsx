@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Archive, Copy, Crown, Plug, Target, UsersRound, Wallet } from 'lucide-react'
+import { Archive, Copy, Crown, FolderOpen, Plug, Target, UsersRound, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
+import { inputClass } from '../../lib/ui'
 import { cn } from '../../lib/utils'
-import { commandMessage, engineApi, type McpServer } from '../../services/engine'
+import { commandMessage, engineApi, type McpServer, type ProjectSummary } from '../../services/engine'
 import AgentAvatar from './AgentAvatar'
 import { BudgetFields, ConnectorTiles, EditorHero, EditorPage, EditorSection } from './AgencyEditor'
 import { useConnectorDirectory } from './useConnectorDirectory'
@@ -43,13 +44,23 @@ export default function TeamForm({ agents, team, onSaved, onCancel, onArchived }
   const [connectors, setConnectors] = useState<string[]>(team?.connectors ?? [])
   const [usd, setUsd] = useState(team?.budget.daily_usd ? String(team.budget.daily_usd) : '')
   const [tokens, setTokens] = useState(team?.budget.daily_tokens ? String(team.budget.daily_tokens) : '')
+  const [projectId, setProjectId] = useState<string | null>(team?.project_id ?? null)
+  const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [servers, setServers] = useState<McpServer[]>([])
   const [saving, setSaving] = useState(false)
   const [copyName, setCopyName] = useState<string | null>(null)
 
   useEffect(() => {
     engineApi.mcpList().then((result) => setServers(result.servers)).catch(() => {})
+    engineApi.projectList().then((result) => setProjects(result.projects)).catch(() => {})
   }, [])
+
+  // Solo proyectos vivos del perfil del equipo: el Engine rechaza los demás.
+  const teamProjects = useMemo(
+    () => projects.filter((project) => !project.archived && (!team || (project.rinari_profile_id ?? 'default') === team.rinari_profile_id)),
+    [projects, team],
+  )
+  const projectGone = projectId !== null && projects.length > 0 && !teamProjects.some((project) => project.id === projectId)
 
   // Los conectores de todos (globales, sin dueño) y las cuentas de este equipo.
   const available = useMemo(() => {
@@ -92,6 +103,7 @@ export default function TeamForm({ agents, team, onSaved, onCancel, onArchived }
           chief_agent_id: effectiveChief,
           connectors,
           budget: budget(),
+          ...(projectId ? { project_id: projectId } : {}),
         }
         const result = await engineApi.agencyCreateTeam(input)
         toast.success(t('agency.team.created', { name: result.team.name }))
@@ -106,6 +118,8 @@ export default function TeamForm({ agents, team, onSaved, onCancel, onArchived }
         chief_agent_id: effectiveChief,
         connectors,
         budget: budget(),
+        // Solo si cambió: un proyecto ya archivado no impide guardar lo demás.
+        ...(projectId !== (team.project_id ?? null) ? { project_id: projectId } : {}),
       })
       let saved = result.team
       for (const agentId of team.members.filter((id) => !members.includes(id))) saved = (await engineApi.agencyLeaveTeam(team.id, agentId)).team
@@ -271,6 +285,22 @@ export default function TeamForm({ agents, team, onSaved, onCancel, onArchived }
           </div>
         )}
         <p className="field-hint mt-0">{t('agency.team.chiefHint')}</p>
+      </EditorSection>
+
+      <EditorSection icon={FolderOpen} title={t('agency.team.project')} hint={t('agency.team.projectHint')}>
+        <select
+          className={inputClass}
+          value={projectId ?? ''}
+          aria-label={t('agency.team.project')}
+          onChange={(event) => setProjectId(event.target.value || null)}
+          data-testid="agency-team-project"
+        >
+          <option value="">{t('agency.team.projectNone')}</option>
+          {projectGone && <option value={projectId!}>{t('agency.team.projectMissing')}</option>}
+          {teamProjects.map((project) => (
+            <option key={project.id} value={project.id} title={project.canonical_root}>{project.name}</option>
+          ))}
+        </select>
       </EditorSection>
 
       <EditorSection icon={Plug} title={t('agency.form.connectors')} hint={t('agency.team.connectorsHint')}>

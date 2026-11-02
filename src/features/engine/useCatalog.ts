@@ -43,6 +43,11 @@ export function useCatalog() {
         }
       }
       if (event.event === 'model.discovery.failed') {
+        // A provider turned off (or removed) while its discovery was running
+        // is no catalog problem: its late failure is dropped.
+        const alias = typeof event.payload.provider === 'string' ? event.payload.provider : null
+        const known = alias ? providersRef.current.find((item) => item.alias === alias) : undefined
+        if (alias && (!known || known.enabled === false)) return
         const error = event.payload.error as { message?: string } | undefined
         setCatalogError(error?.message ?? translate(useUIStore.getState().lang, 'models.discoveryFailed'))
       }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { TriangleAlert } from 'lucide-react'
 import { useI18n } from '../../i18n'
-import { RinariAvatar } from '../rinari/RinariAvatar'
+import { TurnAvatar } from './TurnAvatar'
 import { rinariStateForTurn } from '../rinari/turnState'
 import { useChecklistStore } from '../checklist/checklistStore'
 import { activityState, turnDuration } from './activityPresentation'
@@ -37,7 +37,7 @@ export function TurnDoneHeader({ timeline, now, issues }: { timeline: TurnTimeli
   const { t } = useI18n()
   return (
     <span className="turn-done">
-      <RinariAvatar state={rinariStateForTurn(timeline.status)} size={38} />
+      <TurnAvatar sessionId={timeline.sessionId} state={rinariStateForTurn(timeline.status)} size={38} />
       <span className="turn-done-title"><ActivityHeader timeline={timeline} now={now} /></span>
       {issues > 0 && (
         <span className="r-chip turn-done-issues" data-tone="warning">
@@ -93,7 +93,7 @@ export default function TurnStatusCard({ timeline, now }: { timeline: TurnTimeli
   return (
     <div className="turn-status-wrap" data-entering={entering || undefined}>
       <div data-live-activity className="turn-status" data-working={working || undefined} title={`${title} · ${detail}`}>
-        <RinariAvatar state={rinariStateForTurn(state.kind)} size={38} />
+        <TurnAvatar sessionId={timeline.sessionId} state={rinariStateForTurn(state.kind)} size={38} />
         <div className="turn-status-body">
           <ActivityText active={working} role="status" aria-live="polite" className="turn-status-title">{title}</ActivityText>
           <div className="turn-status-detail">

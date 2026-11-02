@@ -396,6 +396,8 @@ function App() {
       id: `system:${key}:${bannerError}`,
       module: 'system',
       title: translate(lang, key, { detail: bannerError }),
+      titleKey: key,
+      titleParams: { detail: bannerError },
       tone: 'warning',
       target: session.sessionsError !== null ? undefined : { kind: 'providers' },
     })

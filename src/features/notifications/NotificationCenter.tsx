@@ -1,7 +1,7 @@
 import { BellRing, Building2, CalendarClock, CheckCheck, Library, TriangleAlert, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
-import { useI18n, type I18nKey } from '../../i18n'
+import { hasTranslation, useI18n, type I18nKey } from '../../i18n'
 import { art } from '../rinari/art'
 import { cn } from '../../lib/utils'
 import {
@@ -58,6 +58,7 @@ function ago(at: number, lang: string): string {
  */
 export default function NotificationCenter({ labelFor, projectFor, goBoard, onOpenTarget, disabled = false }: NotificationCenterProps) {
   const { t, lang } = useI18n()
+  const titleOf = (item: CenterNotification) => (item.titleKey && hasTranslation(item.titleKey) ? t(item.titleKey, item.titleParams) : item.title)
   const [open, setOpen] = useState(false)
   // Cada perfil ve sus avisos y los de toda la app (#13 de la auditoría de la Agency).
   const activeProfile = useProfileStore((state) => state.activeId)
@@ -138,14 +139,14 @@ export default function NotificationCenter({ labelFor, projectFor, goBoard, onOp
                       <button type="button" onClick={() => go(item)} className="flex min-w-0 flex-1 items-start gap-2 px-2 py-1.5 text-left">
                         <span className={cn('mt-1.5 size-1.5 shrink-0 rounded-full', item.read ? 'bg-transparent' : TONE_DOT[item.tone ?? 'info'])} aria-hidden="true" />
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-xs text-[var(--text)]">{item.title}</span>
+                          <span className="block truncate text-xs text-[var(--text)]">{titleOf(item)}</span>
                           {item.body && <span className="block truncate text-[11px] text-[var(--text-muted)]">{item.body}</span>}
                           <span className="block text-[10px] text-[var(--text-subtle)]">{ago(item.at, lang)}</span>
                         </span>
                       </button>
                       <button
                         type="button"
-                        aria-label={t('notifications.dismiss', { title: item.title })}
+                        aria-label={t('notifications.dismiss', { title: titleOf(item) })}
                         onClick={() => dismiss(item.id)}
                         className="mt-1 mr-1 rounded p-1 text-[var(--text-subtle)] opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-[var(--text)]"
                       >

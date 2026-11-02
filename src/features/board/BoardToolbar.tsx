@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
 import { useConfirm } from '../../components/ui/useConfirm'
 import { useBoardStore } from '../../stores/board'
+import { useProfilePanes } from './profilePanes'
 import { selectAttentionCounts, useBoardStatusStore } from '../../stores/boardStatus'
 import { cn } from '../../lib/utils'
 import {
@@ -37,11 +38,12 @@ export interface BoardToolbarProps {
  */
 function BoardToolbar({ onAddPane }: BoardToolbarProps) {
   const { t } = useI18n()
-  const paneCount = useBoardStore((state) => state.panes.length)
+  const panes = useProfilePanes()
+  const paneCount = panes.length
   const focusMode = useBoardStore((state) => state.focusMode)
   const fitToView = useBoardStore((state) => state.fitToView)
-  const allCollapsed = useBoardStore((state) => state.panes.length > 0 && state.panes.every((pane) => pane.collapsed))
-  const anyCollapsed = useBoardStore((state) => state.panes.some((pane) => pane.collapsed))
+  const allCollapsed = panes.length > 0 && panes.every((pane) => pane.collapsed)
+  const anyCollapsed = panes.some((pane) => pane.collapsed)
   const counts = useBoardStatusStore(selectAttentionCounts)
   const confirm = useConfirm()
 

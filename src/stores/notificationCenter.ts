@@ -28,6 +28,13 @@ export interface CenterNotification {
   id: string
   module: NotificationModule
   title: string
+  /**
+   * The app's own text, translated when shown: a notice saved in one
+   * language reads in the one the owner switches to. `title` stays as the
+   * fallback (an unknown key, or an older entry).
+   */
+  titleKey?: string
+  titleParams?: Record<string, string | number>
   body?: string
   /** ms epoch */
   at: number

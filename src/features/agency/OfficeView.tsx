@@ -9,6 +9,7 @@ import { ErrandCard, useTeamEvents } from './Board'
 import { PresentedFiles } from '../activity/PresentedFiles'
 import { FileFromContext } from '../files/FileWorkspace'
 import AgentAvatar from './AgentAvatar'
+import { OfficeApprovals } from './OfficeApprovals'
 import { openErrand } from './OfficePanels'
 import { useAgencyData } from './AgencyData'
 import { CHAIN_MAX_HOPS, chainReasonKey, chainResumeText } from './chainStop'
@@ -358,6 +359,7 @@ export default function OfficeView({ team, agents }: OfficeViewProps) {
             </button>
           </div>
         )}
+        <OfficeApprovals team={team} members={members} />
         <OfficeComposer team={team} members={members} onPosted={() => void reload()} />
     </div>
   )

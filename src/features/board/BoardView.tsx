@@ -6,6 +6,7 @@ import { ResizeHandle } from '../../components/ui/resize-handle'
 import { useDragResize } from '../../hooks/useDragResize'
 import { useEngineCommands, useEngineData } from '../engine/EngineContext'
 import { isSessionHidden } from '../engine/sessionVisibility'
+import { useProfilePanes } from './profilePanes'
 import { useUIStore } from '../../stores/ui'
 import {
   PANE_MAX_WIDTH,
@@ -88,7 +89,7 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
   const data = useEngineData()
   const goNormal = useUIStore((state) => state.goNormal)
   const goSettings = useUIStore((state) => state.goSettings)
-  const panes = useBoardStore((state) => state.panes)
+  const panes = useProfilePanes()
   const fitToView = useBoardStore((state) => state.fitToView)
   const focusedPaneId = useBoardStore((state) => state.focusedPaneId)
   const softLimit = useBoardStore((state) => state.softLimit)
@@ -193,10 +194,17 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
     setDrop(null)
     if (!sessionId) return
     event.preventDefault()
-    const target = dropAt(event.clientX)?.index ?? useBoardStore.getState().panes.length
-    const existing = useBoardStore.getState().panes.findIndex((pane) => pane.sessionId === sessionId)
+    const all = useBoardStore.getState().panes
+    // The drop index counts the panes on screen; the store also keeps other profiles' panes.
+    const visible = dropAt(event.clientX)?.index ?? panes.length
+    const before = panes[visible] ?? null
+    const after = panes.at(-1)
+    const target = before
+      ? all.findIndex((pane) => pane.paneId === before.paneId)
+      : after ? all.findIndex((pane) => pane.paneId === after.paneId) + 1 : all.length
+    const existing = all.findIndex((pane) => pane.sessionId === sessionId)
     if (existing >= 0) {
-      const pane = useBoardStore.getState().panes[existing]
+      const pane = all[existing]
       // Quitarlo de su sitio corre una posición lo que estaba detrás.
       useBoardStore.getState().movePane(pane.paneId, target > existing ? target - 1 : target)
       focusPane(pane.paneId)
@@ -204,7 +212,7 @@ export default function BoardView({ actionsRef }: { actionsRef?: MutableRefObjec
     }
     warnSoftLimit()
     addPane(sessionId, { focus: true, atIndex: target })
-  }, [addPane, dropAt, focusPane, warnSoftLimit])
+  }, [addPane, dropAt, focusPane, panes, warnSoftLimit])
 
   const openAddDialog = useCallback(() => setDialogOpen(true), [])
   const removeFocused = useCallback(() => {

@@ -4087,6 +4087,12 @@ button.memory-origin:hover { color: var(--text); text-decoration: underline; tex
 .agency-face-dot[data-tone='warning'] { background: var(--warning); }
 
 /* La Agency detenida (D-32): un aviso calmo sobre el composer, sin acento fuerte. */
+.agency-office-approvals { display: grid; gap: 6px; margin: 0 28px 8px; }
+.agency-office-approval { display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 8px; border: 1px solid color-mix(in srgb, var(--warning) 35%, transparent); border-radius: var(--r-md); background: color-mix(in srgb, var(--warning) 7%, var(--bg-subtle)); animation: rinari-rise 220ms var(--ease-out) both; }
+.agency-office-approval-who { display: flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--text); }
+.agency-office-approval-who svg { color: var(--warning); }
+.agency-office-approval-what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted); }
+.agency-office-approval-actions { display: flex; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .agency-halted-note { display: flex; align-items: flex-start; gap: 8px; margin: 0 28px 8px; padding: 8px 12px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--bg-subtle); font-size: 12.5px; line-height: 1.5; color: var(--text-muted); }
 .agency-halted-note svg { flex-shrink: 0; margin-top: 2px; color: var(--warning); }
 .agency-halted-note.is-chat { width: min(100% - 32px, 48rem); margin: 0 auto 8px; }

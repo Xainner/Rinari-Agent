@@ -22,6 +22,25 @@ import { isAgencySession, useAgencyStore } from '../../stores/agency'
 import { historyToMessages } from './history'
 import type { TimelineAction } from '../activity/turnTimelineReducer'
 import { isSessionHidden, partitionSessions } from './sessionVisibility'
+import { useTitleMotionStore } from '../../stores/titleMotion'
+
+/** The title each conversation was last renamed to by the Engine (`session.renamed`). */
+const renamedTitles = new Map<string, string>()
+useTitleMotionStore.subscribe((state) => {
+  for (const [id, entry] of Object.entries(state.renamed)) renamedTitles.set(id, entry.title)
+})
+
+/**
+ * A row as fresh as the renames already heard: a listing or a create reply
+ * taken before the automatic title still says «New conversation», and the bell
+ * and the sidebar kept that name (owner's demo, 2026-11-02).
+ */
+export function withKnownTitle(row: SessionSummary): SessionSummary {
+  const renamed = renamedTitles.get(row.id)
+  if (!renamed || row.title === renamed) return row
+  const untitled = !row.title || row.title === translate('es', 'sidebar.newChat') || row.title === translate('en', 'sidebar.newChat')
+  return untitled ? { ...row, title: renamed } : row
+}
 
 /**
  * The Engine lists 50 sessions unless asked for more, and the sidebar only
@@ -177,7 +196,8 @@ export function useSessionList(options: {
     setSessionsById((current) => {
       let changed = false
       const next = { ...current }
-      for (const row of rows) {
+      for (const raw of rows) {
+        const row = withKnownTitle(raw)
         if (next[row.id] !== row) {
           next[row.id] = row
           changed = true
@@ -186,6 +206,25 @@ export function useSessionList(options: {
       return changed ? next : current
     })
   }, [])
+
+  // The automatic title reaches the row as soon as the Engine announces it,
+  // not only on the next listing.
+  useEffect(() => useTitleMotionStore.subscribe((state, previous) => {
+    const fresh = Object.entries(state.renamed).filter(([id, entry]) => previous.renamed[id] !== entry)
+    if (fresh.length === 0) return
+    setSessionsById((current) => {
+      let changed = false
+      const next = { ...current }
+      for (const [id, entry] of fresh) {
+        const row = next[id]
+        if (row && row.title !== entry.title) {
+          next[id] = { ...row, title: entry.title }
+          changed = true
+        }
+      }
+      return changed ? next : current
+    })
+  }), [])
 
   const forgetMissing = useCallback((rows: SessionSummary[], seq: number) => {
     const present = new Set(rows.map((row) => row.id))

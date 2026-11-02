@@ -3,9 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const toast = vi.hoisted(() => Object.assign(vi.fn(), { error: vi.fn() }))
 vi.mock('sonner', () => ({ toast }))
 const projectInitStart = vi.hoisted(() => vi.fn(async () => ({ status: 'started', turn_id: 't1', session_id: 's1' })))
+const goalSet = vi.hoisted(() => vi.fn(async (sessionId: string, objective: string) => ({ goal: { session_id: sessionId, objective, state: 'active' } })))
 vi.mock('../../services/engine', async (original) => ({
   ...(await original<typeof import('../../services/engine')>()),
-  engineApi: { projectInitStart },
+  engineApi: { projectInitStart, goalSet },
 }))
 
 import { runUiCommand, type UiCommandDeps } from './slashUi'
@@ -47,5 +48,29 @@ describe('/init (#81)', () => {
     await runUiCommand('init', '', deps({ sessionId: '', ensureSession: async () => null }))
     expect(projectInitStart).not.toHaveBeenCalled()
     expect(toast).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('/goal in a new conversation', () => {
+  beforeEach(() => {
+    goalSet.mockClear()
+    toast.mockClear()
+  })
+
+  it('an objective creates the conversation first, then the goal', async () => {
+    const ensureSession = vi.fn(async () => 's_new')
+    expect(await runUiCommand('goal', 'ship the menu', deps({ sessionId: '', ensureSession }))).toBe(true)
+    expect(goalSet).toHaveBeenCalledWith('s_new', 'ship the menu')
+  })
+
+  it('when the conversation cannot be created it says so and gives the text back', async () => {
+    expect(await runUiCommand('goal', 'ship the menu', deps({ sessionId: '', ensureSession: async () => null }))).toBe(false)
+    expect(goalSet).not.toHaveBeenCalled()
+    expect(toast).toHaveBeenCalledTimes(1)
+  })
+
+  it('a failed command gives its text back', async () => {
+    goalSet.mockRejectedValueOnce(new Error('boom'))
+    expect(await runUiCommand('goal', 'ship the menu', deps())).toBe(false)
   })
 })

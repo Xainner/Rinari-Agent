@@ -3,6 +3,7 @@ import * as PopoverPrimitive from '@radix-ui/react-popover'
 import { ArrowRight, CircleHelp, ShieldAlert } from 'lucide-react'
 import { RinariAvatar, type RinariState } from '../rinari/RinariAvatar'
 import { useI18n } from '../../i18n'
+import { plainExcerpt } from '../../services/notificationText'
 import type { PaneSession } from './usePaneSession'
 import type { PaneDigest } from './paneDigest'
 
@@ -117,7 +118,7 @@ export function PanePeek({
           )}
           <NeedsYouActions session={session} onAnswer={() => { peek.hide(); onExpand() }} />
           <div className="pane-peek-response">
-            {digest.lastResponse ? <p>{digest.lastResponse}</p> : <p className="pane-peek-empty">{t('board.peek.noResponse')}</p>}
+            {digest.lastResponse ? <p>{plainExcerpt(digest.lastResponse, 600)}</p> : <p className="pane-peek-empty">{t('board.peek.noResponse')}</p>}
           </div>
           <button type="button" className="pane-peek-all" onClick={() => { peek.hide(); onExpand() }}>{t('board.peek.seeAll')} <ArrowRight size={12} aria-hidden="true" /></button>
         </PopoverPrimitive.Content>

@@ -426,8 +426,8 @@ function OfficeComposer({ team, members, onPosted }: { team: AgencyTeam; members
     const message = text.trim()
     // A double Enter posted twice, and each @mention starts a paid turn.
     if (!message || sendingRef.current) return
-    // «/recado …» abre el recado con ese título en el panel lateral en vez de escribir en la oficina.
-    const slash = /^\/recado\b\s*(.*)$/isu.exec(message)
+    // «/recado …» (o «/errand …») abre el recado con ese título en el panel lateral en vez de escribir en la oficina.
+    const slash = /^\/(?:recado|errand)\b\s*(.*)$/isu.exec(message)
     if (slash) {
       openErrand(team.id, slash[1].trim())
       setText('')

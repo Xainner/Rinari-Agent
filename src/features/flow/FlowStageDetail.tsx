@@ -95,7 +95,7 @@ export default function FlowStageDetail({ stage, models, onClose, onGoToTurn, on
                 >
                   {rowOnBoard ? <Columns3 size={12} aria-hidden="true" /> : <ExternalLink size={12} aria-hidden="true" />}
                   <span className="truncate">{row.title}</span>
-                  <span className="flow-detail-count">{t('flow.stage.turns', { n: row.turns })}</span>
+                  <span className="flow-detail-count">{t(row.turns === 1 ? 'flow.stage.turnsOne' : 'flow.stage.turns', { n: row.turns })}</span>
                 </button>
               </li>
             )

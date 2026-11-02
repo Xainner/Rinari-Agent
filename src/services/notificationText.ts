@@ -28,7 +28,9 @@ export function plainExcerpt(markdown: string, max = BODY_MAX): string {
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
     .replace(/`([^`]*)`/g, '$1')
     .replace(/^\s{0,3}(#{1,6}|>|[-*+]|\d+[.)])\s+/gm, '')
-    .replace(/(\*\*|__|\*|_|~~)(\S[\s\S]*?\S|\S)\1/g, '$2')
+    .replace(/(\*\*|\*|~~)(\S[\s\S]*?\S|\S)\1/g, '$2')
+    // `_` only marks emphasis at word edges: snake_case names keep theirs.
+    .replace(/(^|[^\w])(__|_)(\S[\s\S]*?\S|\S)\2(?![\w])/g, '$1$3')
     .replace(/\|/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()

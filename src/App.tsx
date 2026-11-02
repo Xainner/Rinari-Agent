@@ -16,6 +16,7 @@ import { useConfirm } from './components/ui/useConfirm'
 import { applyUpdate, checkForUpdates, downloadUpdate, onUpdateState, reportsUpdateError } from './services/updates'
 import { useUIStore } from './stores/ui'
 import { useBoardStore } from './stores/board'
+import { useConversationDraftStore } from './stores/conversationDraft'
 import { useEngineSession } from './features/engine/useEngineSession'
 import { EngineProvider } from './features/engine/EngineContext'
 import { useSessionHasContent } from './features/engine/sessionSelectors'
@@ -726,8 +727,12 @@ function App() {
         case 'new-chat': {
           // Contextual: en Boards abre "Añadir panel" (lo cablea el store del board).
           if (resolveContextualAction('new', { view }) === 'add-pane') { boardActionsRef.current.addPane(); break }
-          // Un borrador: la sesión se crea con el primer mensaje.
-          session.openDraft(); goChat(); break
+          // Un borrador: la sesión se crea con el primer mensaje. Dentro de un
+          // proyecto (su conversación o su borrador) la nueva es de ese proyecto.
+          const projectId = activeRecord
+            ? activeRecord.project_id ?? null
+            : useConversationDraftStore.getState().normal?.projectId ?? null
+          session.openDraft(projectId); goChat(); break
         }
         case 'view-normal': goNormal(); break
         case 'view-boards': goBoard(); break

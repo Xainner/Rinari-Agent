@@ -28,10 +28,19 @@ export interface UiCommandDeps {
  * `/goal <objetivo>` lo crea (o reemplaza) y arranca; `/goal pause | resume |
  * clear` lo maneja; `/goal` solo dice cómo va (plan 0.4.0 #23).
  */
-async function goal(sessionId: string, text: string, confirm?: UiCommandDeps['confirm']): Promise<boolean> {
+async function goal(deps: UiCommandDeps, text: string): Promise<boolean> {
   const lang = useUIStore.getState().lang
   const store = useGoalStore.getState()
   const word = text.trim().toLowerCase()
+  const setting = Boolean(word) && !['pause', 'resume', 'clear'].includes(word)
+  // A new conversation has no session yet: an objective creates it, the rest
+  // has nothing to act on.
+  const sessionId = deps.sessionId || (setting ? (await deps.ensureSession?.()) || '' : '')
+  if (!sessionId) {
+    toast(translate(lang, setting ? 'init.needsConversation' : 'goal.none'))
+    return !setting
+  }
+  const confirm = deps.confirm
   const apply = (result: { goal: Parameters<typeof store.apply>[1] }) => store.apply(sessionId, result.goal)
   if (!word) {
     const current = (await engineApi.sessionGoal(sessionId)).goal
@@ -133,7 +142,7 @@ export async function runUiCommand(name: string, text: string, deps: UiCommandDe
         await deps.rename(deps.sessionId, text)
         return true
       case 'goal':
-        return await goal(deps.sessionId, text, deps.confirm)
+        return await goal(deps, text)
       case 'init':
         return await init(deps)
       case 'child':
@@ -145,6 +154,7 @@ export async function runUiCommand(name: string, text: string, deps: UiCommandDe
     }
   } catch (err) {
     toast.error(commandMessage(err))
-    return true
+    // The command did not happen: its text goes back to the composer.
+    return false
   }
 }

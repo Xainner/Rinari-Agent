@@ -106,7 +106,7 @@ function FlowStageCard({ stage, order, selected, models, providers, onOpen, onGo
         </div>
         <div>
           <Layers size={11} aria-hidden="true" />
-          <span>{t('flow.stage.turns', { n: stage.turns })}</span>
+          <span>{t(stage.turns === 1 ? 'flow.stage.turnsOne' : 'flow.stage.turns', { n: stage.turns })}</span>
         </div>
         {stage.verification && (
           <div>

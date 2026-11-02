@@ -4,6 +4,7 @@ import { liveActionLabel } from '../activity/ActivityHeader'
 import type { TurnTimeline } from '../activity/types'
 import type { Checklist } from '../../types/protocol.generated'
 import type { ChildSession } from '../../services/engine'
+import { plainExcerpt } from '../../services/notificationText'
 
 type Translate = ReturnType<typeof useI18n>['t']
 
@@ -82,10 +83,10 @@ export function paneDigest(input: {
   }
 }
 
-/** La primera línea con texto, sin marcas de markdown al principio. */
+/** La primera línea con texto, en texto llano: sin marcas de markdown. */
 export function firstLine(text: string | null): string | null {
   if (!text) return null
-  const line = text.split('\n').map((value) => value.replace(/^[#>*\-\s`]+/, '').trim()).find(Boolean)
+  const line = text.split('\n').map((value) => plainExcerpt(value, Infinity)).find(Boolean)
   return line ?? null
 }
 

@@ -1316,6 +1316,7 @@ export const en: Record<I18nKey, string> = {
   'approval.choice.once': "Allow once",
   'approval.choice.chat': "In this chat",
   'approval.choice.session': "In this session",
+  'approval.choice.sameCommand': "This command, in this session",
   'approval.choice.project': "Always in this project",
   'approval.choice.task': "Allow for this task",
   'approval.rule.readOnlyCommand': "Run a command in read-only mode (it could change files)",

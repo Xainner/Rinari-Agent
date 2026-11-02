@@ -126,6 +126,12 @@ describe('TurnTimelineView', () => {
     expect(screen.queryByText(/read-only mode/)).toBeNull()
   })
 
+  it('in read-only, the lasting answer names that it covers only this command', () => {
+    view({ ...base, status: 'approval', items: [{ id: 'approval:p1', type: 'approval', activitySeq: 1, occurredAt: 1_100, approvalId: 'p1', status: 'pending', capability: 'shell.exec', target: 'npm test', risk: 'medium', description: 'x', ruleId: 'read_only_command', choices: ['deny', 'allow_once', 'allow_session'], grantScope: 'project' as const }] }, 1_200)
+    expect(screen.getByRole('button', { name: 'Este comando, en esta sesión' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'En esta sesión' })).toBeNull()
+  })
+
   it('names the rule that asked in plain words, and warns after external content', () => {
     view({ ...base, status: 'approval', items: [{ id: 'approval:p1', type: 'approval', activitySeq: 1, occurredAt: 1_100, approvalId: 'p1', status: 'pending', capability: 'network.outbound', target: 'api.example.com', risk: 'high', description: 'http.request: sending data to api.example.com, after reading external content in this turn', ruleId: 'external_content_send' }] }, 1_200)
     expect(screen.getByText('Enviar datos después de leer contenido externo')).toBeTruthy()

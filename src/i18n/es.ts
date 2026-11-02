@@ -1334,6 +1334,7 @@ export const es = {
   'approval.choice.once': "Permitir una vez",
   'approval.choice.chat': "En este chat",
   'approval.choice.session': "En esta sesión",
+  'approval.choice.sameCommand': "Este comando, en esta sesión",
   'approval.choice.project': "Siempre en este proyecto",
   'approval.choice.task': "Permitir para esta tarea",
   'approval.rule.readOnlyCommand': "Correr un comando en modo solo lectura (podría cambiar archivos)",

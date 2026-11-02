@@ -105,6 +105,7 @@ export const es = {
   "providers.keyUnlimited": "Sin límite declarado",
   "providers.balanceSources": "Otorgado: {granted} · Recargado: {topped}",
   "providers.windowHours": "Ventana de {n} horas",
+  "providers.windowHourOne": "Ventana de 1 hora",
   "providers.discoveryHint": "Descubrir modelos verifica acceso al catálogo. Generación, herramientas y visión necesitan sus propias comprobaciones.",
   "providers.usageState.available": "Actualizado",
   "providers.usageState.partial": "Datos parciales",

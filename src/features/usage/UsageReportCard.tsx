@@ -9,6 +9,7 @@ import { commandMessage, engineApi } from '../../services/engine'
 import type { ContextStatus, ProviderUsageSnapshot } from '../../types/protocol.generated'
 import { usageApi, usageMarkdown, type UsageLimits, type UsageReport, type UsageScope } from './usageReport'
 import { SegTabPill } from '../../components/ui/SegTabPill'
+import { windowLabel } from '../providers/windowLabel'
 
 const SCOPES: UsageScope[] = ['session', 'today', 'project', 'all']
 const compact = (value: number, lang: string) =>
@@ -49,12 +50,9 @@ function silentReason(item: UsageLimits): I18nKey {
   return 'usage.limitsUnknown'
 }
 
-/** Las ventanas que la app ya nombra (5 h, semanal…); las demás, como vienen. */
-const WINDOW_KEYS: Record<string, I18nKey> = { rolling: 'providers.windowRolling', weekly: 'providers.windowWeekly', monthly: 'providers.windowMonthly' }
 
 export function UsageReportCard({ report: initial, sessionId, providerId: chosenProvider }: { report: UsageReport; sessionId: string; providerId?: string | null }) {
   const { t, lang } = useI18n()
-  const windowLabel = (id: string, label: string) => (WINDOW_KEYS[id] ? t(WINDOW_KEYS[id]) : label)
   const [report, setReport] = useState(initial)
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -156,7 +154,7 @@ export function UsageReportCard({ report: initial, sessionId, providerId: chosen
               )}
               {item.windows.map((window) => (
                 <div key={window.id} className="usage-report-window">
-                  <span>{windowLabel(window.id, window.label)}</span>
+                  <span>{windowLabel(window, t)}</span>
                   <span className="usage-bar" aria-hidden="true" data-level={level(window.used_percent ?? 0)}><span style={{ width: `${Math.min(100, window.used_percent ?? 0)}%` }} /></span>
                   <span className="usage-report-percent">{window.used_percent !== null ? `${Math.round(window.used_percent)} %` : '—'}</span>
                   {window.resets_at && <span className="usage-report-reset">{t('usage.resets', { time: new Date(window.resets_at).toLocaleString(lang === 'es' ? 'es' : 'en', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) })}</span>}

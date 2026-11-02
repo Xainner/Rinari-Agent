@@ -107,6 +107,7 @@ export const en: Record<I18nKey, string> = {
   "providers.keyUnlimited": "No declared limit",
   "providers.balanceSources": "Granted: {granted} · Topped up: {topped}",
   "providers.windowHours": "{n}-hour window",
+  "providers.windowHourOne": "1-hour window",
   "providers.discoveryHint": "Model discovery verifies catalog access. Generation, tools and vision require separate checks.",
   "providers.usageState.available": "Current",
   "providers.usageState.partial": "Partial data",

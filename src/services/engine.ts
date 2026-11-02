@@ -1218,6 +1218,8 @@ export interface ChildSession {
   isolation: 'same' | 'worktree'
   worktree_path: string | null
   branch: string | null
+  /** Why a child that could have had its own branch works in the project folder. */
+  same_folder_reason?: 'not_repo' | 'project_prefers_same' | 'git_timeout' | 'worktree_failed' | null
   state: 'working' | 'completed' | 'failed' | 'cancelled' | 'waiting'
   report: { summary?: string; text?: string; files?: string[]; terminal?: string; error?: string } | null
   reported: boolean
@@ -1230,6 +1232,8 @@ export interface ChildSession {
 export interface ChildIntegrateResult {
   child_session_id: string
   integrated: boolean
+  /** Why it was not merged: the project's own uncommitted work, real conflicts, or git refused. */
+  reason?: 'dirty_worktree' | 'conflicts' | 'merge_failed'
   conflicts: string[]
   message?: string
   files?: string[]

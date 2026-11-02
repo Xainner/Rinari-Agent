@@ -108,7 +108,7 @@ export function ChildRow({ child, decisions = true, compact = false }: { child: 
   const data = useOptionalEngineData()
   const upsert = useChildrenStore((state) => state.upsert)
   const [busy, setBusy] = useState(false)
-  const [conflicts, setConflicts] = useState<string[] | null>(null)
+  const [conflicts, setConflicts] = useState<{ kind: 'dirty' | 'conflicts' | 'failed'; files: string[]; message?: string } | null>(null)
   const title = data?.sessionsById[child.child_session_id]?.title || child.title || t('children.untitled')
   const working = child.state === 'working' || child.state === 'waiting'
   const files = child.report?.files ?? []
@@ -131,7 +131,9 @@ export function ChildRow({ child, decisions = true, compact = false }: { child: 
         upsert({ ...child, resolution: 'integrated' })
         toast.success(t('children.integrated', { title }))
       } else {
-        setConflicts(result.conflicts.length ? result.conflicts : [result.message ?? ''])
+        if (result.reason === 'dirty_worktree') setConflicts({ kind: 'dirty', files: result.files ?? [] })
+        else if (result.conflicts.length) setConflicts({ kind: 'conflicts', files: result.conflicts })
+        else setConflicts({ kind: 'failed', files: [], message: result.message })
       }
     } catch (error) {
       toast.error(commandMessage(error))
@@ -211,12 +213,14 @@ export function ChildRow({ child, decisions = true, compact = false }: { child: 
           )}
         </div>
       )}
+      {child.same_folder_reason && !compact && <p className="child-row-note" data-testid="child-same-folder">{t(`children.sameFolderReason.${child.same_folder_reason}`)}</p>}
       {child.report?.error && !working && !compact && <p className="child-row-error">{child.report.error}</p>}
       {conflicts && (
         <div role="alert" className="child-row-conflicts">
-          <p className="child-row-conflicts-title"><TriangleAlert size={12} aria-hidden="true" /> {t('children.conflicts')}</p>
-          <ul>{conflicts.map((file) => <li key={file}><code>{file}</code></li>)}</ul>
-          <p className="child-row-conflicts-hint">{t('children.conflictsHint')}</p>
+          <p className="child-row-conflicts-title"><TriangleAlert size={12} aria-hidden="true" /> {t(conflicts.kind === 'dirty' ? 'children.dirty' : conflicts.kind === 'conflicts' ? 'children.conflicts' : 'children.mergeFailed')}</p>
+          {conflicts.files.length > 0 && <ul>{conflicts.files.map((file) => <li key={file}><code>{file}</code></li>)}</ul>}
+          {conflicts.message && <p className="child-row-conflicts-message">{conflicts.message}</p>}
+          <p className="child-row-conflicts-hint">{t(conflicts.kind === 'dirty' ? 'children.dirtyHint' : conflicts.kind === 'conflicts' ? 'children.conflictsHint' : 'children.mergeFailedHint')}</p>
         </div>
       )}
       {(decide || (working && child.branch)) && (

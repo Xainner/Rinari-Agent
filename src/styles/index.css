@@ -832,6 +832,8 @@ button.child-report-title:hover { color: var(--text); text-decoration-color: var
 .child-row-conflicts-title { display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--danger); }
 .child-row-conflicts ul { margin: 4px 0; display: flex; flex-wrap: wrap; gap: 4px; }
 .child-row-conflicts code { font-family: var(--font-mono); font-size: 11px; padding: 1px 6px; border-radius: 6px; background: rgb(10 8 18 / 0.5); color: var(--text); }
+.child-row-conflicts-message { margin: 4px 0; white-space: pre-wrap; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+.child-row-note { padding-left: 34px; font-size: 11.5px; color: var(--text-subtle); }
 .child-row-conflicts-hint { font-size: 11.5px; color: var(--text-subtle); }
 .child-row-actions { display: flex; flex-wrap: wrap; gap: 6px; padding-left: 34px; }
 .child-row-discard:hover:not(:disabled) { color: var(--danger); }

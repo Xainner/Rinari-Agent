@@ -6,6 +6,8 @@ export type DictationState = 'idle' | 'starting' | 'recording' | 'transcribing'
 
 /** Shorter than this is a slip of the shortcut, not dictation. */
 const MIN_RECORDING_MS = 300
+/** Below this peak level (RMS) the recording is room noise, not speech. */
+const SILENCE_RMS = 0.008
 
 /**
  * Record, then transcribe on stop. `onText` receives what was said; errors go
@@ -26,6 +28,7 @@ export function useDictation({
   const recording = useRef<Recording | null>(null)
   const startedRef = useRef(0)
   const pendingStop = useRef(false)
+  const pendingCancel = useRef(false)
   const callbacks = useRef({ onText, onError, language })
   callbacks.current = { onText, onError, language }
 
@@ -44,6 +47,13 @@ export function useDictation({
       setState('idle')
       return
     }
+    // Silence is not sent: Whisper fills it with an invented phrase.
+    if (active.loudest() < SILENCE_RMS) {
+      active.cancel()
+      setState('idle')
+      callbacks.current.onError('EMPTY')
+      return
+    }
     setState('transcribing')
     try {
       const wav = await active.stop()
@@ -60,9 +70,16 @@ export function useDictation({
   const start = useCallback(async () => {
     if (recording.current || state !== 'idle') return
     pendingStop.current = false
+    pendingCancel.current = false
     setState('starting')
     try {
       recording.current = await startRecording(setLevel)
+      if (pendingCancel.current) {
+        recording.current.cancel()
+        recording.current = null
+        setState('idle')
+        return
+      }
     } catch (error) {
       setState('idle')
       const name = error instanceof DOMException ? error.name : ''
@@ -76,6 +93,8 @@ export function useDictation({
   }, [state, stop])
 
   const cancel = useCallback(() => {
+    // Still opening the microphone: start() drops it as soon as it opens.
+    pendingCancel.current = true
     recording.current?.cancel()
     recording.current = null
     setStartedAt(null)

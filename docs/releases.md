@@ -129,6 +129,8 @@ anunciar soporte.
 
 | Versión | Fecha | Commit | Engine | Notas |
 |---|---|---|---|---|
+| v0.4.1 | 2026-11-02 | (tag v0.4.1) | f082751 | [v0.4.1.md](releases/v0.4.1.md) |
+| v0.4.0 | 2026-10-30 | f6479b4 | 384b2ae | [v0.4.0.md](releases/v0.4.0.md) |
 | v0.3.1 | 2026-10-10 | 5d4fab5 | 2a94168 | [v0.3.1.md](releases/v0.3.1.md) |
 | v0.3.0 | 2026-10-10 | 0dc9846 | cc19dc1 | [v0.3.0.md](releases/v0.3.0.md) |
 | v0.2.5 | 2026-10-08 | eee0de6 | 5f5703a | sin notas |

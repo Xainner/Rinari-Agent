@@ -249,6 +249,7 @@ export default function AgentForm({ agent, onSaved, onCancel, onArchived, draftE
         <input
           className="agency-subtitle-input"
           value={role}
+          title={role || undefined}
           maxLength={120}
           aria-label={t('agency.form.role')}
           placeholder={t('agency.form.rolePlaceholder')}

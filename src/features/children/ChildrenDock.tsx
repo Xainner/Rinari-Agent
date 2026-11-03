@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowUpRight, ChevronDown, FileText, GitBranch, GitBranchPlus, GitMerge, Hand, LoaderCircle, MessagesSquare, Trash2, TriangleAlert, X } from 'lucide-react'
+import { ArrowUpRight, ChevronDown, FileText, FolderInput, GitBranch, GitBranchPlus, GitMerge, Hand, LoaderCircle, MessagesSquare, Trash2, TriangleAlert, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
 import { commandMessage, engineApi, type ChildSession } from '../../services/engine'
@@ -8,6 +8,8 @@ import { useChildrenStore } from './childrenStore'
 import { useConfirm } from '../../components/ui/useConfirm'
 import { bornAt } from '../projects/workspaceModel'
 import { cn } from '../../lib/utils'
+import Markdown from '../../components/Markdown'
+import { plainExcerpt } from '../../services/notificationText'
 
 /** Una hija nacida hace menos de esto entra con movimiento; las que ya estaban, quietas. */
 const FRESH_MS = 15_000
@@ -52,7 +54,7 @@ export function ChildDecisions({ sessionId }: { sessionId: string }) {
   if (pending.length === 0) return null
   return (
     <section className="children-dock" data-testid="children-dock">
-      {pending.map((child) => <ChildRow key={child.child_session_id} child={child} />)}
+      {pending.map((child) => <ChildRow key={child.child_session_id} child={child} compact />)}
     </section>
   )
 }
@@ -96,13 +98,17 @@ export function OpenedSessions({ children }: { children: readonly ChildSession[]
   )
 }
 
-export function ChildRow({ child, decisions = true }: { child: ChildSession; decisions?: boolean }) {
+/**
+ * `compact`: the decision bar above the composer. The full row with its report
+ * is already in the turn, so this one only names the child and decides.
+ */
+export function ChildRow({ child, decisions = true, compact = false }: { child: ChildSession; decisions?: boolean; compact?: boolean }) {
   const { t } = useI18n()
   const commands = useOptionalEngineCommands()
   const data = useOptionalEngineData()
   const upsert = useChildrenStore((state) => state.upsert)
   const [busy, setBusy] = useState(false)
-  const [conflicts, setConflicts] = useState<string[] | null>(null)
+  const [conflicts, setConflicts] = useState<{ kind: 'dirty' | 'conflicts' | 'failed'; files: string[]; message?: string } | null>(null)
   const title = data?.sessionsById[child.child_session_id]?.title || child.title || t('children.untitled')
   const working = child.state === 'working' || child.state === 'waiting'
   const files = child.report?.files ?? []
@@ -125,7 +131,9 @@ export function ChildRow({ child, decisions = true }: { child: ChildSession; dec
         upsert({ ...child, resolution: 'integrated' })
         toast.success(t('children.integrated', { title }))
       } else {
-        setConflicts(result.conflicts.length ? result.conflicts : [result.message ?? ''])
+        if (result.reason === 'dirty_worktree') setConflicts({ kind: 'dirty', files: result.files ?? [] })
+        else if (result.conflicts.length) setConflicts({ kind: 'conflicts', files: result.conflicts })
+        else setConflicts({ kind: 'failed', files: [], message: result.message })
       }
     } catch (error) {
       toast.error(commandMessage(error))
@@ -160,7 +168,7 @@ export function ChildRow({ child, decisions = true }: { child: ChildSession; dec
     }
   }
 
-  const summary = !working ? child.report?.summary : undefined
+  const summary = !working && !compact ? child.report?.summary : undefined
   const fullText = child.report?.text ?? summary ?? ''
   const long = fullText.length > (summary?.length ?? 0) || fullText.length > 140
   return (
@@ -187,7 +195,7 @@ export function ChildRow({ child, decisions = true }: { child: ChildSession; dec
           <span className={cn('child-row-state', working && 'activity-text-shimmer')}>{t(`children.state.${child.state}`)}</span>
         </button>
         {child.branch && <span className="child-chip is-branch" title={child.worktree_path ?? undefined}><GitBranch size={11} aria-hidden="true" /><code>{child.branch}</code></span>}
-        {files.length > 0 && <span className="child-chip" title={files.join('\n')}><FileText size={11} aria-hidden="true" />{t('children.files', { n: files.length })}</span>}
+        {files.length > 0 && !compact && <span className="child-chip" title={files.join('\n')}><FileText size={11} aria-hidden="true" />{t('children.files', { n: files.length })}</span>}
         {child.resolution && <span className="r-chip" data-tone={child.resolution === 'integrated' ? 'success' : undefined}>{t(`children.resolution.${child.resolution}`)}</span>}
         <button type="button" className="btn btn-quiet btn-xs child-row-open" onClick={open}>
           {t('children.open')} <ArrowUpRight size={12} aria-hidden="true" />
@@ -195,7 +203,9 @@ export function ChildRow({ child, decisions = true }: { child: ChildSession; dec
       </div>
       {summary && (
         <div className="child-row-report">
-          <p className={`child-row-summary${expanded ? ' is-expanded' : ''}`}>{expanded ? fullText : summary}</p>
+          {expanded
+            ? <div className="child-row-summary is-expanded child-report-body"><Markdown>{fullText}</Markdown></div>
+            : <p className="child-row-summary">{plainExcerpt(summary, 600)}</p>}
           {long && (
             <button type="button" className="child-row-more" aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>
               {expanded ? t('followups.less') : t('followups.readAll')} <ChevronDown size={11} aria-hidden="true" />
@@ -203,12 +213,14 @@ export function ChildRow({ child, decisions = true }: { child: ChildSession; dec
           )}
         </div>
       )}
-      {child.report?.error && !working && <p className="child-row-error">{child.report.error}</p>}
+      {child.same_folder_reason && !compact && <p className="child-row-note" data-testid="child-same-folder">{t(`children.sameFolderReason.${child.same_folder_reason}`)}</p>}
+      {child.report?.error && !working && !compact && <p className="child-row-error">{child.report.error}</p>}
       {conflicts && (
         <div role="alert" className="child-row-conflicts">
-          <p className="child-row-conflicts-title"><TriangleAlert size={12} aria-hidden="true" /> {t('children.conflicts')}</p>
-          <ul>{conflicts.map((file) => <li key={file}><code>{file}</code></li>)}</ul>
-          <p className="child-row-conflicts-hint">{t('children.conflictsHint')}</p>
+          <p className="child-row-conflicts-title"><TriangleAlert size={12} aria-hidden="true" /> {t(conflicts.kind === 'dirty' ? 'children.dirty' : conflicts.kind === 'conflicts' ? 'children.conflicts' : 'children.mergeFailed')}</p>
+          {conflicts.files.length > 0 && <ul>{conflicts.files.map((file) => <li key={file}><code>{file}</code></li>)}</ul>}
+          {conflicts.message && <p className="child-row-conflicts-message">{conflicts.message}</p>}
+          <p className="child-row-conflicts-hint">{t(conflicts.kind === 'dirty' ? 'children.dirtyHint' : conflicts.kind === 'conflicts' ? 'children.conflictsHint' : 'children.mergeFailedHint')}</p>
         </div>
       )}
       {(decide || (working && child.branch)) && (
@@ -224,8 +236,8 @@ export function ChildRow({ child, decisions = true }: { child: ChildSession; dec
             </>
           )}
           {working && child.branch && (
-            <button type="button" className="btn btn-quiet btn-sm" onClick={() => void sameFolder()} title={t('children.sameFolderHint')}>
-              {t('children.useSameFolder')}
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => void sameFolder()} title={t('children.sameFolderHint')}>
+              <FolderInput size={12} aria-hidden="true" /> {t('children.useSameFolder')}
             </button>
           )}
         </div>

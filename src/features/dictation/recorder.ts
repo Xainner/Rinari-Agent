@@ -5,6 +5,8 @@ export interface Recording {
   stop: () => Promise<Uint8Array>
   /** Stops the microphone and drops what was recorded. */
   cancel: () => void
+  /** The loudest block so far (RMS, 0–1): near zero means nothing was said. */
+  loudest: () => number
 }
 
 /**
@@ -22,10 +24,13 @@ export async function startRecording(onLevel?: (level: number) => void): Promise
   // module under the app's CSP); a few seconds of mono audio is no load.
   const processor = context.createScriptProcessor(4096, 1, 1)
   const blocks: Float32Array[] = []
+  let loudest = 0
   processor.onaudioprocess = (event) => {
     const block = new Float32Array(event.inputBuffer.getChannelData(0))
     blocks.push(block)
-    onLevel?.(rms(block))
+    const level = rms(block)
+    loudest = Math.max(loudest, level)
+    onLevel?.(level)
   }
   source.connect(processor)
   processor.connect(context.destination)
@@ -54,5 +59,6 @@ export async function startRecording(onLevel?: (level: number) => void): Promise
       return encodeWav(resample(samples, rate))
     },
     cancel: close,
+    loudest: () => loudest,
   }
 }

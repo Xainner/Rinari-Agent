@@ -5,6 +5,7 @@ import type { ProviderUsageSnapshot } from '../../types/protocol.generated'
 import { useI18n } from '../../i18n'
 import { platform } from '../../platform'
 import { ProgressBar } from '../../components/ui/progress-bar'
+import { windowLabel } from './windowLabel'
 
 export default function ProviderUsagePanel({ providerAlias, compact = false, ring = false }: { providerAlias: string; compact?: boolean; ring?: boolean }) {
   const { t, lang } = useI18n()
@@ -53,7 +54,7 @@ export default function ProviderUsagePanel({ providerAlias, compact = false, rin
     return null
   }
   if (compact) return snapshot?.fetched_at ? <p className="text-xs text-[var(--text-muted)]" title={t('providers.updatedAt', { date: date(snapshot.fetched_at) })}>
-    {snapshot.windows.map(window => `${window.id === 'rolling' ? '5h' : window.id === 'weekly' ? t('providers.windowWeekly') : window.id === 'monthly' ? t('providers.windowMonthly') : window.label}: ${window.remaining_percent === null ? '—' : `${window.remaining_percent}%`}`).join(' · ')}
+    {snapshot.windows.map(window => `${windowLabel(window, t)}: ${window.remaining_percent === null ? '—' : `${window.remaining_percent}%`}`).join(' · ')}
     {snapshot.windows.length > 0 && ` ${t('providers.remaining')}`}
     {snapshot.balances.filter(balance => balance.scope === 'account').map(balance => `${balance.remaining ?? '—'} ${balance.currency}`).join(' · ')}
     {snapshot.status !== 'available' && ` · ${t(`providers.usageState.${snapshot.status}`)}`}
@@ -69,10 +70,9 @@ export default function ProviderUsagePanel({ providerAlias, compact = false, rin
       <p role="status" className="text-xs text-[var(--text-muted)]">{t(`providers.usageState.${snapshot.status}`)}</p>
       <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))' }}>
         {snapshot.windows.map(window => <div key={window.id} className="min-w-0 rounded-xl border border-[var(--border)] bg-[var(--bg-subtle)] p-3">
-          <div className="break-words text-xs text-[var(--text-muted)]">{window.id === 'rolling' ? t('providers.windowRolling') : window.id === 'weekly' ? t('providers.windowWeekly') : window.id === 'monthly' ? t('providers.windowMonthly') : window.label}</div>
+          <div className="break-words text-xs text-[var(--text-muted)]">{windowLabel(window, t)}</div>
           <p className="my-2 text-xl font-semibold tabular-nums">{window.remaining_percent === null ? '—' : `${window.remaining_percent.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`} <span className="text-xs font-normal text-[var(--text-muted)]">{t('providers.remaining')}</span></p>
-          {window.remaining_percent !== null && <ProgressBar label={`${window.label}: ${t('providers.remaining')}`} max={100} value={window.remaining_percent} />}
-          {window.duration_seconds !== null && window.id !== 'rolling' && <p className="mt-2 text-xs text-[var(--text-muted)]">{t('providers.windowHours', { n: window.duration_seconds / 3600 })}</p>}
+          {window.remaining_percent !== null && <ProgressBar label={`${windowLabel(window, t)}: ${t('providers.remaining')}`} max={100} value={window.remaining_percent} />}
           <p className="mt-2 text-xs text-[var(--text-subtle)]">{window.resets_at ? t('providers.resetsAt', { date: date(window.resets_at) }) : t('providers.resetUnknown')}</p>
         </div>)}
       </div>

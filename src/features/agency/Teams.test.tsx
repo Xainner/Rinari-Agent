@@ -61,6 +61,11 @@ const api = {
   agencyTeamRemember: vi.fn(async () => ({ record: {} })),
   mcpList: vi.fn(async () => ({ servers: [{ name: 'youtube-canal', scope: 'global', owner: 'team:team_1' }, { name: 'gmail', scope: 'global', owner: null }, { name: 'mio', scope: 'global', owner: 'agent:agent_w' }] })),
   mcpCatalogList: vi.fn(async () => ({ entries: [] })),
+  projectList: vi.fn(async () => ({ projects: [
+    { id: 'proj_cafe', name: 'Nebula Café', canonical_root: 'C:/p/cafe', archived: false, rinari_profile_id: 'default' },
+    { id: 'proj_old', name: 'Vieja', canonical_root: 'C:/p/old', archived: true, rinari_profile_id: 'default' },
+    { id: 'proj_work', name: 'Del trabajo', canonical_root: 'C:/p/work', archived: false, rinari_profile_id: 'trabajo' },
+  ] })),
   agencyTemplates: vi.fn(async () => ({ templates: [
     { id: 'tpl_canal', name: 'Canal de videos', purpose: 'Guiones y edición', agents: [{ name: 'Guionista', role: 'Escribe' }, { name: 'Editor', role: 'Monta' }] },
     { id: 'tpl_soporte', name: 'Soporte', purpose: 'Responde tickets', agents: [{ name: 'Triage', role: 'Clasifica' }] },
@@ -229,6 +234,23 @@ it('creates a team with up to eight agents and its chief', async () => {
     name: 'Canal infantil', purpose: '', members: ['agent_w', 'agent_v'], chief_agent_id: 'agent_w', connectors: [], budget: {},
   })
   await waitFor(() => expect(onSaved).toHaveBeenCalled())
+})
+
+it('a team works in a project of its profile, sent only when it changes', async () => {
+  const onSaved = vi.fn()
+  wrap(<TeamForm agents={[writer, video]} team={team} onSaved={onSaved} onCancel={() => {}} />)
+  const select = await screen.findByTestId('agency-team-project') as HTMLSelectElement
+  await waitFor(() => expect(within(select).getByText('Nebula Café')).toBeTruthy())
+  // Neither an archived project nor one of another profile: the Engine refuses them.
+  expect(within(select).queryByText('Vieja')).toBeNull()
+  expect(within(select).queryByText('Del trabajo')).toBeNull()
+  await userEvent.click(screen.getByTestId('agency-team-submit'))
+  await waitFor(() => expect(onSaved).toHaveBeenCalled())
+  expect(api.agencyUpdateTeam.mock.calls[0][1]).not.toHaveProperty('project_id')
+  await userEvent.selectOptions(select, 'proj_cafe')
+  await userEvent.click(screen.getByTestId('agency-team-submit'))
+  await waitFor(() => expect(api.agencyUpdateTeam).toHaveBeenCalledTimes(2))
+  expect(api.agencyUpdateTeam.mock.calls[1][1]).toMatchObject({ project_id: 'proj_cafe' })
 })
 
 it('changes members one by one and duplicates a team without its accounts', async () => {

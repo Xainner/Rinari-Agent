@@ -106,18 +106,21 @@ export default function DictationButton({
       }
     }
     const escape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && dictation.state === 'recording') {
+      if (event.key === 'Escape' && (dictation.state === 'recording' || dictation.state === 'starting')) {
         event.preventDefault()
+        // Escape here only cancels the dictation (not the turn nor a dialog).
+        event.stopPropagation()
         holding.current = false
         dictation.cancel()
       }
     }
     box.addEventListener('keydown', down)
-    box.addEventListener('keydown', escape)
+    // On the window, not the textarea: a click on the mic moves the focus to the button.
+    window.addEventListener('keydown', escape, true)
     window.addEventListener('keyup', up)
     return () => {
       box.removeEventListener('keydown', down)
-      box.removeEventListener('keydown', escape)
+      window.removeEventListener('keydown', escape, true)
       window.removeEventListener('keyup', up)
     }
   }, [begin, dictation, disabled, textareaRef])

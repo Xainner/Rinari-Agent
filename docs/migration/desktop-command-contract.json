@@ -8858,11 +8858,23 @@
     {
       "command": "agency_templates_list",
       "module": "agency",
-      "args": [],
+      "args": [
+        {
+          "name": "language",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
       "returns": "Result<serde_json::Value, CommandError>",
       "manual": false,
       "engine_method": "agency.templates.list",
-      "engine_params": [],
+      "engine_params": [
+        {
+          "key": "language",
+          "from": "language",
+          "optional": true
+        }
+      ],
       "passthrough": null,
       "host_effects": []
     },
@@ -8879,6 +8891,11 @@
           "name": "model",
           "type": "Option<String>",
           "optional": true
+        },
+        {
+          "name": "language",
+          "type": "Option<String>",
+          "optional": true
         }
       ],
       "returns": "Result<serde_json::Value, CommandError>",
@@ -8893,6 +8910,11 @@
         {
           "key": "model",
           "from": "model",
+          "optional": true
+        },
+        {
+          "key": "language",
+          "from": "language",
           "optional": true
         }
       ],

@@ -113,6 +113,8 @@ export interface AgencyTeam {
   stopped?: boolean
   /** Cómo trabaja el equipo, escrito por el dueño: cada puesto lo lee (`agency_team_work_v1`). */
   manual?: string
+  /** La carpeta de proyecto donde trabajan sus puestos; sin ella, cada puesto tiene la suya. */
+  project_id?: string | null
 }
 
 export interface AgencyTeamInput {
@@ -124,6 +126,7 @@ export interface AgencyTeamInput {
   /** Solo al crear; después se entra y se sale con join y leave. */
   members?: string[]
   manual?: string
+  project_id?: string | null
 }
 
 export interface OfficeMessage {

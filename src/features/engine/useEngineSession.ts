@@ -377,6 +377,14 @@ export function useEngineSession() {
 
   // Normal keeps its historical semantics: a session with no explicit model
   // shows the global default as the effective choice.
+  // Archiving or removing a project changes its conversations too: the list
+  // follows at once instead of on the next action.
+  const removeProject = useCallback(async (...args: Parameters<typeof projects.removeProject>) => {
+    const done = await projects.removeProject(...args)
+    if (done) await sessions.refreshSessions()
+    return done
+  }, [projects.removeProject, sessions.refreshSessions])
+
   const activeModel = useMemo(
     () => selectSessionModel(catalog.models, activeRecord) ?? catalog.models.find((model) => model.active) ?? null,
     [catalog.models, activeRecord],
@@ -469,7 +477,7 @@ export function useEngineSession() {
     refreshProjects: projects.refreshProjects,
     openProject: projects.openProject,
     updateProject: projects.updateProject,
-    removeProject: projects.removeProject,
+    removeProject,
     deleteProject: projects.deleteProject,
     loadProjectStatus: projects.loadStatus,
     loadProjectIntelligence: projects.loadIntelligence,

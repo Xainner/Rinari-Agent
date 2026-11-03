@@ -110,7 +110,7 @@ export default function SidebarIdentity({ busy, waiting }: { busy: number; waiti
               <span className="profile-menu-monogram" data-hue={profileHue(profile.id)} aria-hidden="true">{monogram(nameOf(profile))}</span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium">{nameOf(profile)}</span>
-                {counts && <span className="block truncate text-[11px] text-[var(--text-subtle)]">{t('profiles.counts', { projects: counts.projects, sessions: counts.sessions })}</span>}
+                {counts && <span className="block truncate text-[11px] text-[var(--text-subtle)]">{t('profiles.counts', { projects: t(counts.projects === 1 ? 'profiles.projectsOne' : 'profiles.projects', { n: counts.projects }), sessions: t(counts.sessions === 1 ? 'profiles.sessionsOne' : 'profiles.sessions', { n: counts.sessions }) })}</span>}
               </span>
               {busyHere > 0 && (
                 <span className="r-chip profile-working-count" data-tone="accent" data-testid="profile-working" title={busyLabel} aria-label={busyLabel}>

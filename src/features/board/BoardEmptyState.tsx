@@ -1,4 +1,4 @@
-import { Columns3, FolderGit2, Globe, Heart, LayoutGrid, MessageSquarePlus, Paperclip, Plus, Sparkle } from 'lucide-react'
+import { Columns3, FolderGit2, GitCompare, Globe, Heart, LayoutGrid, MessageSquarePlus, Paperclip, Plus, Sparkle, SquareTerminal } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { art } from '../rinari/art'
 
@@ -72,12 +72,10 @@ export default function BoardEmptyState({ onAddPane, onAddCurrent }: BoardEmptyS
         <div className="board-hero-side is-right">
           <div className="board-hero-card board-hero-workspace">
             <div className="board-hero-tabs">
-              <span><FolderGit2 size={11} />{t('board.hero.files')}</span>
               <span><Globe size={11} />{t('board.hero.browser')}</span>
-              <b><LayoutGrid size={11} />Workspace</b>
-            </div>
-            <div className="board-hero-subtabs">
-              <b>{t('board.hero.changes')}</b><span>{t('board.hero.tasks')}</span><span>{t('board.hero.verification')}</span>
+              <span><SquareTerminal size={11} />{t('board.hero.terminal')}</span>
+              <span><FolderGit2 size={11} />{t('board.hero.files')}</span>
+              <b><GitCompare size={11} />{t('board.hero.changes')}</b>
             </div>
             <div className="board-hero-path"><em>{t('board.hero.project')}</em>C:\Users\rinari\project</div>
             {FILES.map(([kind, path]) => (

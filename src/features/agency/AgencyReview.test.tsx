@@ -54,6 +54,7 @@ vi.mock('../../services/engine', () => ({
 vi.mock('sonner', () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn(), warning: vi.fn() }) }))
 vi.mock('../engine/EngineContext', () => ({
   useOptionalEngineData: () => ({ status: { capabilities: { agency_rule_rehearsal_v1: true } } }),
+  useOptionalEngineCommands: () => null,
 }))
 
 import RulesView from './RulesView'

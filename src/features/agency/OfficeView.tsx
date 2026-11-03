@@ -9,6 +9,7 @@ import { ErrandCard, useTeamEvents } from './Board'
 import { PresentedFiles } from '../activity/PresentedFiles'
 import { FileFromContext } from '../files/FileWorkspace'
 import AgentAvatar from './AgentAvatar'
+import { OfficeApprovals } from './OfficeApprovals'
 import { openErrand } from './OfficePanels'
 import { useAgencyData } from './AgencyData'
 import { CHAIN_MAX_HOPS, chainReasonKey, chainResumeText } from './chainStop'
@@ -358,6 +359,7 @@ export default function OfficeView({ team, agents }: OfficeViewProps) {
             </button>
           </div>
         )}
+        <OfficeApprovals team={team} members={members} />
         <OfficeComposer team={team} members={members} onPosted={() => void reload()} />
     </div>
   )
@@ -426,8 +428,8 @@ function OfficeComposer({ team, members, onPosted }: { team: AgencyTeam; members
     const message = text.trim()
     // A double Enter posted twice, and each @mention starts a paid turn.
     if (!message || sendingRef.current) return
-    // «/recado …» abre el recado con ese título en el panel lateral en vez de escribir en la oficina.
-    const slash = /^\/recado\b\s*(.*)$/isu.exec(message)
+    // «/recado …» (o «/errand …») abre el recado con ese título en el panel lateral en vez de escribir en la oficina.
+    const slash = /^\/(?:recado|errand)\b\s*(.*)$/isu.exec(message)
     if (slash) {
       openErrand(team.id, slash[1].trim())
       setText('')

@@ -796,7 +796,8 @@ function ApprovalActions({ item, disabled, onResolve }: { item: Extract<Timeline
   const choices: Array<[string, string]> = [
     ['deny', t('approval.choice.deny')],
     ['allow_once', t('approval.choice.once')],
-    ['allow_session', t(project ? 'approval.choice.session' : 'approval.choice.chat')],
+    // In read-only, «this session» covers only this exact command.
+    ['allow_session', t(item.ruleId === 'read_only_command' ? 'approval.choice.sameCommand' : project ? 'approval.choice.session' : 'approval.choice.chat')],
     ['allow_project', t('approval.choice.project')],
   ]
   // «Siempre…» solo si el Engine lo ofrece, y nunca en un chat suelto.

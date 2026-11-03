@@ -8,6 +8,11 @@ describe('notification text (#64)', () => {
     expect(plainExcerpt('a'.repeat(400)).length).toBe(BODY_MAX)
   })
 
+  it('keeps snake_case names and still drops underscore emphasis', () => {
+    expect(plainExcerpt('Edited `menu_items.py` and read_only_flag, _really_ done')).toBe('Edited menu_items.py and read_only_flag, really done')
+    expect(plainExcerpt('- **Changed:** `src/receipt.js` escapes `&`')).toBe('Changed: src/receipt.js escapes &')
+  })
+
   it('names the conversation and says what happened, by outcome', () => {
     expect(notificationText({ outcome: 'plan', conversation: 'Web', project: 'rinari-web', detail: 'Migrar la base' }, 'es', true))
       .toEqual({ title: 'Web · rinari-web', body: 'El plan está listo: Migrar la base' })

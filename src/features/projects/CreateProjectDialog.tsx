@@ -109,7 +109,7 @@ export function CreateProjectDialog({ onCreated }: { onCreated: (project: Projec
   const summary = useMemo(() => t('createProject.summary', {
     name: name.trim() || t('createProject.unnamed'),
     profile: targetProfile ? nameOf(targetProfile) : '',
-    folders: rows.length,
+    folders: t(rows.length === 1 ? 'createProject.folderCountOne' : 'createProject.folderCount', { n: rows.length }),
     trusted,
   }), [t, name, targetProfile, nameOf, rows.length, trusted])
 

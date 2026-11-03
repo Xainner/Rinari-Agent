@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { ProgressBar } from '../../components/ui/progress-bar'
 import { SegTabPanel, SegTabs } from './SegTabs'
 import { KindChip } from './ConnectorParts'
+import { sourceRows } from './importSources'
 
 type Mode = 'apps' | 'paste'
 
@@ -196,11 +197,16 @@ export function ImportDialog({ open, onClose, onImported }: { open: boolean; onC
 
           {scan && mode === 'apps' && (
             <ul className="import-sources" aria-label={t('connectors.import.sources')}>
-              {scan.sources.map((source) => (
-                <li key={`${source.source}:${source.path}`} data-found={source.found || undefined}>
-                  <span className="text-[12.5px] text-[var(--text)]">{source.label ?? source.source}</span>
+              {sourceRows(scan.sources).map((row) => row.kind === 'missing' ? (
+                <li key={`${row.source}:missing`} title={row.paths.join('\n')}>
+                  <span className="text-[12.5px] text-[var(--text)]">{row.label}</span>
+                  <span className="text-[12px] text-[var(--text-muted)]">{row.paths.length === 1 ? t('connectors.import.sourceMissing') : t('connectors.import.sourceMissingIn', { n: row.paths.length })}</span>
+                </li>
+              ) : (
+                <li key={`${row.source.source}:${row.source.path}`} data-found title={row.source.path}>
+                  <span className="text-[12.5px] text-[var(--text)]">{row.source.label ?? row.source.source}{row.source.variant && <span className="text-[var(--text-muted)]"> · {row.source.variant}</span>}</span>
                   <span className="text-[12px] text-[var(--text-muted)]">
-                    {source.error ? t(`connectors.import.sourceError.${source.error}` as I18nKey) : source.found ? t('connectors.import.sourceFound', { n: source.servers }) : t('connectors.import.sourceMissing')}
+                    {row.source.error ? t(`connectors.import.sourceError.${row.source.error}` as I18nKey) : t('connectors.import.sourceFound', { n: row.source.servers })}
                   </span>
                 </li>
               ))}

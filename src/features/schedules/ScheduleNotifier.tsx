@@ -5,6 +5,7 @@ import { useI18n } from '../../i18n'
 import { commandMessage, engineApi, onEngineEvent, type ScheduledRunStatus, type ScheduledTask, type ScheduledTaskInput } from '../../services/engine'
 import { onNotificationActivated, sendSystemNotification } from '../../services/notifications'
 import { requestSound } from '../../services/notificationSounds'
+import { plainExcerpt } from '../../services/notificationText'
 import { useNotificationCenter, type CenterNotification } from '../../stores/notificationCenter'
 import { useUIStore } from '../../stores/ui'
 import { RUN_STATUS_KEYS, SCHEDULES_CHANGED_EVENT, SKIP_REASON_KEYS, describeSchedule, formatWhen, useScheduleForm } from './scheduleModel'
@@ -169,7 +170,7 @@ export default function ScheduleNotifier({ onOpenSession }: { onOpenSession: (se
       const status = String(payload.status ?? '') as ScheduledRunStatus
       if (status === 'skipped') return
       if (payload.kind === 'reminder') {
-        const text = String(payload.summary ?? '')
+        const text = plainExcerpt(String(payload.summary ?? ''), 600)
         if (runNotifies(notifyLevel, false)) {
           toast(tr('schedules.reminderToast', { name }), { description: text, duration: 30_000 })
           // Recordar es su razón de ser: suena aunque la app esté a la vista.
@@ -180,7 +181,7 @@ export default function ScheduleNotifier({ onOpenSession }: { onOpenSession: (se
         return
       }
       const reason = typeof payload.reason === 'string' ? payload.reason : ''
-      const detail = reason ? (SKIP_REASON_KEYS[reason] ? tr(SKIP_REASON_KEYS[reason]) : reason) : String(payload.summary ?? '')
+      const detail = reason ? (SKIP_REASON_KEYS[reason] ? tr(SKIP_REASON_KEYS[reason]) : reason) : plainExcerpt(String(payload.summary ?? ''), 600)
       const title = tr('schedules.runFinished', { name, status: RUN_STATUS_KEYS[status] ? tr(RUN_STATUS_KEYS[status]) : status })
       const problem = status !== 'completed'
       if (runNotifies(notifyLevel, problem)) {

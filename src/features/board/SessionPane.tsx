@@ -7,6 +7,7 @@ import ChatView from '../../components/ChatView'
 import QueueBar from '../../components/chat/QueueBar'
 import { useEngineCommands, useEngineData } from '../engine/EngineContext'
 import { isDraftPane, useBoardStore, type BoardPane } from '../../stores/board'
+import { useProfilePanes } from './profilePanes'
 import { useSessionDockStore } from '../../stores/sessionDock'
 import { cn } from '../../lib/utils'
 import CollapsedPaneStrip, { COLUMN_WIDTH, STRIP_WIDTH } from './CollapsedPaneStrip'
@@ -69,7 +70,7 @@ function LiveSessionPane({
   const movePane = useBoardStore((state) => state.movePane)
   const setCollapsed = useBoardStore((state) => state.setCollapsed)
   const expandPane = useBoardStore((state) => state.expandPane)
-  const panes = useBoardStore((state) => state.panes)
+  const panes = useProfilePanes()
   const paneError = useBoardStore((state) => state.paneErrors[pane.paneId])
   // Plegar y desplegar se animan solo cuando cambian aquí, no al montar el board.
   const [fold, setFold] = useState<{ collapsed: boolean; motion: 'expand' | 'collapse' | null }>({ collapsed: pane.collapsed, motion: null })
@@ -106,6 +107,11 @@ function LiveSessionPane({
   }, [focused, onFocus, pane.paneId])
 
   const index = panes.findIndex((item) => item.paneId === pane.paneId)
+  // Next to its visible neighbour: panes of another profile keep their place.
+  const moveNextTo = (neighbour: BoardPane | undefined) => {
+    if (!neighbour) return
+    movePane(pane.paneId, useBoardStore.getState().panes.findIndex((item) => item.paneId === neighbour.paneId))
+  }
   const title = session.record?.title || t('sidebar.newChat')
   const availability = session.availability
 
@@ -151,8 +157,8 @@ function LiveSessionPane({
         canMoveRight={canMoveRight}
         onToggleWorkspace={() => setDockVisible(pane.sessionId, !dockVisible)}
         onOpenSingle={() => onOpenSingle(pane.sessionId)}
-        onMoveLeft={() => movePane(pane.paneId, index - 1)}
-        onMoveRight={() => movePane(pane.paneId, index + 1)}
+        onMoveLeft={() => moveNextTo(panes[index - 1])}
+        onMoveRight={() => moveNextTo(panes[index + 1])}
         onRemove={() => onRemove(pane.paneId)}
         onCollapse={() => setCollapsed(pane.paneId, true)}
       />

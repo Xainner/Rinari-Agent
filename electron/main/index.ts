@@ -1392,6 +1392,17 @@ async function smokeClipboard(
  * No sustituye a la matriz de paridad; solo evita declarar «Electron funciona»
  * porque el proceso no se cayó.
  */
+/** El estado del Engine una vez que deja de arrancar (o a los 120 s), si el humo lo pide. */
+async function smokeEngine(): Promise<ReturnType<typeof engine.status>> {
+  if (process.env.RINARI_SMOKE_ENGINE !== '1') return engine.status()
+  const settled = new Set(['ready', 'degraded', 'failed'])
+  const deadline = Date.now() + 120_000
+  while (!settled.has(engine.status().state) && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 250))
+  }
+  return engine.status()
+}
+
 function attachSmoke(window: BrowserWindow): void {
   const report = (ok: boolean, detail: Record<string, unknown>) => {
     console.log(`RINARI_SMOKE ${JSON.stringify({ ok, ...detail })}`)
@@ -1425,9 +1436,12 @@ function attachSmoke(window: BrowserWindow): void {
         // sistema lo garantiza y en Linux sólo se informa.
         const maximizeRequired = process.platform !== 'linux'
         const copy = await smokeClipboard(window)
+        const engineStatus = await smokeEngine()
+        // Con `RINARI_SMOKE_ENGINE=1` (el instalador del CI) el Engine tiene que
+        // arrancar: la 0.4.1 salió con el humo en verde y sin `rinari` dentro.
+        const engineOk = process.env.RINARI_SMOKE_ENGINE !== '1' || engineStatus.state === 'ready'
         const ok = probe.bridge === 'object' && probe.commands === 'function' && probe.leaked === false
-          && visible && (maximized || !maximizeRequired) && copy.ok
-        const engineStatus = engine.status()
+          && visible && (maximized || !maximizeRequired) && copy.ok && engineOk
         report(ok, { stage: 'renderer', ...probe, visible, maximized, maximizeRequired, clipboard: copy, engine: engineStatus.state, engineDetail: engineStatus.detail ?? null })
       })
       .catch((error: unknown) => report(false, { stage: 'probe', error: String(error) }))

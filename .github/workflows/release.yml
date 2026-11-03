@@ -48,7 +48,9 @@ jobs:
         run: |
           powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-engine.ps1 `
             -CliRepo "${{ github.workspace }}\Rinari-CLI" -OutDir engine-dist
+          if ($LASTEXITCODE -ne 0) { throw 'Engine packaging failed' }
           npm run package:win:staged
+          if ($LASTEXITCODE -ne 0) { throw 'release packaging failed' }
       - name: Verify release metadata is explicitly unsigned
         shell: pwsh
         run: |

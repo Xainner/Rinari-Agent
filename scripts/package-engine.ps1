@@ -36,7 +36,12 @@ if (($sourceDirty -or ($manifest.development_build -and -not $Nightly)) -and -no
 
 $tag = $PythonVersion -replace "\.", ""
 $embedUrl = "https://www.python.org/ftp/python/$PythonVersion/python-$PythonVersion-embed-amd64.zip"
-$getPipUrl = "https://bootstrap.pypa.io/get-pip.py"
+# get-pip fijado por versión y hash: el de 26.3 lanza pip como `python <tmp>\pip`,
+# y pip en Windows se niega a modificarse con un argv[0] llamado `pip`
+# (rompió el Engine de la 0.4.1: el instalador salió sin `rinari`).
+$getPipVersion = "26.2.2"
+$getPipSha256 = "f4448a01e3ab2914c65f4ca59d4cacba6b2dbde19a483fbac46587f8bbaff424"
+$getPipUrl = "https://raw.githubusercontent.com/pypa/get-pip/$getPipVersion/public/get-pip.py"
 $tmp = Join-Path ([System.IO.Path]::GetTempPath()) "rinari-engine-pkg"
 $repoRoot = [System.IO.Path]::GetFullPath((Split-Path $PSScriptRoot -Parent))
 $resolvedOut = [System.IO.Path]::GetFullPath($OutDir)
@@ -79,12 +84,16 @@ $text | Set-Content $pth.FullName -NoNewline
 Write-Host "--> pip"
 $getPip = Join-Path $tmp "get-pip.py"
 Invoke-WebRequest -Uri $getPipUrl -OutFile $getPip
+$getPipHash = (Get-FileHash -LiteralPath $getPip -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($getPipHash -ne $getPipSha256) { throw "get-pip $getPipVersion no coincide con su SHA-256 ($getPipHash)" }
 & (Join-Path $OutDir "python.exe") $getPip --no-warn-script-location
 if ($LASTEXITCODE -ne 0) { throw "get-pip falló" }
 
 Write-Host "--> instalar rinari + deps"
 & (Join-Path $OutDir "python.exe") -m pip install --no-warn-script-location --force-reinstall $wheel.FullName
 if ($LASTEXITCODE -ne 0) { throw "pip install falló" }
+& (Join-Path $OutDir "python.exe") -c "import rinari"
+if ($LASTEXITCODE -ne 0) { throw "El Python empaquetado no importa rinari" }
 
 $engineVersion = & (Join-Path $OutDir "python.exe") -c "import importlib.metadata; print(importlib.metadata.version('rinari'))"
 if ($LASTEXITCODE -ne 0) { $engineVersion = "unknown" }

@@ -236,11 +236,17 @@ jobs:
         run: |
           powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-engine.ps1 `
             -CliRepo "${{ github.workspace }}\Rinari-CLI" -OutDir engine-dist
+          if ($LASTEXITCODE -ne 0) { throw 'Engine packaging failed' }
           npm run installer:art
+          if ($LASTEXITCODE -ne 0) { throw 'installer art failed' }
           npm run package:hashes
+          if ($LASTEXITCODE -ne 0) { throw 'package hashes failed' }
           npm run package:payload
+          if ($LASTEXITCODE -ne 0) { throw 'payload failed' }
           npm run setup:build
+          if ($LASTEXITCODE -ne 0) { throw 'setup build failed' }
           powershell -NoProfile -ExecutionPolicy Bypass -File scripts/finalize-setup.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'setup finalization failed' }
       - name: Install, launch, and uninstall from a Unicode path
         shell: pwsh
         run: |
@@ -254,6 +260,7 @@ jobs:
           if (-not (Test-Path -LiteralPath (Join-Path $install 'resources\engine-dist\python.exe'))) { throw 'installed Engine missing' }
           $env:RINARI_SMOKE = '1'
           $env:RINARI_SMOKE_CLIPBOARD = '1'
+          $env:RINARI_SMOKE_ENGINE = '1'
           $env:RINARI_HOME = Join-Path $env:RUNNER_TEMP 'rinari-smoke-engine-home'
           $env:RINARI_KEYRING = '0'
           $profile = Join-Path $env:RUNNER_TEMP 'rinari-smoke-profile'
@@ -270,7 +277,9 @@ jobs:
         run: |
           powershell -NoProfile -ExecutionPolicy Bypass -File scripts/updater-e2e.ps1 `
             -EvidenceDir release/evidence/updater-e2e
+          if ($LASTEXITCODE -ne 0) { throw 'updater e2e failed' }
           npm run package:win:staged
+          if ($LASTEXITCODE -ne 0) { throw 'release packaging failed' }
       - uses: actions/upload-artifact@v4
         with:
           name: rinari-agent-setup-unsigned

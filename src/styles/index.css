@@ -1872,6 +1872,9 @@ html[data-motion='reduced'] .turn-rail[data-live='true']::after { display: none;
 .act-row > summary { display: flex; min-height: 40px; cursor: pointer; list-style: none; align-items: center; gap: 10px; padding: 6px 12px 6px 7px; border-radius: inherit; }
 .act-row > summary::-webkit-details-marker { display: none; }
 .act-row > [data-activity-body] { margin: 0 12px 10px 42px; }
+/* Opened by hand, an activity body fades in from just above; its height arrives at once (no animated height). */
+[data-activity-body][data-entering] { animation: activity-body-in var(--dur-base) var(--ease-out) both; }
+@keyframes activity-body-in { from { opacity: 0; transform: translateY(-4px); } }
 .act-tile { display: grid; width: 26px; height: 26px; flex-shrink: 0; place-items: center; border-radius: 8px; border: 1px solid var(--line-2); background: var(--bg-hover); color: var(--text-muted); }
 .act-tile[data-state='done'] { color: var(--success); border-color: rgb(91 224 165 / 0.3); background: rgb(91 224 165 / 0.1); }
 .act-tile[data-state='running'] { color: var(--violet-300); border-color: rgb(167 139 250 / 0.4); background: rgb(147 88 255 / 0.12); }
@@ -2932,12 +2935,11 @@ html[data-motion='reduced'] .present-thumb:hover img { transform: none; }
 .flow-connector[data-to='active'] .flow-link::after { content: ''; position: absolute; top: -2px; left: -16px; width: 16px; height: 6px; border-radius: 6px; background: var(--violet-100); box-shadow: 0 0 10px var(--magenta-400); animation: flow-travel 1.4s linear infinite; }
 .flow-connector[data-from='failed'] .flow-link, .flow-connector[data-from='stopped'] .flow-link { background: repeating-linear-gradient(90deg, var(--danger) 0 4px, transparent 4px 8px); opacity: 0.7; }
 @keyframes flow-travel { from { left: -16px; } to { left: 100%; } }
-.flow-stage { border-color: var(--line-1); background: linear-gradient(150deg, rgb(26 19 44 / 0.85), rgb(16 12 27 / 0.9)); box-shadow: var(--sh-1), var(--inset-hi); animation: rinari-rise var(--dur-slow) var(--ease-out) both; }
+/* The card enters with framer-motion (FlowStageCard), staggered by order: no second entrance here. */
+.flow-stage { border-color: var(--line-1); background: linear-gradient(150deg, rgb(26 19 44 / 0.85), rgb(16 12 27 / 0.9)); box-shadow: var(--sh-1), var(--inset-hi); }
 .flow-stage:hover { border-color: var(--line-3); transform: translateY(-2px); }
 .flow-stage.is-active { border-color: rgb(196 181 253 / 0.5); box-shadow: 0 0 0 4px rgb(147 88 255 / 0.1), var(--sh-1); }
 .flow-stage.is-done { border-color: rgb(91 224 165 / 0.28); }
-.flow-stage-slot:nth-child(4n+1) .flow-stage { animation-delay: 0.05s; }
-.flow-stage-slot:nth-child(4n+3) .flow-stage { animation-delay: 0.12s; }
 
 /* -- Arranque ----------------------------------------------------------------- */
 .startup { position: relative; display: flex; height: 100dvh; overflow: hidden; background: var(--bg-app); }

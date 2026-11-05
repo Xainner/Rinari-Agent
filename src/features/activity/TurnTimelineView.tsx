@@ -868,7 +868,11 @@ function VisualProgress({ items, status, onResolveApproval, showProgress = true 
  * una sola vez) y una fila compacta de metadatos/acciones (`TurnMeta`) que no
  * repite el cuerpo.
  */
-export default function TurnTimelineView(props: Props) {
+/**
+ * Memoized: the chat re-renders on every streamed delta, and a finished turn
+ * keeps its timeline object, so it skips those renders.
+ */
+const TurnTimelineView = memo(function TurnTimelineView(props: Props) {
   const { timeline } = props
   // «Permitir para esta tarea» solo en la sesión propia de una ejecución: una
   // tarea que corre en su conversación («Repetir aquí») no lleva permisos.
@@ -880,7 +884,8 @@ export default function TurnTimelineView(props: Props) {
       </TurnSessionContext.Provider>
     </ScheduledRunContext.Provider>
   )
-}
+})
+export default TurnTimelineView
 
 /** Lo que escribiste mientras Rinari trabajaba, en el punto donde lo leyó. */
 /** La subida del mensaje recién enviado (`.user-bubble.is-fresh`, `rinari-send 0.5s`). */

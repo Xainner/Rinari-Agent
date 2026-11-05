@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { BellRing, Check, Copy, FileText, Film, Flag, Hammer, Music, PencilLine, Image as ImageIcon, LoaderCircle, MessageSquareShare, CalendarClock, Play, Sparkles, SquareSlash, ClipboardList, ChevronRight } from 'lucide-react'
 import type { ChatMessage } from '../types'
 import { useI18n } from '../i18n'
@@ -107,7 +107,7 @@ function PreviewAttachment({ attachment, onView }: { attachment: NonNullable<Cha
  * Burbuja de mensaje: usuario alineado a la derecha, Rinari con Markdown.
  * Edición/regeneración/export llegan con historial de sesión (Fase 4).
  */
-export default function MessageBubble({ message }: { message: ChatMessage }) {
+function MessageBubble({ message }: { message: ChatMessage }) {
   const { t } = useI18n()
   const [copied, setCopied] = useState(false)
   const [elapsed, setElapsed] = useState(0)
@@ -483,3 +483,5 @@ function GoalSeparator({ iteration }: { iteration: number | null }) {
     </div>
   )
 }
+
+export default memo(MessageBubble)

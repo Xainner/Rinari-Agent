@@ -31,18 +31,26 @@ export function useRailTrack(ref: RefObject<HTMLElement | null>, nodes: (root: H
     const root = ref.current
     if (!root) return
     let frame = 0
+    // Custom properties inherit: writing them on the root invalidates the
+    // style of the whole turn, text included. While Rinari writes, the rail
+    // grows on every frame but its nodes rarely move, so only a change is written.
+    let written = ''
     const measure = () => {
       frame = 0
       const found = nodes(root)
       if (found.length < 2) {
-        root.dataset.track = 'none'
+        if (written !== 'none') root.dataset.track = 'none'
+        written = 'none'
         return
       }
       const origin = root.getBoundingClientRect().top
-      const first = nodeCenter(found[0]) - origin
-      const last = nodeCenter(found[found.length - 1]) - origin
-      root.style.setProperty('--rail-start', `${Math.round(first)}px`)
-      root.style.setProperty('--rail-len', `${Math.max(0, Math.round(last - first))}px`)
+      const first = Math.round(nodeCenter(found[0]) - origin)
+      const length = Math.max(0, Math.round(nodeCenter(found[found.length - 1]) - origin - first))
+      const track = `${first}:${length}`
+      if (track === written) return
+      written = track
+      root.style.setProperty('--rail-start', `${first}px`)
+      root.style.setProperty('--rail-len', `${length}px`)
       root.dataset.track = 'measured'
     }
     const schedule = () => { if (!frame) frame = requestAnimationFrame(measure) }

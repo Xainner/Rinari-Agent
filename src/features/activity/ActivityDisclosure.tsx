@@ -12,7 +12,7 @@ function elements(root: HTMLElement, selector: string) {
     return [JSON.stringify([owner.dataset.activityItem ?? 'root', peers.indexOf(element)]), element] as const
   })
 }
-function InspectionBody({ stateKey, children, id, className = 'space-y-1.5' }: { stateKey: string; children: ReactNode; id: string; className?: string }) {
+function InspectionBody({ stateKey, children, id, className = 'space-y-1.5', entering = false }: { stateKey: string; children: ReactNode; id: string; className?: string; entering?: boolean }) {
   const ref = useRef<HTMLDivElement>(null)
   useLayoutEffect(() => {
     const root = ref.current!
@@ -31,7 +31,8 @@ function InspectionBody({ stateKey, children, id, className = 'space-y-1.5' }: {
       useActivityDisclosure.getState().remember(stateKey, snapshot)
     }
   }, [stateKey])
-  return <div ref={ref} id={id} className={className} data-activity-body data-inspection-root={stateKey}>{children}</div>
+  // Opened by hand, the body fades in; restored or remounted while open, it is just there.
+  return <div ref={ref} id={id} className={className} data-activity-body data-entering={entering || undefined} data-inspection-root={stateKey}>{children}</div>
 }
 
 /**
@@ -48,12 +49,14 @@ export const ActivityDisclosure = memo(function ActivityDisclosure({ stateKey, h
   const anchor = useRef<HTMLButtonElement>(null)
   const layout = useContext(ActivityLayoutContext)
   const finish = useRef<(() => void) | null>(null)
+  const openedByHand = useRef(false)
   useLayoutEffect(() => {
     if (open && !useActivityDisclosure.getState().entries[stateKey]) useActivityDisclosure.getState().setOpen(stateKey, true)
     finish.current?.(); finish.current = null
   }, [open, stateKey])
   function toggle(next = !open) {
     if (anchor.current) finish.current = layout?.begin(anchor.current) ?? null
+    openedByHand.current = next
     useActivityDisclosure.getState().setOpen(stateKey, next)
   }
   if (!children) return card
@@ -66,7 +69,7 @@ export const ActivityDisclosure = memo(function ActivityDisclosure({ stateKey, h
       {inspectLabel && <span id={id + '-issues'} className="sr-only">{inspectLabel}</span>}
       <ChevronRight size={16} aria-hidden="true" className={`turn-done-chevron shrink-0 transition-transform duration-200 ${open ? 'rotate-90' : ''}`} />
     </button>
-    {open && <InspectionBody stateKey={stateKey} id={id} className="space-y-2 pt-1">{children}</InspectionBody>}
+    {open && <InspectionBody stateKey={stateKey} id={id} className="space-y-2 pt-1" entering={openedByHand.current}>{children}</InspectionBody>}
   </section>
   return <section data-activity-disclosure={operations ? "operations" : "turn"} className="min-w-0 space-y-2">
     <div className="flex min-w-0 items-center gap-2">
@@ -77,7 +80,7 @@ export const ActivityDisclosure = memo(function ActivityDisclosure({ stateKey, h
       </button>
       {inspectLabel && <button type="button" className="shrink-0 text-xs text-[var(--warning)]" onClick={() => { toggle(true); anchor.current?.focus() }}>{inspectLabel}</button>}
     </div>
-    {open && <InspectionBody stateKey={stateKey} id={id} className={operations ? 'space-y-1.5 pl-1 pt-0.5' : 'space-y-2 pt-1'}>{children}</InspectionBody>}
+    {open && <InspectionBody stateKey={stateKey} id={id} className={operations ? 'space-y-1.5 pl-1 pt-0.5' : 'space-y-2 pt-1'} entering={openedByHand.current}>{children}</InspectionBody>}
   </section>
 })
 
@@ -102,6 +105,7 @@ export function InspectionDetails({ inspectionId, children, onToggle, open: init
   const anchor = useRef<HTMLDetailsElement>(null)
   const layout = useContext(ActivityLayoutContext)
   const finish = useRef<(() => void) | null>(null)
+  const openedByHand = useRef(false)
   const id = useId()
   const parts = Children.toArray(children)
   useLayoutEffect(() => { finish.current?.(); finish.current = null }, [open])
@@ -111,6 +115,7 @@ export function InspectionDetails({ inspectionId, children, onToggle, open: init
     if (!summary?.contains(target) || target.closest('button, a, input')) return
     event.preventDefault()
     finish.current = layout?.begin(summary as HTMLElement) ?? null
+    openedByHand.current = !open
     useActivityDisclosure.getState().setOpen(stateKey, !open)
   }} onToggle={event => {
     const next = event.currentTarget.open
@@ -118,6 +123,6 @@ export function InspectionDetails({ inspectionId, children, onToggle, open: init
     onToggle?.(event)
   }}>
     {parts[0]}
-    {open && <InspectionBody stateKey={stateKey} id={id}>{parts.slice(1)}</InspectionBody>}
+    {open && <InspectionBody stateKey={stateKey} id={id} entering={openedByHand.current}>{parts.slice(1)}</InspectionBody>}
   </details>
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent } from 'react'
 import DictationButton from '../../features/dictation/DictationButton'
 import { useDictationPrefs } from '../../features/dictation/dictationPrefs'
 import { useReducedMotion } from 'framer-motion'
@@ -145,7 +145,7 @@ const SLASH_DESCRIPTION_KEYS: Record<string, I18nKey> = {
  * Los adjuntos nativos y las referencias @ se conservan como rutas hasta que
  * el motor los valida para el turno.
  */
-export default function Composer({
+function Composer({
   placement,
   onSend,
   onUiCommand,
@@ -1094,3 +1094,6 @@ export default function Composer({
     </div>
   )
 }
+
+/** Memoized: the chat around it re-renders on every streamed delta. */
+export default memo(Composer)

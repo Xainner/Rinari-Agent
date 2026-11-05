@@ -33,6 +33,9 @@ import { GoalDock } from '../features/goal/GoalDock'
 import { useGoalStore } from '../features/goal/goalStore'
 import { ChildDecisions, OpenedSessions, childrenByTurn, useSessionChildren } from '../features/children/ChildrenDock'
 import { StickyNote } from '../features/followups/StickyNote'
+import { useStableCallback } from '../lib/stableCallback'
+
+const NO_CHILDREN: never[] = []
 
 export type ConversationPresentation = 'loading' | 'error' | 'empty' | 'conversation'
 
@@ -128,37 +131,37 @@ function ChatView({
   sessionId,
   isStreaming,
   engineReady,
-  onSend,
-  onUiCommand,
-  onPrepareAttachments,
-  onCancelAttachmentPreparation,
-  onStop,
-  onSteer,
-  onQueue,
+  onSend: onSendProp,
+  onUiCommand: onUiCommandProp,
+  onPrepareAttachments: onPrepareAttachmentsProp,
+  onCancelAttachmentPreparation: onCancelAttachmentPreparationProp,
+  onStop: onStopProp,
+  onSteer: onSteerProp,
+  onQueue: onQueueProp,
   queue,
   assistantName,
   onImplementPlan,
-  onOpenProviders,
+  onOpenProviders: onOpenProvidersProp,
   models,
   providers,
   activeAlias,
   activeModel,
-  onUseModel,
-  onDiscoverModels,
-  onRefreshModels,
+  onUseModel: onUseModelProp,
+  onDiscoverModels: onDiscoverModelsProp,
+  onRefreshModels: onRefreshModelsProp,
   timelines,
-  onResolveApproval,
+  onResolveApproval: onResolveApprovalProp,
   historyNote,
   onLoadEarlier,
   sessionMode,
-  onModeChange,
+  onModeChange: onModeChangeProp,
   reasoningEffort,
-  onReasoningChange,
+  onReasoningChange: onReasoningChangeProp,
   permissionProfile,
   effectivePermissionProfile,
   permissionProfilesV2,
-  onPermissionChange,
-  onSearchFiles,
+  onPermissionChange: onPermissionChangeProp,
+  onSearchFiles: onSearchFilesProp,
   processesOpenSignal = 0,
   processesInPanel = false,
   historyPhase = 'loaded',
@@ -167,11 +170,36 @@ function ChatView({
   composerAcceptsGlobalFocus = true,
   homeVariant = 'home',
   homePersona,
-  onReviewChanges,
+  onReviewChanges: onReviewChangesProp,
   composerDraftKey,
-  draftProject,
+  draftProject: draftProjectProp,
 }: ChatViewProps) {
   const { t } = useI18n()
+  // Callers re-render on every streamed delta and pass inline closures; stable
+  // handlers let the composer and the finished turns skip those renders.
+  const onSend = useStableCallback(onSendProp)
+  const onUiCommand = useStableCallback(onUiCommandProp)
+  const onPrepareAttachments = useStableCallback(onPrepareAttachmentsProp)
+  const onCancelAttachmentPreparation = useStableCallback(onCancelAttachmentPreparationProp)
+  const onStop = useStableCallback(onStopProp)
+  const onSteer = useStableCallback(onSteerProp)
+  const onQueue = useStableCallback(onQueueProp)
+  const onOpenProviders = useStableCallback(onOpenProvidersProp)
+  const onUseModel = useStableCallback(onUseModelProp)
+  const onDiscoverModels = useStableCallback(onDiscoverModelsProp)
+  const onRefreshModels = useStableCallback(onRefreshModelsProp)
+  const onResolveApproval = useStableCallback(onResolveApprovalProp)
+  const onModeChange = useStableCallback(onModeChangeProp)
+  const onReasoningChange = useStableCallback(onReasoningChangeProp)
+  const onPermissionChange = useStableCallback(onPermissionChangeProp)
+  const onSearchFiles = useStableCallback(onSearchFilesProp)
+  const onReviewChanges = useStableCallback(onReviewChangesProp)
+  const draftProjectChange = useStableCallback(draftProjectProp?.onChange)
+  const draftProjectId = draftProjectProp?.projectId
+  const draftProject = useMemo(
+    () => (draftProjectChange ? { projectId: draftProjectId ?? null, onChange: draftProjectChange } : undefined),
+    [draftProjectId, draftProjectChange],
+  )
   const autoFollow = useUIStore((s) => s.autoFollow)
   const scrollRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
@@ -199,6 +227,30 @@ function ChatView({
     ),
     [sessionChildren, timelines, sessionId],
   )
+  // One element per turn while its opened sessions stay the same: a new
+  // element on every render would defeat the turn row's memo. The grouping is
+  // rebuilt on each delta, so the cache compares the children themselves.
+  const openedCache = useRef(new Map<string, { children: readonly unknown[]; element: ReactNode }>())
+  const openedFor = (turnId: string): ReactNode => {
+    const children = openedByTurn.get(turnId) ?? NO_CHILDREN
+    const cached = openedCache.current.get(turnId)
+    if (cached && cached.children.length === children.length && cached.children.every((child, index) => child === children[index])) return cached.element
+    const element = <OpenedSessions children={children} />
+    openedCache.current.set(turnId, { children, element })
+    return element
+  }
+  const reviewFor = useMemo(() => {
+    const cache = new WeakMap<TurnTimeline, () => void>()
+    return (timeline: TurnTimeline) => {
+      if (!onReviewChanges) return undefined
+      let review = cache.get(timeline)
+      if (!review) {
+        review = () => onReviewChanges(timeline)
+        cache.set(timeline, review)
+      }
+      return review
+    }
+  }, [onReviewChanges])
   const activeTimeline = Object.values(timelines).some((turn) => turn.sessionId === sessionId && ['running', 'approval', 'cancelling'].includes(turn.status))
   const goalActive = useGoalStore((state) => {
     const goal = state.bySession[sessionId]?.goal
@@ -653,8 +705,8 @@ function ChatView({
                       timeline={row.timeline}
                       user={row.user}
                       onResolveApproval={onResolveApproval}
-                      onReviewChanges={onReviewChanges ? () => onReviewChanges(row.timeline) : undefined}
-                      opened={<OpenedSessions children={openedByTurn.get(row.timeline.turnId) ?? []} />}
+                      onReviewChanges={reviewFor(row.timeline)}
+                      opened={openedFor(row.timeline.turnId)}
                       planActions={pendingPlan && row.timeline.turnId === latestTurn.turnId && onImplementPlan ? <><span className="plan-card-question">{t('plan.implementQuestion')}</span><button type="button" disabled={planStarting} onClick={() => setDismissedPlans(current => new Set(current).add(latestTurn.turnId))} className="btn btn-quiet btn-sm">{t('plan.notNow')}</button><button type="button" disabled={planStarting} className="btn btn-primary btn-sm" onClick={async () => { if (planStartingRef.current) return; planStartingRef.current = true; setPlanStarting(true); try { await onImplementPlan() } finally { planStartingRef.current = false; setPlanStarting(false) } }}>{planStarting ? t('plan.starting') : t('plan.implement')}</button></> : undefined}
                     />
                   ) : <MessageBubble message={row.message} />}

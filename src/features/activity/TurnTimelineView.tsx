@@ -927,7 +927,7 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
     return null
   }, [timeline.items])
   return (
-    <ActivityMotion.Provider value={working}><ActivityActive.Provider value={active}><ActivityTransition identity={`${active}:${projection.final?.id ?? ''}:${projection.segments.length}`}>
+    <ActivityMotion.Provider value={working}><ActivityActive.Provider value={active}><ActivityTransition identity={`${active}:${projection.final?.id ?? ''}:${projection.segments.length}`} live={active} calm={reducedMotion}>
       {user ? <MessageBubble message={user.origin || !timeline.origin ? user : { ...user, origin: timeline.origin }} /> : timeline.userMessage ? <MessageBubble message={{ id: `user-${timeline.turnId}`, role: 'user', content: timeline.userMessage, createdAt: timeline.startedAt, turnId: timeline.turnId, origin: timeline.origin }} /> : null}
       {modelChange && <ModelChangeNotice change={modelChange} animate={active} />}
       {/* La cabecera del turno en curso, como tarjeta de estado (#49). */}

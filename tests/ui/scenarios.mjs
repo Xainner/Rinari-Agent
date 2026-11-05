@@ -513,6 +513,17 @@ export const scenarios = {
     phases: ['exercise'],
     model: () => heldModel([{ text: 'PRUEBA DE BANDEJA TERMINADA' }]),
   },
+  'turn-fold': {
+    title: 'Al terminar un turno, el hueco de las operaciones plegadas se cierra con un fantasma en vez de saltar; leyendo arriba nada se mueve',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: [{ text: 'Pliegue' }, { text: 'Pliegue' }],
+      main: Array.from({ length: 2 }, () => [
+        ...Array.from({ length: 6 }, (_, i) => ({ tool: 'fs.glob', args: { pattern: `pliegue-${i}-*.txt` }, say: `PASO ${i + 1}.\n\n` + paragraphs(4, n => `Detalle ${n} del paso ${i + 1}: lo que revisó antes de responder.`) })),
+        { text: 'RESPUESTA FINAL\n\n' + paragraphs(6, n => `Párrafo ${n} de la respuesta, fuera de la actividad.`) },
+      ]).flat(),
+    }, laneOf, { held: ['main'] }),
+  },
   'activity-disclosure': {
     title: 'Avances visibles, operaciones plegadas y resumen al terminar en Normal y Boards',
     phases: ['exercise'],

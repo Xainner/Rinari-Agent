@@ -376,6 +376,25 @@ function ChatView({
   }, [snapshotAnchor, scheduleFollow])
 
   const activityLayout = useMemo<ActivityLayout>(() => ({
+    fold(ghost, delta, calm) {
+      const scroll = scrollRef.current
+      if (!scroll) return false
+      // Following the end: the space closes under the reader, who stays at the end.
+      if (followRef.current) return !calm
+      const view = scroll.getBoundingClientRect()
+      const box = ghost.getBoundingClientRect()
+      // Below the reader nothing visible moves.
+      if (box.top >= view.bottom) return false
+      // Above the reader: the space goes at once and the scroll keeps the
+      // place, so the text being read does not move.
+      if (box.bottom <= view.top) {
+        ghost.remove()
+        scroll.scrollTop -= delta
+        handleScroll()
+        return false
+      }
+      return !calm
+    },
     begin(anchor, manual = true) {
       const scroll = scrollRef.current
       if (!scroll || (!manual && followRef.current)) return () => {}

@@ -1875,6 +1875,9 @@ html[data-motion='reduced'] .turn-rail[data-live='true']::after { display: none;
 /* Opened by hand, an activity body fades in from just above; its height arrives at once (no animated height). */
 [data-activity-body][data-entering] { animation: activity-body-in var(--dur-base) var(--ease-out) both; }
 @keyframes activity-body-in { from { opacity: 0; transform: translateY(-4px); } }
+/* A finished turn folds its operations into the summary card: the space they leave closes, like the side panel's ghost (§5). */
+.turn-fold-ghost { pointer-events: none; animation: turn-fold var(--dur-base) var(--ease-out) forwards; }
+@keyframes turn-fold { to { height: 0; margin-block: 0; } }
 .act-tile { display: grid; width: 26px; height: 26px; flex-shrink: 0; place-items: center; border-radius: 8px; border: 1px solid var(--line-2); background: var(--bg-hover); color: var(--text-muted); }
 .act-tile[data-state='done'] { color: var(--success); border-color: rgb(91 224 165 / 0.3); background: rgb(91 224 165 / 0.1); }
 .act-tile[data-state='running'] { color: var(--violet-300); border-color: rgb(167 139 250 / 0.4); background: rgb(147 88 255 / 0.12); }

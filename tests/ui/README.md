@@ -42,6 +42,7 @@ también `failure.png` y el final del texto visible en la consola.
 |---|---|
 | [diagnostics-export](diagnostics-export/scenario.cjs) | Acerca de: «Exportar diagnóstico» muestra el contenido, guarda el ZIP y el paquete lleva registros y el resumen del Engine sin argumentos, títulos ni la carpeta personal |
 | [activity-disclosure](activity-disclosure/README.md) | Avances visibles en vivo, operaciones plegadas y resumen al terminar en Normal y Boards |
+| [turn-fold](turn-fold/scenario.cjs) | Al terminar un turno, el hueco de las operaciones plegadas se cierra con un fantasma cuadro a cuadro (siguiendo el final) y lo que se lee arriba no se mueve; con movimiento reducido, de golpe |
 | [attention-taskbar](attention-taskbar/README.md) | Un resultado en otro chat de Normal sube el número de pendientes |
 | [boards-fit](boards-fit/README.md) | Ajustar a la vista en Boards |
 | [image-create](image-create/scenario.cjs) | Crear imágenes con un servicio falso en loopback: la clave se guarda como referencia, Rinari pregunta con el servicio y el costo, y la imagen llega con su tarjeta (#28) |

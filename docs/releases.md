@@ -129,7 +129,8 @@ anunciar soporte.
 
 | Versión | Fecha | Commit | Engine | Notas |
 |---|---|---|---|---|
-| v0.4.2 | 2026-11-03 | (tag v0.4.2) | f082751 | [v0.4.2.md](releases/v0.4.2.md) |
+| v0.4.3 | 2026-11-05 | (tag v0.4.3) | 98496c5 | [v0.4.3.md](releases/v0.4.3.md) |
+| v0.4.2 | 2026-11-03 | 1965829 | f082751 | [v0.4.2.md](releases/v0.4.2.md) |
 | v0.4.1 | 2026-11-02 | 5a49a49 | f082751 | [v0.4.1.md](releases/v0.4.1.md) — instalador sin el motor; usar 0.4.2 |
 | v0.4.0 | 2026-10-30 | f6479b4 | 384b2ae | [v0.4.0.md](releases/v0.4.0.md) |
 | v0.3.1 | 2026-10-10 | 5d4fab5 | 2a94168 | [v0.3.1.md](releases/v0.3.1.md) |

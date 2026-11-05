@@ -1,5 +1,5 @@
 #Requires -Version 5.1
-param([string] $Version = '0.4.2', [switch] $Nightly)
+param([string] $Version = '0.4.3', [switch] $Nightly)
 $ErrorActionPreference = 'Stop'
 $root = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $source = Join-Path $root 'installer\setup\src-tauri\target\release\Rinari-Setup.exe'

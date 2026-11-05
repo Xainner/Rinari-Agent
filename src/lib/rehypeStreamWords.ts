@@ -66,10 +66,11 @@ function visit(node: HastNode, walk: Walk) {
   node.children = next
 }
 
-export default function rehypeStreamWords(options: { fadeFrom: number; shownTo?: number }) {
+/** `edge: false` when a later block of the same message holds the edge. */
+export default function rehypeStreamWords(options: { fadeFrom: number; shownTo?: number; edge?: boolean }) {
   return (tree: HastNode) => {
     const walk: Walk = { fadeFrom: options.fadeFrom, shownTo: options.shownTo ?? Number.POSITIVE_INFINITY, edge: null }
     visit(tree, walk)
-    if (walk.edge) (walk.edge.properties!.className as string[]).push('sw-edge')
+    if (walk.edge && options.edge !== false) (walk.edge.properties!.className as string[]).push('sw-edge')
   }
 }

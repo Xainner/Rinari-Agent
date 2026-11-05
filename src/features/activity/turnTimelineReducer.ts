@@ -64,6 +64,23 @@ function number(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined
 }
 
+const BUSY_STATUSES = ['running', 'approval', 'cancelling']
+
+/**
+ * Whether the session stays busy once `turnId` is `timeline`. A delta of a
+ * running turn answers at once; only a turn that stops running in a busy
+ * session looks at the session's other turns (it used to copy and scan every
+ * turn of every session on each delta).
+ */
+function sessionStaysBusy(timelines: Record<string, TurnTimeline>, busySessions: Set<string>, sessionId: string, turnId: string, timeline: TurnTimeline): boolean {
+  if (BUSY_STATUSES.includes(timeline.status)) return true
+  if (!busySessions.has(sessionId)) return false
+  for (const [id, turn] of Object.entries(timelines)) {
+    if (id !== turnId && turn.sessionId === sessionId && BUSY_STATUSES.includes(turn.status)) return true
+  }
+  return false
+}
+
 function busyCopy(current: Set<string>, sessionId: string, busy: boolean): Set<string> {
   // Same membership → same Set: selectors on busySessions must not repaint per token.
   if (current.has(sessionId) === busy) return current
@@ -876,9 +893,7 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
       next = {
         ...next,
         timelines: { ...next.timelines, [turnId]: timeline },
-        busySessions: busyCopy(next.busySessions, sessionId,
-          Object.values({ ...next.timelines, [turnId]: timeline }).some((value) =>
-            value.sessionId === sessionId && ['running', 'approval', 'cancelling'].includes(value.status))),
+        busySessions: busyCopy(next.busySessions, sessionId, sessionStaysBusy(next.timelines, next.busySessions, sessionId, turnId, timeline)),
       }
     }
     return next
@@ -977,9 +992,7 @@ export function turnTimelineReducer(state: TurnTimelineState, action: TimelineAc
   return {
     ...state,
     timelines: { ...state.timelines, [turnId]: timeline },
-    busySessions: busyCopy(state.busySessions, sessionId,
-      Object.values({ ...state.timelines, [turnId]: timeline }).some((turn) =>
-        turn.sessionId === sessionId && ['running', 'approval', 'cancelling'].includes(turn.status))),
+    busySessions: busyCopy(state.busySessions, sessionId, sessionStaysBusy(state.timelines, state.busySessions, sessionId, turnId, timeline)),
     approvals,
   }
 }

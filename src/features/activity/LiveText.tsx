@@ -11,5 +11,5 @@ import { useSmoothText } from './smoothText'
 export default function LiveText({ id, content, streaming, live }: { id: string; content: string; streaming: boolean; live: boolean }) {
   const calm = useCalmMotion()
   const { shownTo, fadeFrom, revealing } = useSmoothText(id, content, { streaming, live, reduced: calm })
-  return <Markdown stream={revealing ? { fadeFrom, shownTo } : undefined}>{content}</Markdown>
+  return <Markdown blocks stream={revealing ? { fadeFrom, shownTo } : undefined}>{content}</Markdown>
 }

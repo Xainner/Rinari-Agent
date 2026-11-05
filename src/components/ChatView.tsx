@@ -344,6 +344,9 @@ function ChatView({
       followFrameRef.current = 0
       const scroller = scrollRef.current
       if (!scroller || restoreRef.current || !followRef.current || !autoFollowRef.current) return
+      // Already at the very end (the last row is on screen): nothing to scroll.
+      // Each scroll write costs a layout, and this runs on most frames of a turn.
+      if (scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <= 1) return
       const last = streamRef.current.length - 1
       if (last >= 0) virtRef.current?.scrollToIndex(last, { align: 'end' })
       // El fondo real, también con la nota «+N mensajes anteriores» arriba.

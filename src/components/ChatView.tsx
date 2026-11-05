@@ -30,18 +30,25 @@ import { unreadResultCount, useBoardAttentionStore } from '../stores/boardAttent
 import type { HistoryPhase } from '../features/engine/useSessionList'
 import { ChecklistDock } from '../features/checklist/ChecklistDock'
 import { GoalDock } from '../features/goal/GoalDock'
+import { useGoalStore } from '../features/goal/goalStore'
 import { ChildDecisions, OpenedSessions, childrenByTurn, useSessionChildren } from '../features/children/ChildrenDock'
 import { StickyNote } from '../features/followups/StickyNote'
 
 export type ConversationPresentation = 'loading' | 'error' | 'empty' | 'conversation'
 
+/**
+ * `active`: hay un turno en curso o un objetivo vivo. Cuenta como
+ * conversación aunque todavía no haya filas (H-18): al empezar un `/goal`
+ * la bienvenida no se queda mezclada con el objetivo y la tarjeta del turno.
+ */
 export function conversationPresentation(
   historyPhase: HistoryPhase,
   streamLength: number,
+  active = false,
 ): ConversationPresentation {
   if (historyPhase === 'unloaded' || historyPhase === 'loading') return 'loading'
   if (historyPhase === 'error') return 'error'
-  return streamLength === 0 ? 'empty' : 'conversation'
+  return streamLength === 0 && !active ? 'empty' : 'conversation'
 }
 
 interface ChatViewProps {
@@ -193,8 +200,12 @@ function ChatView({
     ),
     [sessionChildren, timelines, sessionId],
   )
-  const presentation = conversationPresentation(historyPhase, stream.length)
   const activeTimeline = Object.values(timelines).some((turn) => turn.sessionId === sessionId && ['running', 'approval', 'cancelling'].includes(turn.status))
+  const goalActive = useGoalStore((state) => {
+    const goal = state.bySession[sessionId]?.goal
+    return Boolean(goal && goal.state !== 'cleared')
+  })
+  const presentation = conversationPresentation(historyPhase, stream.length, sessionId !== '' && (activeTimeline || isStreaming || goalActive))
   // Una aprobación esperando se nota también en «Ir al final» (#89).
   const waitingOnYou = Object.values(timelines).some((turn) => turn.sessionId === sessionId && turn.status === 'approval')
   // Un resultado sin leer más abajo convierte «Ir al final» en «↓ Nuevo resultado» (#62).

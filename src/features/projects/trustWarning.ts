@@ -24,6 +24,28 @@ export function warnUntrusted(root: string | null | undefined, state: TrustState
   })
 }
 
+/** Proyectos (y estado) ya avisados al abrir una conversación en esta ejecución. */
+const warnedOnOpen = new Set<string>()
+
+/**
+ * El aviso al abrir una conversación sale una vez por proyecto y ejecución
+ * (H-16): abrir otra conversación del mismo proyecto no lo repite. Si el
+ * estado cambia (de «sin confiar» a «la identidad cambió»), sí se avisa.
+ * Devuelve si avisó.
+ */
+export function warnUntrustedOnce(key: string, root: string | null | undefined, state: TrustState | null | undefined, id: string): boolean {
+  const seen = `${key}\u0000${state ?? ''}`
+  if (warnedOnOpen.has(seen)) return false
+  warnedOnOpen.add(seen)
+  warnUntrusted(root, state, id)
+  return true
+}
+
+/** Solo para pruebas. */
+export function resetTrustWarningsForTest(): void {
+  warnedOnOpen.clear()
+}
+
 async function trustFromWarning(root: string): Promise<void> {
   try {
     await engineApi.projectTrust(root)

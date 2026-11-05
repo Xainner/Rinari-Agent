@@ -75,12 +75,14 @@ import { activityKey, useActivityDisclosure } from '../../stores/activityDisclos
 import { useAgentFocusStore } from '../../stores/agentFocus'
 import { useSessionDockStore } from '../../stores/sessionDock'
 import { useReducedMotion } from 'framer-motion'
+import { useTimeReached } from '../../lib/clock'
 import { runsInItsConversation } from '../schedules/scheduleModel'
 
 interface Props {
   timeline: TurnTimeline
   user?: ChatMessage
-  now: number
+  /** A fixed clock (tests). Without it the live turn keeps its own time. */
+  now?: number
   onResolveApproval: (id: string, decision: string) => void
   onContinue?: () => void
   planActions?: ReactNode
@@ -866,7 +868,11 @@ function VisualProgress({ items, status, onResolveApproval, showProgress = true 
  * una sola vez) y una fila compacta de metadatos/acciones (`TurnMeta`) que no
  * repite el cuerpo.
  */
-export default function TurnTimelineView(props: Props) {
+/**
+ * Memoized: the chat re-renders on every streamed delta, and a finished turn
+ * keeps its timeline object, so it skips those renders.
+ */
+const TurnTimelineView = memo(function TurnTimelineView(props: Props) {
   const { timeline } = props
   // «Permitir para esta tarea» solo en la sesión propia de una ejecución: una
   // tarea que corre en su conversación («Repetir aquí») no lleva permisos.
@@ -878,7 +884,8 @@ export default function TurnTimelineView(props: Props) {
       </TurnSessionContext.Provider>
     </ScheduledRunContext.Provider>
   )
-}
+})
+export default TurnTimelineView
 
 /** Lo que escribiste mientras Rinari trabajaba, en el punto donde lo leyó. */
 /** La subida del mensaje recién enviado (`.user-bubble.is-fresh`, `rinari-send 0.5s`). */
@@ -907,10 +914,12 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
   // con movimiento reducido), y `turn.preparing` no cuenta como algo que
   // contar.
   const arrival = reducedMotion ? 0 : SEND_ARRIVAL_MS
-  const elapsed = now - timeline.startedAt
   const meaningful = timeline.items.some((item) => !(item.type === 'system' && item.kind === 'turn_preparing'))
-  const showHeader = !paneThinking && (!active || timeline.status === 'cancelling' || (elapsed >= arrival && (meaningful || elapsed >= Math.max(300, arrival))))
-  const emphasis = Boolean(projection.final) && (projection.actions >= 3 || (turnDuration(timeline, now) ?? 0) >= 10_000)
+  const headerAt = timeline.startedAt + (meaningful ? arrival : Math.max(300, arrival))
+  // One wake-up when the header is due, not a clock re-rendering the turn.
+  const headerDue = useTimeReached(headerAt, active && now === undefined)
+  const showHeader = !paneThinking && (!active || timeline.status === 'cancelling' || (now === undefined ? headerDue : now >= headerAt))
+  const emphasis = Boolean(projection.final) && (projection.actions >= 3 || (turnDuration(timeline, now ?? Date.now()) ?? 0) >= 10_000)
   // El cambio de modelo va arriba del turno, antes del primer mensaje (#29); en
   // un historial viejo, con el aviso después del texto, también se sube aquí.
   const modelChange = useMemo(() => {
@@ -918,7 +927,7 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
     return null
   }, [timeline.items])
   return (
-    <ActivityMotion.Provider value={working}><ActivityActive.Provider value={active}><ActivityTransition identity={`${active}:${projection.final?.id ?? ''}:${projection.segments.length}`}>
+    <ActivityMotion.Provider value={working}><ActivityActive.Provider value={active}><ActivityTransition identity={`${active}:${projection.final?.id ?? ''}:${projection.segments.length}`} live={active} calm={reducedMotion}>
       {user ? <MessageBubble message={user.origin || !timeline.origin ? user : { ...user, origin: timeline.origin }} /> : timeline.userMessage ? <MessageBubble message={{ id: `user-${timeline.turnId}`, role: 'user', content: timeline.userMessage, createdAt: timeline.startedAt, turnId: timeline.turnId, origin: timeline.origin }} /> : null}
       {modelChange && <ModelChangeNotice change={modelChange} animate={active} />}
       {/* La cabecera del turno en curso, como tarjeta de estado (#49). */}
@@ -933,7 +942,7 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
           {segment.steer && <SteerBubble item={segment.steer} sessionId={timeline.sessionId} />}
           {active ? content : (content || !previous) && <ActivityDisclosure
             stateKey={childInspectionKey(stateKey, 'summary')}
-            header={previous ? <ActivityHeader timeline={timeline} now={now} previous /> : <TurnDoneHeader timeline={timeline} now={now} issues={issues} />}
+            header={previous ? <ActivityHeader timeline={timeline} now={now ?? Date.now()} previous /> : <TurnDoneHeader timeline={timeline} now={now ?? Date.now()} issues={issues} />}
             inspectLabel={issues ? t(issues === 1 ? 'activity.incidentsOne' : 'activity.incidents', { n: issues }) : undefined}
             card={!previous}
             tone={previous ? undefined : timeline.status === 'failed' ? 'danger' : timeline.status === 'completed' ? undefined : 'muted'}

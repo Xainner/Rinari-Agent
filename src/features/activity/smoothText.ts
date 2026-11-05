@@ -6,6 +6,13 @@ const BASE_CHARS_PER_MS = 0.12
 const MAX_LAG_MS = 300
 /** Si no llega nada en este tiempo, la palabra a medias ya está completa. */
 const SETTLE_MS = 220
+/**
+ * At most one reveal step per this interval (~30 per second; every second
+ * frame at 60 Hz). Each step re-renders the whole message, so stepping on
+ * every frame cost up to 165 renders per second on a fast display; the words
+ * keep their fade, so a step of a few words still reads as continuous.
+ */
+const STEP_MS = 30
 
 /**
  * Lo que ya se mostró de cada bloque vivo, por id: al volver a montarse
@@ -62,6 +69,10 @@ export function useSmoothText(id: string, content: string, { streaming, live, re
     let frame = 0
     let last = now()
     const step = (time: number) => {
+      if (time - last < STEP_MS) {
+        frame = requestAnimationFrame(step)
+        return
+      }
       const text = latest.current
       const elapsed = Math.min(64, time - last)
       last = time

@@ -1,4 +1,5 @@
 import type { ContextStatus } from '../../types/protocol.generated'
+import { numberFormat } from '../../lib/numberFormat'
 
 /** Typed views of the nested parts of `context.status`, which the generator leaves open. */
 
@@ -83,7 +84,7 @@ export function sourceLabel(
   return { key: `context.source.${source ?? 'fallback'}`, values: {} }
 }
 
-export const formatTokens = (value: number, lang: string) => new Intl.NumberFormat(lang).format(value)
+export const formatTokens = (value: number, lang: string) => numberFormat(lang).format(value)
 
 export const formatSeconds = (ms: number, lang: string) =>
-  new Intl.NumberFormat(lang, { maximumFractionDigits: 1, minimumFractionDigits: ms < 10_000 ? 1 : 0 }).format(ms / 1000)
+  numberFormat(lang, { maximumFractionDigits: 1, minimumFractionDigits: ms < 10_000 ? 1 : 0 }).format(ms / 1000)

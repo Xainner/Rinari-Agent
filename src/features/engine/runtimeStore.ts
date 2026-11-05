@@ -19,6 +19,8 @@ export interface RuntimeStoreState extends TurnTimelineState {
   /** Generación del Engine: se incrementa en cada reset (arranque/reinicio). */
   generation: number
   dispatch: (action: TimelineAction) => void
+  /** Several actions in order, published once: one render for a frame's deltas. */
+  dispatchMany: (actions: readonly TimelineAction[]) => void
   /** Vacía la proyección (nuevo proceso de Engine) sin destruir suscripciones. */
   reset: () => void
 }
@@ -29,7 +31,8 @@ export function createRuntimeStore(): RuntimeStore {
   return createStore<RuntimeStoreState>((set, get) => ({
     ...createInitialTimelineState(),
     generation: 0,
-    dispatch: (action) => {
+    dispatch: (action) => get().dispatchMany([action]),
+    dispatchMany: (actions) => {
       const current = get()
       const before: TurnTimelineState = {
         threads: current.threads,
@@ -37,7 +40,8 @@ export function createRuntimeStore(): RuntimeStore {
         busySessions: current.busySessions,
         approvals: current.approvals,
       }
-      const next = turnTimelineReducer(before, action)
+      let next = before
+      for (const action of actions) next = turnTimelineReducer(next, action)
       if (next === before) return
       set({
         threads: next.threads,

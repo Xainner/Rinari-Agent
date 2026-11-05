@@ -35,6 +35,9 @@ scenario(async () => {
   await send('Revisa la carpeta de notas')
   await wait(text('LISTO UNO'))
   await wait(`Boolean(document.querySelector('[data-testid="turn-lesson"]'))`)
+  // The end of the turn folds its operations with a short glide; measure the
+  // turn once it has settled, or the pointer lands where the turn used to be.
+  await wait(`!document.querySelector('.turn-fold-ghost')`)
   // Like «Copiar respuesta», it only shows while the pointer is over the turn.
   const lessonOpacity = `getComputedStyle(document.querySelector('[data-testid="turn-lesson"]')).opacity`
   ui.win.webContents.sendInputEvent({ type: 'mouseMove', x: 5, y: 5 })

@@ -57,7 +57,6 @@ function FlowStageCard({ stage, order, selected, models, providers, onOpen, onGo
   const title = stage.title || stage.excerpt || t('flow.stage.untitled')
   return (
     <motion.article
-      layout={!reduced}
       initial={reduced ? false : { opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: reduced ? 0 : 0.22, delay: reduced ? 0 : Math.min(order, 8) * 0.04 }}

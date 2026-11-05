@@ -7,6 +7,7 @@ import { useI18n } from '../i18n'
 import { highlightToHtml } from '../lib/highlight'
 import { containsMath, escapeCurrency } from '../lib/math-detect'
 import rehypeStreamWords from '../lib/rehypeStreamWords'
+import { splitMarkdownBlocks } from '../lib/markdownBlocks'
 import { copyText } from '../lib/clipboard'
 
 import { ArtifactImage, FileLink, InlineMedia, PathCode, fileUrlTransform, looksLikeLocalPath } from '../features/files/FileWorkspace'
@@ -141,7 +142,14 @@ export interface MarkdownExtension {
   components?: Components
 }
 
-function Markdown({ children: raw, stream, extension }: { children: string; stream?: { fadeFrom: number; shownTo?: number }; extension?: MarkdownExtension }) {
+type StreamWords = { fadeFrom: number; shownTo?: number; edge?: boolean }
+
+/**
+ * `blocks`: the text grows while it streams. It is rendered block by block
+ * (splitMarkdownBlocks) and a closed block keeps its render, so a delta
+ * re-parses the open block only, not the whole message.
+ */
+function Markdown({ children: raw, stream, extension, blocks = false }: { children: string; stream?: { fadeFrom: number; shownTo?: number }; extension?: MarkdownExtension; blocks?: boolean }) {
   const children = escapeCurrency(raw)
   // Una vez que el texto tiene matemáticas, se queda en el renderizador de
   // matemáticas: si cambiara de idea a mitad del streaming, todo el bloque se
@@ -157,14 +165,37 @@ function Markdown({ children: raw, stream, extension }: { children: string; stre
       </div>
     )
   }
-  return (
+  if (!blocks) return (
     <div className="md-body" data-streaming={stream ? true : undefined}>
       <BaseMarkdown stream={stream} extension={extension}>{children}</BaseMarkdown>
     </div>
   )
+  const parts = splitMarkdownBlocks(children)
+  const shownTo = stream?.shownTo ?? Number.POSITIVE_INFINITY
+  // The edge (last visible word) lives in the last block that starts before it.
+  let edgeBlock = -1
+  if (stream) parts.forEach((part, index) => { if (part.start < shownTo) edgeBlock = index })
+  return (
+    <div className="md-body" data-streaming={stream ? true : undefined}>
+      {parts.map((part, index) => {
+        const end = part.start + part.text.length
+        // Offsets are relative to the block. A block wholly before `fadeFrom`
+        // has no words to fade; one wholly revealed has nothing waiting: both
+        // keep the same props, so the block keeps its render.
+        const words = stream && stream.fadeFrom < end
+          ? { fadeFrom: Math.max(0, stream.fadeFrom - part.start), shownTo: shownTo >= end ? undefined : shownTo - part.start, edge: index === edgeBlock }
+          : undefined
+        return <MarkdownBlock key={index} text={part.text} fadeFrom={words?.fadeFrom} shownTo={words?.shownTo} edge={words?.edge} extension={extension} />
+      })}
+    </div>
+  )
 }
 
-function BaseMarkdown({ children, stream, extension }: { children: string; stream?: { fadeFrom: number; shownTo?: number }; extension?: MarkdownExtension }) {
+const MarkdownBlock = memo(function MarkdownBlock({ text, fadeFrom, shownTo, edge, extension }: { text: string; fadeFrom?: number; shownTo?: number; edge?: boolean; extension?: MarkdownExtension }) {
+  return <BaseMarkdown stream={fadeFrom === undefined ? undefined : { fadeFrom, shownTo, edge }} extension={extension}>{text}</BaseMarkdown>
+})
+
+function BaseMarkdown({ children, stream, extension }: { children: string; stream?: StreamWords; extension?: MarkdownExtension }) {
   const plugins: PluggableList = [...(stream ? [[rehypeStreamWords, stream] as PluggableList[number]] : []), ...(extension?.rehypePlugins ?? [])]
   return (
     <ReactMarkdown urlTransform={fileUrlTransform} remarkPlugins={[remarkGfm]} rehypePlugins={plugins.length ? plugins : undefined} components={extension?.components ? { ...markdownComponents, ...extension.components } : markdownComponents}>

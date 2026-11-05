@@ -172,9 +172,12 @@ scenario(async () => {
       await evaluate(`document.querySelector('button[aria-label="Colapsar panel"]').click()`)
       const folding = await evaluate(sample('.board-pane-row > [data-collapsed]'))
       await screenshot('11c-boards-folded')
-      await evaluate(`document.querySelector('.pane-strip-expand')?.click()`)
+      // A lone pane folds to a column (.pane-column-expand); with company it is a strip.
+      await evaluate(`document.querySelector('.pane-strip-expand, .pane-column-expand').click()`)
       const unfolding = await evaluate(sample('.board-pane-row > .session-pane'))
-      steps.push({ name: 'boards-fold-widths', ok: folding.length > 3 && unfolding.length > 3, detail: { folding, unfolding } })
+      // A missing element samples -1: the check must see both widths move.
+      const moved = (widths) => widths.length > 3 && widths.every((width) => width >= 0) && widths[0] !== widths.at(-1)
+      steps.push({ name: 'boards-fold-widths', ok: moved(folding) && moved(unfolding), detail: { folding, unfolding } })
       await delay(300)
     })
   })
@@ -246,4 +249,8 @@ scenario(async () => {
     await size(1500, 900)
   })
   report({ session: session.id, steps })
+  // The tour keeps going after a failed step to leave every capture; the
+  // fold is the one motion it measures, so a broken fold fails the tour.
+  const fold = steps.find((entry) => entry.name === 'boards-fold-widths')
+  if (!fold?.ok) throw new Error(`Boards fold did not move: ${JSON.stringify(fold?.detail ?? null)}`)
 }, { timeout: 420_000 })

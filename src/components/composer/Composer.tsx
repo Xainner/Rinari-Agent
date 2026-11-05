@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent } from 'react'
 import DictationButton from '../../features/dictation/DictationButton'
 import { useDictationPrefs } from '../../features/dictation/dictationPrefs'
 import { useReducedMotion } from 'framer-motion'
@@ -145,7 +145,7 @@ const SLASH_DESCRIPTION_KEYS: Record<string, I18nKey> = {
  * Los adjuntos nativos y las referencias @ se conservan como rutas hasta que
  * el motor los valida para el turno.
  */
-export default function Composer({
+function Composer({
   placement,
   onSend,
   onUiCommand,
@@ -217,11 +217,13 @@ export default function Composer({
     pill.style.width = button.offsetWidth + 'px'
     pill.style.transform = 'translateX(' + button.offsetLeft + 'px)'
   }, [currentMode])
-  // Recolocar tras cada render (cambio de modo o de idioma) y ante
-  // cambios de tamaño (zoom, carga de fuentes, contenedor).
+  // Re-place on a mode or language change only: placePill reads layout, and
+  // running it after every render forced a synchronous layout on each
+  // streamed delta. Size changes (zoom, fonts, container) go through the
+  // ResizeObserver below.
   useLayoutEffect(() => {
     placePill()
-  })
+  }, [placePill, t])
   useEffect(() => {
     const group = modesGroupRef.current
     if (!group || typeof ResizeObserver === 'undefined') return
@@ -793,6 +795,7 @@ export default function Composer({
         data-toast-avoid=""
         className="composer-surface rounded-[22px] border p-2.5 transition-colors"
       >
+        {isStreaming && <span className="flow-ring" aria-hidden="true"><i /></span>}
         {attachments.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5 px-1">
             {attachments.map((file) => (
@@ -988,7 +991,7 @@ export default function Composer({
               style={{
                 transition:
                   pillArmed
-                    ? 'transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), width 0.22s cubic-bezier(0.22, 1, 0.36, 1)'
+                    ? 'transform var(--dur-base) var(--ease-out), width var(--dur-base) var(--ease-out)'
                     : 'none',
               }}
             />
@@ -1092,3 +1095,6 @@ export default function Composer({
     </div>
   )
 }
+
+/** Memoized: the chat around it re-renders on every streamed delta. */
+export default memo(Composer)

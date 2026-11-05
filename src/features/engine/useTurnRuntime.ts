@@ -20,6 +20,17 @@ import { applyFollowupEvent } from '../followups/followupStore'
 import { applyChildEvent } from '../children/childrenStore'
 import type { AttachmentRef } from '../../types'
 
+/**
+ * Events that arrive many times a second while a turn streams. They are
+ * applied in one batch per frame: one store update and one render for
+ * everything that arrived since the last frame. Any other event (a turn that
+ * ends, an approval, a question…) first applies what is queued and then
+ * itself, so the order never changes.
+ */
+const BATCHED_EVENTS = new Set(['model.content.delta', 'model.tool_input', 'tool.output.delta', 'usage.updated', 'agent.activity'])
+/** A hidden window gets no frames: the batch is applied after this at most. */
+const BATCH_MAX_WAIT_MS = 100
+
 /** Trailing debounce for the secondary session-list fetch (§4.4). */
 export const SESSION_REFRESH_DEBOUNCE_MS = 150
 /** Upper bound: with several panes streaming a refresh still lands within this window. */
@@ -57,12 +68,32 @@ export function useTurnRuntime(options: { onSessionsChanged: () => void }) {
     }, delay)
   }, [])
 
+  const queued = useRef<TimelineAction[]>([])
+  const flushHandles = useRef<{ frame: number; timer: number } | null>(null)
+  const flush = useCallback(() => {
+    if (flushHandles.current) {
+      cancelAnimationFrame(flushHandles.current.frame)
+      window.clearTimeout(flushHandles.current.timer)
+      flushHandles.current = null
+    }
+    if (!queued.current.length) return
+    const actions = queued.current
+    queued.current = []
+    store.getState().dispatchMany(actions)
+  }, [store])
+
   useEffect(() => {
     let unlisten: (() => void) | undefined
     let disposed = false
     void onEngineEvent((event: EngineEventMsg) => {
       const action = engineEventAction(event)
-      if (action) store.getState().dispatch(action)
+      if (action && BATCHED_EVENTS.has(event.event)) {
+        queued.current.push(action)
+        if (!flushHandles.current) flushHandles.current = { frame: requestAnimationFrame(flush), timer: window.setTimeout(flush, BATCH_MAX_WAIT_MS) }
+      } else if (action) {
+        queued.current.push(action)
+        flush()
+      }
       if (event.event === 'steer.returned') returnUnread(event.payload)
       onProfileEvent(event.event)
       if (event.event === 'checklist.updated') applyChecklistEvent(event.payload)
@@ -83,19 +114,23 @@ export function useTurnRuntime(options: { onSessionsChanged: () => void }) {
     return () => {
       disposed = true
       unlisten?.()
+      flush()
       if (refreshTimer.current !== null) window.clearTimeout(refreshTimer.current)
       refreshTimer.current = null
       refreshDeadline.current = null
     }
-  }, [store, scheduleSessionsChanged])
+  }, [store, scheduleSessionsChanged, flush])
 
+  // Own actions go after the events already received.
   const dispatch = useCallback((action: TimelineAction) => {
+    flush()
     store.getState().dispatch(action)
-  }, [store])
+  }, [store, flush])
 
   const restoreSnapshot = useCallback(async (): Promise<void> => {
     try {
       const result = await engineApi.snapshot()
+      flush()
       store.getState().dispatch({ type: 'snapshot/restored', snapshot: result.snapshot, now: Date.now() })
     } catch {
       // Recovery metadata is best-effort; authoritative live events continue.
@@ -105,12 +140,14 @@ export function useTurnRuntime(options: { onSessionsChanged: () => void }) {
   /** Nuevo proceso de Engine: la proyección anterior ya no describe nada vivo. */
   const resetForNewEngine = useCallback(() => {
     useActivityDisclosure.getState().reset()
+    // What the old process sent and is still queued describes nothing alive.
+    queued.current = []
     store.getState().reset()
   }, [store])
 
   const cancelTurn = useCallback(async (sessionId: string): Promise<void> => {
     if (!sessionId) return
-    store.getState().dispatch({ type: 'turn/cancelling', sessionId })
+    dispatch({ type: 'turn/cancelling', sessionId })
     window.setTimeout(() => void restoreSnapshot(), 2000)
     window.setTimeout(() => {
       if (store.getState().busySessions.has(sessionId)) {
@@ -124,7 +161,7 @@ export function useTurnRuntime(options: { onSessionsChanged: () => void }) {
       if (isCommandError(error) && error.code === 'NO_ACTIVE_TURN') {
         try {
           const result = await engineApi.sessionTimeline(sessionId)
-          store.getState().dispatch({ type: 'timeline/loaded', sessionId, turns: result.turns })
+          dispatch({ type: 'timeline/loaded', sessionId, turns: result.turns })
           await restoreSnapshot()
           return
         } catch (recoveryError) {
@@ -135,7 +172,7 @@ export function useTurnRuntime(options: { onSessionsChanged: () => void }) {
       toast.error(commandMessage(error))
       void restoreSnapshot()
     }
-  }, [restoreSnapshot, store])
+  }, [restoreSnapshot, store, dispatch])
 
   /**
    * Mensaje para el turno en curso. El Engine lo lee tras el paso actual;
@@ -147,7 +184,7 @@ export function useTurnRuntime(options: { onSessionsChanged: () => void }) {
         ? await engineApi.turnSteerNow(sessionId, message, attachments)
         : await engineApi.turnSteer(sessionId, message, attachments)
       if (result.delivery === 'steer') {
-        store.getState().dispatch({
+        dispatch({
           type: 'steer/sent',
           sessionId,
           turnId: result.turn_id,
@@ -162,7 +199,7 @@ export function useTurnRuntime(options: { onSessionsChanged: () => void }) {
       toast.error(commandMessage(error))
       return false
     }
-  }, [store])
+  }, [dispatch])
 
   /** Tab mientras trabaja: espera a que termine el turno (cola del Engine). */
   const queueMessage = useCallback(async (sessionId: string, message: string): Promise<boolean> => {
@@ -177,15 +214,15 @@ export function useTurnRuntime(options: { onSessionsChanged: () => void }) {
   }, [])
 
   const resolveApproval = useCallback(async (approvalId: string, decision: string): Promise<void> => {
-    store.getState().dispatch({ type: 'approval/resolving', approvalId })
+    dispatch({ type: 'approval/resolving', approvalId })
     try {
       const result = await engineApi.resolveApproval(approvalId, decision)
       if (result.status !== 'resolved') void restoreSnapshot()
     } catch (error) {
       toast.error(commandMessage(error))
-      store.getState().dispatch({ type: 'approval/pending', approvalId })
+      dispatch({ type: 'approval/pending', approvalId })
     }
-  }, [restoreSnapshot, store])
+  }, [restoreSnapshot, store, dispatch])
 
   // Legacy projection for consumers that still read the whole state (tests,
   // EngineConsole). New code subscribes per session via sessionSelectors.

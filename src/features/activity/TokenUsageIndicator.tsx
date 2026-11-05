@@ -1,6 +1,7 @@
 import { useI18n } from '../../i18n'
 import type { TurnTokenUsage } from '../../types/protocol.generated'
 import { formatTokens } from './tokenUsage'
+import { numberFormat } from '../../lib/numberFormat'
 
 /**
  * No live region or number tween: reconciliations may legitimately decrease.
@@ -12,7 +13,7 @@ import { formatTokens } from './tokenUsage'
 export default function TokenUsage({ usage }: { usage?: TurnTokenUsage }) {
   const { t, lang } = useI18n()
   if (!usage) return null
-  const number = (n: number) => new Intl.NumberFormat(lang).format(n)
+  const number = (n: number) => numberFormat(lang).format(n)
   // Al pie, lo que ocupa la conversación al terminar (crece turno a turno);
   // lo que consumió el turno —cada llamada reenvía todo— va en el detalle.
   const context = typeof usage.context_tokens === 'number' && usage.context_tokens > 0 ? usage.context_tokens : null

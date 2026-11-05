@@ -1,4 +1,5 @@
 import { ListTree, PanelRightOpen } from 'lucide-react'
+import Markdown from '../../components/Markdown'
 import type { ReactNode } from 'react'
 import { useI18n } from '../../i18n'
 import { useSessionDockStore } from '../../stores/sessionDock'
@@ -37,7 +38,13 @@ export default function PlanCard({ content, turnId, actions, children }: { conte
       {plan.summary && plan.summary !== plan.title && <p className="plan-card-summary">{plan.summary}</p>}
       {plan.steps.length > 0 && (
         <ol className="plan-card-steps">
-          {plan.steps.slice(0, PREVIEW_STEPS).map((step, index) => <li key={index}>{step}</li>)}
+          {plan.steps.slice(0, PREVIEW_STEPS).map((step, index) => (
+            <li key={index}>
+              {step}
+              {/* Su sublista o el párrafo que lo sigue (H-19). */}
+              {plan.stepDetails[index] && <div className="plan-step-detail" data-testid="plan-step-detail"><Markdown>{plan.stepDetails[index]}</Markdown></div>}
+            </li>
+          ))}
           {more > 0 && <li className="plan-card-more">{t('plan.card.more', { n: more })}</li>}
         </ol>
       )}

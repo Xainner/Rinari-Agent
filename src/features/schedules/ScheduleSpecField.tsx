@@ -55,9 +55,11 @@ export default function ScheduleSpecField({ spec, onChange }: { spec: ScheduleSp
           <select
             aria-label={t('schedules.form.unit')}
             value={spec.seconds !== undefined ? 'seconds' : 'minutes'}
+            // Cambiar la unidad solo cambia la unidad (H-21): convertir 60 min
+            // en 3600 s dejaba al dueño corrigiendo un número que no escribió.
             onChange={(event) => onChange(event.target.value === 'seconds'
-              ? { kind: 'interval', seconds: Math.max(MIN_INTERVAL_SECONDS, (spec.minutes ?? 1) * 60) }
-              : { kind: 'interval', minutes: Math.max(1, Math.round((spec.seconds ?? 60) / 60)) })}
+              ? { kind: 'interval', seconds: Math.max(MIN_INTERVAL_SECONDS, spec.minutes ?? MIN_INTERVAL_SECONDS) }
+              : { kind: 'interval', minutes: Math.max(1, spec.seconds ?? 1) })}
             className={`${inputClass} w-auto`}
           >
             <option value="seconds">{t('schedules.form.seconds')}</option>

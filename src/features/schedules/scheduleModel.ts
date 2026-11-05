@@ -82,10 +82,15 @@ export function describeSchedule(spec: ScheduleSpec, t: Translate, locale: strin
   }
 }
 
-/** Fecha y hora de un instante del Engine (segundos epoch). */
-export function formatWhen(epoch: number | null | undefined, locale: string): string {
+/**
+ * Fecha y hora de un instante del Engine (segundos epoch). Con un horario de
+ * menos de un minuto (H-21) lleva los segundos: «cada 20 s» con la próxima
+ * vuelta en «10:42» no decía cuándo.
+ */
+export function formatWhen(epoch: number | null | undefined, locale: string, spec?: ScheduleSpec): string {
   if (!epoch) return '—'
-  return new Date(epoch * 1000).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' })
+  const seconds = spec?.kind === 'interval' && intervalSeconds(spec) < 60
+  return new Date(epoch * 1000).toLocaleString(locale, { dateStyle: 'medium', timeStyle: seconds ? 'medium' : 'short' })
 }
 
 /** Valor por defecto de un `<input type="datetime-local">`: dentro de una hora, en punto. */

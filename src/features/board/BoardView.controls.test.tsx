@@ -24,6 +24,9 @@ import BoardView from './BoardView'
 import { BoardHarness, engineFixture, sessionFixture } from './testUtils'
 
 beforeEach(() => {
+  // Un panel que trabaja ya es conversación aunque no tenga filas (H-18), y
+  // su transcript mide con ResizeObserver, que jsdom no trae.
+  ;(window as unknown as { ResizeObserver: unknown }).ResizeObserver = class { observe() {} unobserve() {} disconnect() {} }
   window.localStorage.clear()
   resetPendingQuestionsForTests()
   useBoardStore.getState().hydrate(defaultBoard())

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Eye, EyeOff, LoaderCircle, Pencil, RefreshCw } from 'lucide-react'
+import { ChevronDown, Eye, EyeOff, LoaderCircle, Pencil, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   commandMessage,
@@ -21,7 +21,10 @@ import { ModelOutputCap } from './ProviderConnectionSettings'
  * `models.changed`. Compartido entre Ajustes y el wizard.
  *
  * Con `choice`, «Usar» no cambia el modelo activo del Engine: marca la
- * elección, que el wizard aplica al continuar.
+ * elección, que el wizard aplica al continuar. Ahí también se elige solo
+ * (hallazgo del primer uso): el modelo que se vuelve a mostrar o que pasa la
+ * prueba, el único del proveedor, y el nuevo alias si se renombra el elegido.
+ * Con uno elegido, la lista queda plegada tras «Ver los N modelos».
  */
 export default function ModelCatalog({
   providerAlias,
@@ -30,7 +33,7 @@ export default function ModelCatalog({
 }: {
   providerAlias: string
   onChanged: () => void
-  choice?: { chosen: string | null; onChoose: (alias: string) => void }
+  choice?: { chosen: string | null; onChoose: (alias: string | null) => void }
 }) {
   const { t, lang } = useI18n()
   const [saved, setSaved] = useState<ModelSummary[] | null>(null)
@@ -39,8 +42,13 @@ export default function ModelCatalog({
   const [editing, setEditing] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [showAll, setShowAll] = useState(false)
   const confirm = useConfirm()
   const savingFirst = useRef(false)
+  // El ID del modelo que se acaba de volver a mostrar: se elige al llegar.
+  const shown = useRef<string | null>(null)
+  // El alias nuevo del elegido, hasta que la lista recargada lo traiga.
+  const renamed = useRef<string | null>(null)
 
   const reload = useCallback(async () => {
     try {
@@ -77,6 +85,22 @@ export default function ModelCatalog({
     void registerProviderModels(providerAlias).then(() => reload()).finally(() => setRefreshing(false))
   }, [saved, providerAlias, reload])
 
+  const chosen = choice?.chosen ?? null
+  const onChoose = choice?.onChoose
+  useEffect(() => {
+    if (!onChoose || saved === null) return
+    const back = shown.current ? saved.find((model) => model.provider_model_id === shown.current) : undefined
+    if (back) {
+      shown.current = null
+      if (back.alias !== chosen) onChoose(back.alias)
+      return
+    }
+    if (renamed.current && saved.some((model) => model.alias === renamed.current)) renamed.current = null
+    // Un elegido que ya no está (quitado) deja de estarlo; el único, se elige.
+    if (chosen && chosen !== renamed.current && !saved.some((model) => model.alias === chosen)) onChoose(null)
+    else if (!chosen && saved.length === 1) onChoose(saved[0].alias)
+  }, [saved, chosen, onChoose])
+
   const act = async (key: string, work: () => Promise<unknown>) => {
     setBusy(key)
     try {
@@ -99,6 +123,8 @@ export default function ModelCatalog({
       const result = await engineApi.modelTest(ref, providerAlias)
       if (result.ok) toast.success(result.detail)
       else toast.error(result.detail)
+      // Probado y funcionando: en el asistente, es el que queda elegido.
+      if (result.ok && onChoose) onChoose(ref)
     } catch (err) {
       toast.error(commandMessage(err))
     } finally {
@@ -126,6 +152,11 @@ export default function ModelCatalog({
   }
 
   if (saved === null) return <div className="h-20 rounded-[var(--r-md)] bg-[var(--bg-active)] motion-safe:animate-pulse" aria-busy="true" />
+  // En el asistente, el elegido va primero; con él a la vista, el resto se pliega.
+  const chosenRow = choice && chosen ? saved.find((model) => model.alias === chosen) : undefined
+  const ordered = chosenRow ? [chosenRow, ...saved.filter((model) => model !== chosenRow)] : saved
+  const folds = Boolean(chosenRow) && saved.length > 1
+  const rows = folds && !showAll ? [chosenRow!] : ordered
   return (
     <div className="space-y-3" data-testid="model-catalog">
       <div className="flex items-center justify-between gap-2">
@@ -140,7 +171,7 @@ export default function ModelCatalog({
         <p className="text-sm text-[var(--text-subtle)]" role="status">{refreshing ? t('models.saving') : t('providers.noDiscovered')}</p>
       )}
 
-      {saved.map((model) => {
+      {rows.map((model) => {
         const active = choice ? choice.chosen === model.alias : model.active
         return (
           <div key={model.id} className="model-row" data-testid="model-row" data-editing={editing === model.id || undefined}>
@@ -167,11 +198,28 @@ export default function ModelCatalog({
               <button type="button" onClick={() => void removeModel(model)} disabled={busy !== null} className="btn btn-ghost btn-sm model-row-remove">{t('providers.modelRemove')}</button>
             </div>
             {editing === model.id && (
-              <ModelEditor model={model} providerAlias={providerAlias} onDone={() => { setEditing(null); void reload(); onChanged() }} onCancel={() => setEditing(null)} />
+              <ModelEditor
+                model={model}
+                providerAlias={providerAlias}
+                onDone={(alias) => {
+                  if (onChoose && chosen === model.alias) { renamed.current = alias; onChoose(alias) }
+                  setEditing(null)
+                  void reload()
+                  onChanged()
+                }}
+                onCancel={() => setEditing(null)}
+              />
             )}
           </div>
         )
       })}
+
+      {folds && (
+        <button type="button" className="btn btn-quiet btn-sm model-catalog-more" aria-expanded={showAll} onClick={() => setShowAll((value) => !value)} data-testid="model-catalog-more">
+          <ChevronDown size={13} aria-hidden="true" className={showAll ? 'rotate-180' : undefined} />
+          {showAll ? t('models.onlyChosen') : t('models.showAll', { n: saved.length })}
+        </button>
+      )}
 
       {hidden.length > 0 && (
         <div className="model-hidden">
@@ -183,7 +231,7 @@ export default function ModelCatalog({
               {hidden.map((id) => (
                 <li key={id} className="flex items-center gap-2 text-xs">
                   <span className="min-w-0 flex-1 truncate font-mono text-[var(--text-muted)]">{id}</span>
-                  <button type="button" className="btn btn-quiet btn-xs" disabled={busy !== null} onClick={() => void act(`show:${id}`, () => engineApi.modelUnhide(providerAlias, id))}>
+                  <button type="button" className="btn btn-quiet btn-xs" disabled={busy !== null} onClick={() => { if (onChoose) shown.current = id; void act(`show:${id}`, () => engineApi.modelUnhide(providerAlias, id)) }}>
                     <Eye size={12} aria-hidden="true" /> {t('models.show')}
                   </button>
                 </li>
@@ -198,7 +246,7 @@ export default function ModelCatalog({
 }
 
 /** «Editar»: el alias (Enter guarda, Esc cancela) y el máximo de salida (#92, #96). */
-function ModelEditor({ model, providerAlias, onDone, onCancel }: { model: ModelSummary; providerAlias: string; onDone: () => void; onCancel: () => void }) {
+function ModelEditor({ model, providerAlias, onDone, onCancel }: { model: ModelSummary; providerAlias: string; onDone: (alias: string) => void; onCancel: () => void }) {
   const { t } = useI18n()
   const [alias, setAlias] = useState(model.alias)
   const [error, setError] = useState('')
@@ -211,7 +259,7 @@ function ModelEditor({ model, providerAlias, onDone, onCancel }: { model: ModelS
     try {
       await engineApi.modelAlias(model.alias, next, providerAlias)
       toast.success(t('adv.saved'))
-      onDone()
+      onDone(next)
     } catch (err) {
       setError(commandMessage(err))
     } finally {

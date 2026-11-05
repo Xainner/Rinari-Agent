@@ -74,3 +74,20 @@ useSessionUiStore.subscribe((state) => persist(state.bySession))
 /** Selector para hooks: `useSessionUiStore(selectReasoning(sessionId))`. */
 export const selectReasoning = (sessionId: string) => (state: SessionUiState): ReasoningEffort =>
   (state.bySession[sessionId || 'draft'] ?? DEFAULT_PREFS).reasoningEffort
+
+/**
+ * Un turno empezó con un razonamiento concreto (`turn.started` trae su
+ * `reasoning_effort`, H-20): si en esta conversación no se eligió ninguno, el
+ * selector pasa a decir ese, el que de verdad usó el último turno, y es el que
+ * irá en el siguiente. Antes seguía en «Predeterminado» aunque el turno
+ * (lanzado desde otro sitio, una tarea o un agente) usara otro. Una elección
+ * del dueño no se pisa.
+ */
+export function syncReasoningFromTurn(payload: Record<string, unknown> | undefined): void {
+  const sessionId = typeof payload?.session_id === 'string' ? payload.session_id : ''
+  const effort = payload?.reasoning_effort
+  if (!sessionId || !isEffort(effort) || effort === 'off') return
+  const state = useSessionUiStore.getState()
+  if (state.reasoningFor(sessionId) !== 'off') return
+  state.setReasoningFor(sessionId, effort)
+}

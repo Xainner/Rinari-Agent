@@ -1,10 +1,11 @@
-import { X } from 'lucide-react'
+import { BellOff, BellRing, Bot, X } from 'lucide-react'
+import { Select } from '../../components/ui/select'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../components/ui/dialog'
 import { useI18n } from '../../i18n'
 import { inputClass, labelClass } from '../../lib/ui'
-import { commandMessage, engineApi, type ScheduleSpec, type ScheduledTaskInput } from '../../services/engine'
+import { commandMessage, engineApi, type ScheduleNotify, type ScheduleSpec, type ScheduledTaskInput } from '../../services/engine'
 import { useEngineData } from '../engine/EngineContext'
 import { FullAccessDialog } from '../permissions/FullAccessDialog'
 import { SCHEDULES_CHANGED_EVENT, draftProblem, emptyCommand, runsHere, useScheduleForm } from './scheduleModel'
@@ -18,6 +19,14 @@ const KIND_KEYS = {
   reminder: ['schedules.kind.reminder', 'schedules.kind.reminderHint'],
 } as const
 const ON_RESULT = ['notify_failure', 'nothing', 'agent'] as const
+const ON_RESULT_ICONS = { notify_failure: BellRing, nothing: BellOff, agent: Bot } as const
+/**
+ * Un comando avisa según lo que se hace con su resultado (H-21): el Engine
+ * calla las vueltas que salen bien con «Avisarme si falla» y todas con
+ * «Nada». Sus «Avisos» se guardan a juego para no decir dos cosas distintas;
+ * solo «Pasárselo a Rinari» deja elegirlos, para lo que haga Rinari.
+ */
+const ON_RESULT_NOTIFY: Record<Exclude<typeof ON_RESULT[number], 'agent'>, ScheduleNotify> = { notify_failure: 'problems', nothing: 'none' }
 const PERMISSION_LABEL = { 'read-only': 'perm.readOnly', workspace: 'perm.workspace', 'full-access': 'perm.fullAccess' } as const
 
 /**
@@ -62,8 +71,11 @@ export default function ScheduleForm() {
     setError('')
     try {
       const payload: ScheduledTaskInput = { ...draft, name: draft.name.trim(), prompt: draft.prompt.trim() }
-      if (payload.kind === 'command') payload.command = { ...command, command: command.command.trim(), cwd: command.cwd?.trim() || null }
-      else delete payload.command
+      if (payload.kind === 'command') {
+        payload.command = { ...command, command: command.command.trim(), cwd: command.cwd?.trim() || null }
+        const onResult = command.on_result ?? 'notify_failure'
+        if (onResult !== 'agent') payload.notify = ON_RESULT_NOTIFY[onResult]
+      } else delete payload.command
       if (payload.session_id && !here) payload.target = 'new_session'
       // Aquí no se ven el proyecto, el modelo, los permisos ni las skills: no
       // se manda lo que quedó de antes en el borrador.
@@ -146,12 +158,23 @@ export default function ScheduleForm() {
                   <span className={labelClass}>{t('schedules.form.timeout')}</span>
                   <input type="number" min={1} max={3600} value={command.timeout_s ?? 600} onChange={(event) => setCommand({ timeout_s: Number(event.target.value) })} className={inputClass} />
                 </label>
-                <label className="block">
-                  <span className={labelClass}>{t('schedules.form.onResult')}</span>
-                  <select value={command.on_result ?? 'notify_failure'} onChange={(event) => setCommand({ on_result: event.target.value as typeof command.on_result })} className={inputClass}>
-                    {ON_RESULT.map((value) => <option key={value} value={value}>{t(`schedules.onResult.${value}`)}</option>)}
-                  </select>
-                </label>
+              </div>
+              {/* Lo que pasa con el resultado y cómo avisa, en un solo sitio (H-21). */}
+              <div className="grid gap-1.5" data-testid="schedule-on-result">
+                <span className="field-label mt-0">{t('schedules.form.onResult')}</span>
+                <Select
+                  value={command.on_result ?? 'notify_failure'}
+                  label={t('schedules.form.onResult')}
+                  options={ON_RESULT.map((value) => {
+                    const Icon = ON_RESULT_ICONS[value]
+                    return { value, label: t(`schedules.onResult.${value}`), detail: t(`schedules.onResult.${value}Hint`), icon: <Icon size={14} aria-hidden="true" /> }
+                  })}
+                  onChange={(on_result) => update({
+                    command: { ...command, on_result },
+                    ...(on_result === 'agent' ? {} : { notify: ON_RESULT_NOTIFY[on_result] }),
+                  })}
+                  testId="schedule-on-result-select"
+                />
               </div>
             </section>
           )}
@@ -165,7 +188,11 @@ export default function ScheduleForm() {
 
           <ScheduleSpecField spec={spec} onChange={setSpec} />
 
-          <NotifyField value={draft.notify ?? 'all'} onChange={(notify) => update({ notify })} />
+          {draft.kind !== 'command' ? (
+            <NotifyField value={draft.notify ?? 'all'} onChange={(notify) => update({ notify })} />
+          ) : command.on_result === 'agent' && (
+            <NotifyField value={draft.notify ?? 'all'} onChange={(notify) => update({ notify })} label={t('schedules.notify.agentLabel')} />
+          )}
 
           {draft.session_id && draft.kind === 'agent' && (
             <fieldset className="space-y-2" data-testid="schedule-target">

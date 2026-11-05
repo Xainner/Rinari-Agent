@@ -12,6 +12,8 @@ const RULE_TITLE: Record<string, I18nKey> = {
   git_remote_mutation: 'approval.rule.gitPush',
   git_force_push: 'approval.rule.forcePush',
   delete_outside_root: 'approval.rule.deleteOutside',
+  // Un borrado recursivo dentro del proyecto no tiene vuelta atrás (0.4.3, H-01).
+  delete_recursive: 'approval.rule.deleteRecursive',
   system_secret: 'approval.rule.secret',
   external_content_send: 'approval.rule.externalSend',
   mcp_call: 'approval.rule.mcp',
@@ -63,9 +65,11 @@ export function approvalCopy(item: ApprovalTimelineItem, t: Translate): Approval
   const description = item.description || item.capability
   const separator = description.indexOf(': ')
   const tool = separator > 0 && !description.slice(0, separator).includes(' ') ? description.slice(0, separator) : null
-  const key = item.ruleId ? (item.grantScope === 'chats' && CHAT_TITLE[item.ruleId]) || RULE_TITLE[item.ruleId] : undefined
+  // En solo lectura, las pruebas se aprueban por ejecutor: `read_only_tests:pytest` (0.4.3, H-12).
+  const runner = item.ruleId?.startsWith('read_only_tests:') ? item.ruleId.slice('read_only_tests:'.length) : null
+  const key = runner !== null ? 'approval.rule.readOnlyTests' as I18nKey : item.ruleId ? (item.grantScope === 'chats' && CHAT_TITLE[item.ruleId]) || RULE_TITLE[item.ruleId] : undefined
   return {
-    title: key ? t(key, { target: item.target ?? '', capability: item.capability }) : description,
+    title: key ? t(key, { target: item.target ?? '', capability: item.capability, runner: runner ?? '' }) : description,
     tool: key ? tool : null,
     note: item.ruleId === 'external_content_send' ? t('approval.note.externalSend') : null,
     risk: RISK[item.risk] ? t(RISK[item.risk]) : item.risk,

@@ -7,6 +7,7 @@ import { installMockPlatform } from '../../test/mockPlatform'
 const host = installMockPlatform()
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import ModelCatalog from './ModelCatalog'
@@ -88,4 +89,41 @@ it('in the wizard, «Usar» marks the choice without changing the active model',
   await userEvent.click(buttons[1])
   expect(onChoose).toHaveBeenCalledWith('deepseek-v4.1-flash')
   expect(host.bridge.calls.some((call) => call.name === 'model_use')).toBe(false)
+})
+
+it('in the wizard, a model that passes its test or comes back from «Ocultos» becomes the choice', async () => {
+  const onChoose = vi.fn()
+  hidden = ['kimi-k3']
+  host.invoke.mockImplementation(async (name: string, args: Record<string, unknown> = {}) => {
+    if (name === 'model_list') return { models: saved }
+    if (name === 'model_hidden_list') return { hidden }
+    if (name === 'model_test') return { ok: true, detail: 'Responde' }
+    if (name === 'model_unhide') { hidden = []; saved = [...saved, model(String(args.provider_model_id))]; return { model: {} } }
+    return {}
+  })
+  view({ choice: { chosen: null, onChoose } })
+  await screen.findAllByTestId('model-row')
+  await userEvent.click(screen.getAllByRole('button', { name: /Probar/ })[0])
+  await waitFor(() => expect(onChoose).toHaveBeenCalledWith('glm-5.3-flash'))
+  await userEvent.click(screen.getByRole('button', { name: 'Ocultos (1)' }))
+  await userEvent.click(screen.getByRole('button', { name: /Mostrar/ }))
+  await waitFor(() => expect(onChoose).toHaveBeenLastCalledWith('kimi-k3'))
+})
+
+it('in the wizard, a chosen model that is renamed stays chosen under its new alias', async () => {
+  const seen: Array<string | null> = []
+  function Wizard() {
+    const [chosen, setChosen] = useState<string | null>('deepseek-v4.1-flash')
+    seen.push(chosen)
+    return <I18nProvider lang="es"><ModelCatalog providerAlias="opencode-go" onChanged={vi.fn()} choice={{ chosen, onChoose: setChosen }} /></I18nProvider>
+  }
+  render(<Wizard />)
+  await screen.findAllByTestId('model-row')
+  await userEvent.click(screen.getAllByRole('button', { name: /Editar/ })[0])
+  const field = screen.getByLabelText(/Alias/) as HTMLInputElement
+  await userEvent.clear(field)
+  await userEvent.type(field, 'rápido{Enter}')
+  await screen.findByText('rápido')
+  await waitFor(() => expect(seen.at(-1)).toBe('rápido'))
+  expect(seen).not.toContain(null)
 })

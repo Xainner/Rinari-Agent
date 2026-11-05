@@ -394,3 +394,59 @@ it('editing a muted task shows its «Avisos» as it is and keeps it', async () =
   await waitFor(() => expect(engineApi.scheduleUpdate).toHaveBeenCalled())
   expect(vi.mocked(engineApi.scheduleUpdate).mock.calls.at(-1)?.[1]).toMatchObject({ notify: 'none' })
 })
+
+it('H-21: a command has one control for its result and notices, stored as the Engine reads them', async () => {
+  const userEvent = (await import('@testing-library/user-event')).default
+  const user = userEvent.setup()
+  wrap(<ScheduleForm />)
+  act(() => useScheduleForm.getState().openNew())
+  fireEvent.change(await screen.findByLabelText('Nombre'), { target: { value: 'Copia' } })
+  fireEvent.click(screen.getByRole('radio', { name: /Comando/ }))
+  fireEvent.change(screen.getByLabelText('Comando'), { target: { value: 'npm run backup' } })
+  // Un solo control: «Con el resultado»; no hay un «Avisos» aparte que diga otra cosa.
+  expect(screen.getByTestId('schedule-on-result-select').textContent).toContain('Avisarme si falla')
+  expect(screen.queryByTestId('schedule-notify-select')).toBeNull()
+  await user.click(screen.getByTestId('schedule-on-result-select'))
+  await user.click(await screen.findByRole('menuitem', { name: /Nada, solo el historial/ }))
+  fireEvent.click(screen.getByRole('button', { name: 'Crear tarea' }))
+  await waitFor(() => expect(engineApi.scheduleCreate).toHaveBeenCalled())
+  expect(vi.mocked(engineApi.scheduleCreate).mock.calls[0][0]).toMatchObject({ command: { on_result: 'nothing' }, notify: 'none' })
+})
+
+it('H-21: handing the output to Rinari lets the owner choose how what Rinari does notifies', async () => {
+  const userEvent = (await import('@testing-library/user-event')).default
+  const user = userEvent.setup()
+  wrap(<ScheduleForm />)
+  act(() => useScheduleForm.getState().openEdit(task({ kind: 'command', prompt: '', notify: 'all', command: { command: 'npm test', cwd: null, on_result: 'notify_failure' } })))
+  await user.click(await screen.findByTestId('schedule-on-result-select'))
+  await user.click(await screen.findByRole('menuitem', { name: /Pasárselo a Rinari/ }))
+  expect(screen.getByText('Avisos de lo que haga Rinari')).toBeTruthy()
+  expect(screen.getByTestId('schedule-notify-select')).toBeTruthy()
+})
+
+it('H-21: an existing «tell me if it fails» command saves notices to match', async () => {
+  wrap(<ScheduleForm />)
+  act(() => useScheduleForm.getState().openEdit(task({ kind: 'command', prompt: '', notify: 'all', command: { command: 'npm test', cwd: null, on_result: 'notify_failure' } })))
+  fireEvent.click(await screen.findByRole('button', { name: 'Guardar' }))
+  await waitFor(() => expect(engineApi.scheduleUpdate).toHaveBeenCalled())
+  expect(vi.mocked(engineApi.scheduleUpdate).mock.calls.at(-1)?.[1]).toMatchObject({ notify: 'problems', command: { on_result: 'notify_failure' } })
+})
+
+it('H-21: switching minutes and seconds keeps the number; the next run shows seconds under a minute', async () => {
+  wrap(<ScheduleForm />)
+  act(() => useScheduleForm.getState().openNew())
+  fireEvent.change(await screen.findByLabelText('Cuándo'), { target: { value: 'interval' } })
+  const every = screen.getByLabelText('Cada') as HTMLInputElement
+  expect(every.value).toBe('60')
+  fireEvent.change(screen.getByLabelText('Unidad'), { target: { value: 'seconds' } })
+  expect((screen.getByLabelText('Cada') as HTMLInputElement).value).toBe('60')
+  fireEvent.change(screen.getByLabelText('Cada'), { target: { value: '20' } })
+  fireEvent.change(screen.getByLabelText('Unidad'), { target: { value: 'minutes' } })
+  expect((screen.getByLabelText('Cada') as HTMLInputElement).value).toBe('20')
+
+  const { formatWhen } = await import('./scheduleModel')
+  const at = Date.UTC(2026, 10, 4, 15, 42, 37) / 1000
+  expect(formatWhen(at, 'en', { kind: 'interval', seconds: 20 })).toMatch(/:37/)
+  expect(formatWhen(at, 'en', { kind: 'interval', minutes: 5 })).not.toMatch(/:37/)
+  expect(formatWhen(at, 'en')).not.toMatch(/:37/)
+})

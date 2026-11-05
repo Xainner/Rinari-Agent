@@ -12,7 +12,7 @@ import {
 } from '../../services/engine'
 import { translate } from '../../i18n'
 import type { Language } from '../../types'
-import { warnUntrusted } from '../projects/trustWarning'
+import { warnUntrustedOnce } from '../projects/trustWarning'
 import { useUIStore } from '../../stores/ui'
 import { useBoardAttentionStore } from '../../stores/boardAttention'
 import { useActivityDisclosure } from '../../stores/activityDisclosure'
@@ -402,7 +402,8 @@ export function useSessionList(options: {
       if (warning.startsWith('[trust]')) {
         const root = opened.session.project_root
         if (root && trustAsked.current.has(root)) continue
-        warnUntrusted(root, opened.trust_state, `project-trust-${opened.session.project_id ?? opened.session.project_root ?? id}`)
+        const project = opened.session.project_id ?? opened.session.project_root ?? id
+        warnUntrustedOnce(project, root, opened.trust_state, `project-trust-${project}`)
         continue
       }
       if (warning.startsWith('[git-branch]') && opened.branch_change) {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Check, ClipboardList, RotateCcw, Undo2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import Markdown from '../../components/Markdown'
@@ -24,6 +24,38 @@ const REASON_CODES = new Set(['stopped_by_owner', 'too_many_returns', 'team arch
 function reasonText(reason: string, t: ReturnType<typeof useI18n>['t']): string {
   if (!REASON_CODES.has(reason)) return reason
   return t(`agency.errand.reason.${reason.replace(/ /g, '_')}` as I18nKey)
+}
+
+/**
+ * El encargo de un recado, recortado a unas líneas (H-14): uno largo ya no
+ * estira la tarjeta en la oficina. «Ver más» solo aparece si de verdad no
+ * cabe, y se mide otra vez cuando cambia el ancho.
+ */
+function ErrandBody({ body }: { body: string }) {
+  const { t } = useI18n()
+  const ref = useRef<HTMLParagraphElement>(null)
+  const [expanded, setExpanded] = useState(false)
+  const [overflows, setOverflows] = useState(false)
+  useLayoutEffect(() => {
+    const node = ref.current
+    if (!node || expanded) return
+    const measure = () => setOverflows(node.scrollHeight > node.clientHeight + 1)
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(measure)
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [body, expanded])
+  return (
+    <div className="agency-errand-body-wrap">
+      <p ref={ref} className={cn('agency-errand-body', !expanded && 'is-clamped')} data-testid="agency-errand-body">{body}</p>
+      {(overflows || expanded) && (
+        <button type="button" className="agency-errand-more" aria-expanded={expanded} onClick={() => setExpanded((value) => !value)} data-testid="agency-errand-more">
+          {t(expanded ? 'agency.errand.less' : 'agency.errand.more')}
+        </button>
+      )}
+    </div>
+  )
 }
 
 interface ErrandCardProps {
@@ -66,7 +98,7 @@ export function ErrandCard({ errand, names, compact = false, onChanged }: Errand
         <span className="r-chip" data-tone={TONE[errand.status]}>{t(`agency.errand.status.${errand.status}` as I18nKey)}</span>
       </header>
       <p className="agency-errand-who">{from ? t('agency.errand.who', { from, to }) : t('agency.errand.whoOwner', { to })}</p>
-      {!compact && errand.body && <p className="agency-errand-body">{errand.body}</p>}
+      {!compact && errand.body && <ErrandBody body={errand.body} />}
       {!compact && errand.done_when.length > 0 && (
         <ul className="agency-errand-checks" aria-label={t('agency.errand.doneWhen')}>
           {errand.done_when.map((check) => <li key={check}>{check}</li>)}

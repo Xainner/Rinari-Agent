@@ -242,7 +242,7 @@ function RoutinesSection({ overview, members, onSaved }: { overview: TeamOvervie
                   {[agent?.name ?? routine.agent, describeSchedule(routine.schedule, t, locale)].filter(Boolean).join(' · ')}
                 </p>
                 {routine.enabled && routine.next_run_at && (
-                  <p className="agency-work-item-line">{t('agency.work.routine.next', { when: formatWhen(routine.next_run_at, locale) })}</p>
+                  <p className="agency-work-item-line">{t('agency.work.routine.next', { when: formatWhen(routine.next_run_at, locale, routine.schedule) })}</p>
                 )}
               </li>
             )

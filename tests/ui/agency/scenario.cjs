@@ -6,7 +6,7 @@
 // puesto (con el modelo falso), un recado entregado y aceptado, «Pizarra» en el
 // panel lateral del puesto y la Vía 2 con «Pronto» en Ajustes.
 const assert = require('node:assert/strict')
-const { until, click, clickText, command, evaluate, input, reload, report, scenario, screenshot, settleAnimations, ui, useLocalModel, wait } = require('../harness.cjs')
+const { until, click, clickText, command, evaluate, input, reload, report, scenario, screenshot, settleAnimations, size, ui, useLocalModel, wait } = require('../harness.cjs')
 
 // Sonner pauses its toasts while the pointer is over them: the last click can
 // leave it there, so the wait for them to go first moves it away.
@@ -297,6 +297,30 @@ scenario(async () => {
   await settleAnimations()
   await screenshot('rail-expanded')
 
+  // Las tres vistas de chat de la Agency abren en el último mensaje (0.4.3):
+  // con la ventana baja el historial no cabe y cada una tiene que quedar al fondo.
+  await size(1100, 520)
+  const CHAT = '.conversation-enter > .overflow-y-auto'
+  const bottom = async (selector) => {
+    await wait(`Boolean(document.querySelector(${JSON.stringify(selector)}))`)
+    await settleAnimations()
+    await new Promise((resolve) => setTimeout(resolve, 600))
+    return evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); return { overflow: el.scrollHeight - el.clientHeight, gap: el.scrollHeight - el.scrollTop - el.clientHeight } })()`)
+  }
+  await click('[data-testid="agency-team-office"]')
+  const officeEnd = await bottom('[data-testid="agency-office-log"]')
+  await clickText('Emails', '[data-testid="agency-post-row"]', { includes: true })
+  const postEnd = await bottom(CHAT)
+  await click('[data-testid="agency-team-office"]')
+  await wait(`Boolean(document.querySelector('[data-testid="agency-office-log"]'))`)
+  await click('[data-testid="agency-agent-row"][aria-label^="Emails"]')
+  const directEnd = await bottom(CHAT)
+  for (const [name, end] of [['office', officeEnd], ['post', postEnd], ['direct chat', directEnd]]) {
+    assert(end.overflow > 0, `the ${name} history overflows at this height, or the check proves nothing (${JSON.stringify(end)})`)
+    assert(end.gap <= 2, `the ${name} opens at its latest message (${JSON.stringify(end)})`)
+  }
+  await screenshot('chat-ends')
+
   report({
     passed: [
       'card above Settings says how to start',
@@ -317,6 +341,7 @@ scenario(async () => {
       'an errand to nobody goes to the chief, is delivered and accepted',
       'Pizarra in the post side panel',
       'Agency settings: subagents shown as Pronto, errands run as turns',
+      'office, post and direct chat open at their latest message',
     ],
   })
 })

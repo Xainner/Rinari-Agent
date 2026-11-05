@@ -276,3 +276,20 @@ it('#88: the reply growing under a reader at the end never stops the follow; a g
   scrollTo(100)
   expect(screen.getByRole('button', { name: /final|bottom/i })).toBeTruthy()
 })
+
+it('remounting with the history already loaded (Agency office → post) confirms the bottom for a few frames', async () => {
+  const engine = engineWithTurns(10)
+  render(<BoardHarness engine={engine}><SingleSessionView onOpenProviders={() => {}} /></BoardHarness>)
+  const el = scroller()
+  // Virtua saltó con alturas estimadas y la lista sigue creciendo sin `scroll`
+  // ni ResizeObserver: los cuadros siguientes llevan al fondo real.
+  Object.defineProperty(el, 'clientHeight', { configurable: true, value: 300 })
+  Object.defineProperty(el, 'scrollTop', { configurable: true, writable: true, value: 0 })
+  Object.defineProperty(el, 'scrollHeight', { configurable: true, value: 1_000 })
+  await act(async () => { await new Promise(resolve => requestAnimationFrame(resolve)) })
+  Object.defineProperty(el, 'scrollHeight', { configurable: true, value: 1_400 })
+  await act(async () => {
+    for (let frame = 0; frame < 4; frame += 1) await new Promise(resolve => requestAnimationFrame(resolve))
+  })
+  expect(el.scrollTop).toBe(1_400)
+})

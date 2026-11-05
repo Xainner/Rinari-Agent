@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { ClipboardList, Crown, SlidersHorizontal, Wallet } from 'lucide-react'
+import { ClipboardList, Crown, FolderOpen, SlidersHorizontal, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { create } from 'zustand'
 import { useI18n } from '../../i18n'
 import { Select } from '../../components/ui/select'
-import { commandMessage, engineApi } from '../../services/engine'
+import { commandMessage, engineApi, type ProjectSummary } from '../../services/engine'
 import { useSessionDockStore } from '../../stores/sessionDock'
 import { useAgencyStore } from '../../stores/agency'
 import { ConnectorLogo } from '../connectors/ConnectorLogo'
@@ -138,7 +138,29 @@ export function ErrandPanel({ teamId }: { teamId: string }) {
   )
 }
 
-/** «Ficha» en el panel lateral de la oficina: quién está, quién es el jefe, sus conectores y su presupuesto. */
+/**
+ * La carpeta de proyecto del equipo (H-22): `undefined` mientras se busca,
+ * `null` si ya no está (archivada o borrada).
+ */
+function useTeamProject(projectId: string | null | undefined): ProjectSummary | null | undefined {
+  const [project, setProject] = useState<ProjectSummary | null | undefined>(undefined)
+  useEffect(() => {
+    setProject(undefined)
+    if (!projectId) return
+    let cancelled = false
+    engineApi.projectList(true)
+      .then((result) => {
+        if (cancelled) return
+        const found = result.projects.find((item) => item.id === projectId)
+        setProject(found && !found.archived ? found : null)
+      })
+      .catch(() => { if (!cancelled) setProject(null) })
+    return () => { cancelled = true }
+  }, [projectId])
+  return project
+}
+
+/** «Ficha» en el panel lateral de la oficina: quién está, quién es el jefe, dónde trabaja, sus conectores y su presupuesto. */
 export function TeamPanel({ teamId }: { teamId: string }) {
   const { t, lang } = useI18n()
   // Figures in the app's language, not the system's.
@@ -147,6 +169,7 @@ export function TeamPanel({ teamId }: { teamId: string }) {
   const count = new Intl.NumberFormat(locale)
   const { team, members, status } = useTeamMembers(teamId)
   const { byName } = useConnectorDirectory()
+  const project = useTeamProject(team?.project_id)
   // Gasto de hoy y de 7 días, y la pizarra en cifras (replanteo, fase 4).
   const { overview } = useTeamOverview(teamId)
   if (!team) return null
@@ -189,6 +212,19 @@ export function TeamPanel({ teamId }: { teamId: string }) {
               </li>
             ))}
           </ul>
+        </section>
+        <section className="office-panel-section" data-testid="agency-team-folder">
+          <h3>{t('agency.team.project')}</h3>
+          {!team.project_id ? (
+            <p className="field-hint mt-0">{t('agency.team.projectNone')}</p>
+          ) : project === undefined ? null : project === null ? (
+            <p className="field-hint mt-0">{t('agency.team.projectMissing')}</p>
+          ) : (
+            <p className="office-panel-folder" title={project.root}>
+              <FolderOpen size={13} aria-hidden="true" />
+              <span className="min-w-0 truncate">{project.name || project.root}</span>
+            </p>
+          )}
         </section>
         <section className="office-panel-section">
           <h3>{t('agency.team.card.connectors')}</h3>

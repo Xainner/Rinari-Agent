@@ -4593,6 +4593,8 @@ export const es = {
   'agency.errand.to': 'Para',
   'agency.errand.toChief': 'El jefe ({name})',
   'agency.errand.nobody': 'Sin destinatario',
+  'agency.errand.more': 'Ver más',
+  'agency.errand.less': 'Ver menos',
   'agency.errand.body': 'Detalles',
   'agency.errand.doneWhen': 'Está hecho cuando',
   'agency.errand.doneWhenPlaceholder': 'Una comprobación por línea',

@@ -4575,6 +4575,8 @@ export const en: Record<I18nKey, string> = {
   'agency.errand.to': 'For',
   'agency.errand.toChief': 'The chief ({name})',
   'agency.errand.nobody': 'No one assigned',
+  'agency.errand.more': 'Show more',
+  'agency.errand.less': 'Show less',
   'agency.errand.body': 'Details',
   'agency.errand.doneWhen': 'It is done when',
   'agency.errand.doneWhenPlaceholder': 'One check per line',

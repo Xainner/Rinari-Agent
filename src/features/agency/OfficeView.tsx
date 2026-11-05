@@ -14,6 +14,8 @@ import { openErrand } from './OfficePanels'
 import { useAgencyData } from './AgencyData'
 import { CHAIN_MAX_HOPS, chainReasonKey, chainResumeText } from './chainStop'
 import { postState, type PostState } from './postState'
+import ScrollToBottom from '../../components/chat/ScrollToBottom'
+import { useFollowBottom } from '../../components/chat/useFollowBottom'
 import type { AgencyAgent, AgencyTeam, Errand, OfficeMessage } from './types'
 
 interface OfficeViewProps {
@@ -213,7 +215,12 @@ export default function OfficeView({ team, agents }: OfficeViewProps) {
   const { status, halted, reload: reloadAgency } = useAgencyData()
   const [messages, setMessages] = useState<OfficeMessage[]>([])
   const [errands, setErrands] = useState<Errand[]>([])
-  const end = useRef<HTMLDivElement>(null)
+  const log = useRef<HTMLDivElement>(null)
+  const thread = useRef<HTMLDivElement>(null)
+  // Sigue el final como el chat de una conversación: abre abajo también
+  // cuando la carga llega tarde o el contenido crece después de pintar, y
+  // no arrastra al dueño si subió a leer.
+  const follow = useFollowBottom(log, thread, team.id)
 
   const members = useMemo(
     () => team.members.map((id) => agents.find((agent) => agent.id === id)).filter((agent): agent is AgencyAgent => Boolean(agent)),
@@ -244,9 +251,10 @@ export default function OfficeView({ team, agents }: OfficeViewProps) {
 
   useTeamEvents(team.id, useCallback(() => void reload(), [reload]))
 
+  const { contentChanged } = follow
   useEffect(() => {
-    end.current?.scrollIntoView?.({ block: 'end' })
-  }, [messages.length])
+    contentChanged()
+  }, [messages, errands, contentChanged])
 
   const chief = team.chief_agent_id ? byId.get(team.chief_agent_id) ?? null : null
 
@@ -274,8 +282,9 @@ export default function OfficeView({ team, agents }: OfficeViewProps) {
           </div>
         </header>
 
-        <div className="agency-office-log" role="log" aria-live="polite" aria-label={t('agency.office.log', { name: team.name })}>
-          <div className="agency-office-thread">
+        <div className="agency-office-log-wrap">
+        <div ref={log} className="agency-office-log" role="log" aria-live="polite" aria-label={t('agency.office.log', { name: team.name })} data-testid="agency-office-log" {...follow.scrollProps}>
+          <div ref={thread} className="agency-office-thread">
             {messages.length === 0 ? (
               <div className="agency-office-empty">
                 <div className="agency-office-empty-faces" aria-hidden="true">
@@ -334,8 +343,9 @@ export default function OfficeView({ team, agents }: OfficeViewProps) {
                 )
               })
             )}
-            <div ref={end} />
           </div>
+        </div>
+        <ScrollToBottom visible={!follow.atBottom && messages.length > 0} onClick={follow.goToEnd} />
         </div>
 
         {halted ? (
@@ -360,7 +370,7 @@ export default function OfficeView({ team, agents }: OfficeViewProps) {
           </div>
         )}
         <OfficeApprovals team={team} members={members} />
-        <OfficeComposer team={team} members={members} onPosted={() => void reload()} />
+        <OfficeComposer team={team} members={members} onPosted={() => { follow.goToEnd(); void reload() }} />
     </div>
   )
 }

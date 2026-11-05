@@ -40,15 +40,15 @@ describe('warnUntrustedOnce (H-16)', () => {
   })
 
   it('warns once per project per run, however many conversations open', () => {
-    expect(warnUntrustedOnce('prj_1', 'C:/p', 'untrusted', 'project-trust-prj_1')).toBe(true)
-    expect(warnUntrustedOnce('prj_1', 'C:/p', 'untrusted', 'project-trust-prj_1')).toBe(false)
-    expect(warnUntrustedOnce('prj_1', 'C:/p', 'untrusted', 'project-trust-prj_1')).toBe(false)
+    expect(warnUntrustedOnce('prj_1', 'C:/p', 'not-trusted', 'project-trust-prj_1')).toBe(true)
+    expect(warnUntrustedOnce('prj_1', 'C:/p', 'not-trusted', 'project-trust-prj_1')).toBe(false)
+    expect(warnUntrustedOnce('prj_1', 'C:/p', 'not-trusted', 'project-trust-prj_1')).toBe(false)
     expect(toast.warning).toHaveBeenCalledTimes(1)
   })
 
   it('another project, or a changed trust state, still warns', () => {
-    warnUntrustedOnce('prj_1', 'C:/p', 'untrusted', 'project-trust-prj_1')
-    warnUntrustedOnce('prj_2', 'C:/q', 'untrusted', 'project-trust-prj_2')
+    warnUntrustedOnce('prj_1', 'C:/p', 'not-trusted', 'project-trust-prj_1')
+    warnUntrustedOnce('prj_2', 'C:/q', 'not-trusted', 'project-trust-prj_2')
     warnUntrustedOnce('prj_1', 'C:/p', 'revalidation-required', 'project-trust-prj_1')
     expect(toast.warning).toHaveBeenCalledTimes(3)
   })

@@ -546,7 +546,8 @@ function ChatView({
     const step = () => {
       const scroller = scrollRef.current
       const last = streamRef.current.length - 1
-      if (!scroller || last < 0) return
+      // Dejó de seguir (abrió algo a mano, «Ir al resultado», subió a leer): no se le lleva.
+      if (!scroller || last < 0 || !followRef.current) return
       if (frames > 0 && (pointerHeldRef.current || performance.now() - gestureAtRef.current < 300)) return
       if (frames === 0) virtRef.current?.scrollToIndex(last, { align: 'end' })
       else if (scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight > 1) {
@@ -559,6 +560,19 @@ function ChatView({
     endFrameRef.current = requestAnimationFrame(step)
   }, [])
   useEffect(() => () => cancelAnimationFrame(endFrameRef.current), [])
+  // Al quedar lista la conversación siguiendo el final, se confirma el fondo
+  // unos cuadros (como al enviar). Hace falta cuando la vista se vuelve a
+  // montar con el historial ya en memoria: en la Agency, cada vez que se pasa
+  // de la oficina a un puesto o a un chat directo. El primer salto de Virtua
+  // usa alturas estimadas y, sin confirmar, el chat puede quedar por encima
+  // del último mensaje. Una ancla de lectura o un «Ir al
+  // resultado» pendientes mandan; un gesto de la persona lo corta.
+  const settledRef = useRef('')
+  useEffect(() => {
+    if (presentation !== 'conversation' || settledRef.current === sessionId) return
+    settledRef.current = sessionId
+    if (followRef.current && !restoreRef.current && !pendingRevealRef.current && autoFollowRef.current) jumpToEnd()
+  }, [presentation, sessionId, jumpToEnd])
   const goToEnd = useCallback(() => {
     jumpRef.current = true
     followRef.current = true

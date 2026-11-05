@@ -2661,6 +2661,12 @@ html[data-motion='reduced'] .scroll-bottom-arrow, html[data-motion='reduced'] .s
 .provider-advanced[data-open] .provider-advanced-toggle svg { transform: rotate(90deg); }
 .provider-advanced-body { display: flex; flex-direction: column; gap: 14px; padding-top: 12px; animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
 .provider-wizard-progress { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: var(--r-md); font-size: 13px; color: var(--text-muted); background: var(--bg-inset); }
+.r-dialog.provider-wizard[data-step='models'] { display: flex; flex-direction: column; overflow: hidden; }
+.provider-wizard-models { display: flex; min-height: 0; flex: 1 1 auto; flex-direction: column; gap: 12px; }
+.provider-wizard-models-body { display: flex; min-height: 0; flex: 1 1 auto; flex-direction: column; gap: 16px; overflow-y: auto; overscroll-behavior: contain; padding-right: 2px; }
+.provider-wizard-foot { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line-1); }
+.provider-wizard-why { min-width: 0; font-size: 12.5px; color: var(--text-muted); text-align: right; }
+.model-catalog-more svg { transition: transform var(--dur-fast) var(--ease-out); }
 .provider-wizard-error { padding: 8px 12px; border-radius: var(--r-sm); font-size: 12.5px; line-height: 1.45; color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, transparent); }
 .provider-wizard-ok { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--success) 30%, transparent); border-radius: var(--r-md); font-size: 13px; color: var(--text); background: color-mix(in srgb, var(--success) 7%, transparent); animation: rinari-fade-in var(--dur-base) var(--ease-out) both; }
 .provider-wizard-ok strong { font-weight: 600; }

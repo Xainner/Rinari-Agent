@@ -1460,6 +1460,8 @@ export const en: Record<I18nKey, string> = {
   'models.removeBody': 'It stops showing in the pickers. It stays under this provider’s “Hidden”, where you can show it again; refreshing does not bring it back.',
   'models.hidden': 'Hidden ({n})',
   'models.show': 'Show',
+  'models.showAll': 'See all {n} models',
+  'models.onlyChosen': 'Show only the chosen one',
   'models.saving': 'Saving the provider’s models…',
   'models.new': '{provider}: {n} new models',
   'models.newOne': '{provider}: 1 new model',

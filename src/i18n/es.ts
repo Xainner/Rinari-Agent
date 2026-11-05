@@ -1478,6 +1478,8 @@ export const es = {
   'models.removeBody': 'Deja de salir en los selectores. Queda en «Ocultos» de este proveedor, desde donde lo puedes volver a mostrar; actualizar no lo trae de vuelta.',
   'models.hidden': 'Ocultos ({n})',
   'models.show': 'Mostrar',
+  'models.showAll': 'Ver los {n} modelos',
+  'models.onlyChosen': 'Ver solo el elegido',
   'models.saving': 'Guardando los modelos del proveedor…',
   'models.new': '{provider}: {n} modelos nuevos',
   'models.newOne': '{provider}: 1 modelo nuevo',

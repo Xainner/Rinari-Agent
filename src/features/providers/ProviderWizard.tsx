@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { Check, LoaderCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -127,6 +127,7 @@ export default function ProviderWizard({
   const [working, setWorking] = useState(false)
   /** Modelo que eliges en el paso de modelos; se aplica al continuar. */
   const [chosenModel, setChosenModel] = useState<string | null>(null)
+  const missingId = useId()
   // Un servidor que pide sesión o un CLI se resuelven en el paso de prueba, no en los campos.
   const interactive = form.auth === 'oauth' || form.auth === 'external-cli'
   const name = form.preset.name ?? t(form.preset.nameKey)
@@ -464,7 +465,9 @@ export default function ProviderWizard({
         )}
 
         {step === 'models' && createdAlias && (
-          <div className="space-y-4">
+          // La lista se desplaza dentro; «Atrás» y «Continuar» quedan a la vista.
+          <div className="provider-wizard-models">
+            <div className="provider-wizard-models-body">
             <p className="provider-wizard-ok" data-testid="provider-wizard-connected">
               <span className="provider-wizard-check" aria-hidden="true"><Check size={13} /></span>
               <span>
@@ -474,13 +477,16 @@ export default function ProviderWizard({
             </p>
             <p className="text-sm text-[var(--text-muted)]">{onboarding ? t('wizard.chooseModel') : t('wizard.chooseOptional')}</p>
             <ModelCatalog providerAlias={createdAlias} onChanged={() => {}} choice={{ chosen: chosenModel, onChoose: setChosenModel }} />
-            <div className="flex justify-between gap-2">
+            </div>
+            <div className="provider-wizard-foot">
               <button type="button" onClick={() => setStep('fields')} className="btn btn-ghost btn-sm">
                 {t('wizard.back')}
               </button>
-              <span className="flex gap-2">
+              <span className="flex min-w-0 items-center gap-2">
+                {/* Sin modelo, «Continuar» no sirve y lo dice antes de pulsarlo. */}
+                {onboarding && !chosenModel && <span id={missingId} className="provider-wizard-why" data-testid="provider-wizard-why">{t('wizard.chooseModel')}</span>}
                 {!onboarding && <button type="button" onClick={() => close(true)} className="btn btn-secondary btn-sm">{t('wizard.finishAdd')}</button>}
-                <button type="button" onClick={() => void useChosen()} disabled={!onboarding && !chosenModel} className="btn btn-primary btn-sm">
+                <button type="button" onClick={() => void useChosen()} disabled={!chosenModel} aria-describedby={onboarding && !chosenModel ? missingId : undefined} className="btn btn-primary btn-sm" data-testid="provider-wizard-continue">
                   {onboarding ? t('wizard.next') : t('wizard.useNow')}
                 </button>
               </span>

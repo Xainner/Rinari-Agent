@@ -169,7 +169,7 @@ export default function SchedulesView({ onOpenSession }: { onOpenSession: (sessi
                     </span>
                     <span className="mt-0.5 block truncate text-xs text-[var(--text-subtle)]">{describeSchedule(task.schedule, t, locale)}</span>
                     <span className="mt-1 flex items-center gap-2 text-[11px] text-[var(--text-subtle)]">
-                      {task.enabled && task.next_run_at ? t('schedules.next', { when: formatWhen(task.next_run_at, locale) }) : t('schedules.paused')}
+                      {task.enabled && task.next_run_at ? t('schedules.next', { when: formatWhen(task.next_run_at, locale, task.schedule) }) : t('schedules.paused')}
                       {task.last_run && <StatusBadge run={task.last_run} />}
                     </span>
                   </button>
@@ -210,7 +210,7 @@ export default function SchedulesView({ onOpenSession }: { onOpenSession: (sessi
                 <dt className="text-[var(--text-subtle)]">{t('schedules.form.when')}</dt>
                 <dd className="text-[var(--text)]">{describeSchedule(selected.schedule, t, locale)}</dd>
                 <dt className="text-[var(--text-subtle)]">{t('schedules.nextLabel')}</dt>
-                <dd className="text-[var(--text)]">{selected.enabled ? formatWhen(selected.next_run_at, locale) : t('schedules.paused')}</dd>
+                <dd className="text-[var(--text)]">{selected.enabled ? formatWhen(selected.next_run_at, locale, selected.schedule) : t('schedules.paused')}</dd>
                 <dt className="text-[var(--text-subtle)]">{t('schedules.form.kind')}</dt>
                 <dd className="text-[var(--text)]">{t(selected.kind === 'agent' ? 'schedules.kind.agent' : selected.kind === 'command' ? 'schedules.kind.command' : 'schedules.kind.reminder')}</dd>
                 {selected.kind === 'command' && selected.command && (
@@ -261,7 +261,7 @@ export default function SchedulesView({ onOpenSession }: { onOpenSession: (sessi
                   {runs.map((run) => (
                     <li key={run.id} className="flex items-start gap-3 py-2.5 text-sm">
                       <span className="w-40 shrink-0 text-xs text-[var(--text-subtle)]">
-                        {formatWhen(run.started_at ?? run.scheduled_for, locale)}
+                        {formatWhen(run.started_at ?? run.scheduled_for, locale, selected.schedule)}
                         {run.trigger === 'manual' && <span className="block">{t('schedules.manual')}</span>}
                       </span>
                       <StatusBadge run={run} />

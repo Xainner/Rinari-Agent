@@ -10,14 +10,15 @@ const ICONS = { all: Bell, problems: BellRing, none: BellOff } as const
  * cada vuelta, solo si falla o te necesita, o nada que salte (sus vueltas
  * quedan en su historial).
  */
-export default function NotifyField({ value, onChange }: { value: ScheduleNotify; onChange: (next: ScheduleNotify) => void }) {
+export default function NotifyField({ value, onChange, label }: { value: ScheduleNotify; onChange: (next: ScheduleNotify) => void; label?: string }) {
   const { t } = useI18n()
+  const name = label ?? t('schedules.notify.label')
   return (
     <div className="grid gap-1.5" data-testid="schedule-notify">
-      <span className="field-label mt-0">{t('schedules.notify.label')}</span>
+      <span className="field-label mt-0">{name}</span>
       <Select
         value={value}
-        label={t('schedules.notify.label')}
+        label={name}
         options={(['all', 'problems', 'none'] as const).map((option) => {
           const Icon = ICONS[option]
           return { value: option, label: t(`schedules.notify.${option}`), detail: t(`schedules.notify.${option}Hint`), icon: <Icon size={14} aria-hidden="true" /> }

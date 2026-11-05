@@ -114,7 +114,7 @@ export default function ScheduleNotifier({ onOpenSession }: { onOpenSession: (se
           // Rinari Agency: the agent created it as its autonomy allows (no
           // approval layer). Said once, with who did it, «Deshacer» and «Ver».
           const agentId = task.agent_id
-          const when = `${describeSchedule(task.schedule, tr, locale)} · ${tr('schedules.next', { when: formatWhen(task.next_run_at, locale) })}`
+          const when = `${describeSchedule(task.schedule, tr, locale)} · ${tr('schedules.next', { when: formatWhen(task.next_run_at, locale, task.schedule) })}`
           const view = () => window.dispatchEvent(new CustomEvent(AGENCY_REVIEW_RULES_EVENT, { detail: { agentId } }))
           void agentName(agentId).then((agent) => {
             const title = agent
@@ -135,7 +135,7 @@ export default function ScheduleNotifier({ onOpenSession }: { onOpenSession: (se
         // card for it any more, the agent creates its rules itself.
         if (proposal.agent_id) return
         if (task) {
-          const when = `${describeSchedule(task.schedule, tr, locale)} · ${tr('schedules.next', { when: formatWhen(task.next_run_at, locale) })}`
+          const when = `${describeSchedule(task.schedule, tr, locale)} · ${tr('schedules.next', { when: formatWhen(task.next_run_at, locale, task.schedule) })}`
           toast.success(tr('schedules.createdToast', { name: task.name }), {
             description: when,
             duration: 12_000,

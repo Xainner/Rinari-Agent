@@ -89,7 +89,12 @@ function Body({ sessionId, timelines }: { sessionId: string; timelines: Record<s
             <ol>
               {plan.steps.map((step, index) => {
                 const fresh = parent !== null && !parent.steps.includes(step)
-                return <li key={index} data-new={fresh || undefined}>{step}{fresh && <span className="r-chip plan-step-new" data-tone="success">{t('plan.view.newStep')}</span>}</li>
+                return (
+                  <li key={index} data-new={fresh || undefined}>
+                    {step}{fresh && <span className="r-chip plan-step-new" data-tone="success">{t('plan.view.newStep')}</span>}
+                    {plan.stepDetails[index] && <div className="plan-step-detail"><Markdown>{plan.stepDetails[index]}</Markdown></div>}
+                  </li>
+                )
               })}
             </ol>
             {removed.length > 0 && (

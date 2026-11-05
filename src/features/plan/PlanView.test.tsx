@@ -132,3 +132,57 @@ it('implementar o ajustar un plan se ve como separador, no como un mensaje del d
   expect(screen.getByTestId('plan-separator').textContent).toBe('Ajuste del plan: usa la tabla')
   expect(screen.queryByTestId('user-message-bubble')).toBeNull()
 })
+
+it('H-19: lo que cuelga de un paso (sublista, párrafo sangrado) va con ese paso', () => {
+  const parsed = parsePlan([
+    '# Migrar el informe',
+    '',
+    '1. Copiar las columnas sin cambiar el formato:',
+    '   - fecha',
+    '   - importe',
+    '2. Validar los totales.',
+    '',
+    '   Si no cuadran, parar y avisar.',
+    '3. Publicar.',
+    '',
+    'Notas finales del plan.',
+  ].join('\n'))
+  expect(parsed.steps).toEqual(['Copiar las columnas sin cambiar el formato:', 'Validar los totales.', 'Publicar.'])
+  expect(parsed.stepDetails).toEqual(['- fecha\n- importe', 'Si no cuadran, parar y avisar.', ''])
+})
+
+it('H-19: una sublista pegada a la izquierda o numerada más adentro no cuenta como pasos', () => {
+  const parsed = parsePlan([
+    '1. Preparar:',
+    '- datos',
+    '- permisos',
+    '2. Ejecutar:',
+    '    1. primero',
+    '    2. después',
+    '',
+    '- una viñeta suelta al final',
+  ].join('\n'))
+  expect(parsed.steps).toEqual(['Preparar:', 'Ejecutar:'])
+  expect(parsed.stepDetails[0]).toBe('- datos\n- permisos')
+  expect(parsed.stepDetails[1]).toBe('1. primero\n2. después')
+})
+
+it('H-19: tras una línea en blanco, una viñeta a la izquierda es del paso si después viene otro', () => {
+  const parsed = parsePlan(['1. Uno:', '', '- a', '- b', '', '2. Dos'].join('\n'))
+  expect(parsed.steps).toEqual(['Uno:', 'Dos'])
+  expect(parsed.stepDetails).toEqual(['- a\n- b', ''])
+})
+
+it('H-19: las viñetas bajo «Pasos» también llevan lo suyo', () => {
+  const parsed = parsePlan(['## Pasos', '- Revisar:', '  - tests', '- Subir', '', '## Riesgos', '- Ninguno'].join('\n'))
+  expect(parsed.steps).toEqual(['Revisar:', 'Subir'])
+  expect(parsed.stepDetails).toEqual(['- tests', ''])
+})
+
+it('H-19: la tarjeta del plan enseña la sublista de un paso', async () => {
+  const { default: PlanCard } = await import('./PlanCard')
+  render(<I18nProvider lang="es"><PlanCard content={'# Plan\n\n1. Copiar sin cambiar el formato:\n   - fecha\n   - importe\n2. Validar.'} /></I18nProvider>)
+  const detail = screen.getByTestId('plan-step-detail')
+  expect(within(detail).getAllByRole('listitem').map((item) => item.textContent)).toEqual(['fecha', 'importe'])
+  expect(screen.getByTestId('plan-card').querySelectorAll('.plan-card-steps > li')).toHaveLength(2)
+})

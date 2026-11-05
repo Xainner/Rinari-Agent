@@ -97,6 +97,7 @@ export default function TurnStatusCard({ timeline, now: fixedNow }: { timeline: 
   return (
     <div className="turn-status-wrap" data-entering={entering || undefined}>
       <div data-live-activity className="turn-status" data-working={working || undefined} title={`${title} · ${detail}`}>
+        {working && <span className="flow-ring" aria-hidden="true"><i /></span>}
         <TurnAvatar sessionId={timeline.sessionId} state={rinariStateForTurn(state.kind)} size={38} />
         <div className="turn-status-body">
           <ActivityText active={working} role="status" aria-live="polite" className="turn-status-title">{title}</ActivityText>

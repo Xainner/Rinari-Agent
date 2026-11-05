@@ -407,7 +407,7 @@ html[data-theme='light'] body::after {
 @keyframes rinari-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes rinari-orbit { to { transform: rotate(360deg); } }
 @keyframes rinari-pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
-@keyframes rinari-breathe { 0%, 100% { box-shadow: 0 0 0 3px rgb(147 88 255 / 0.12), 0 0 14px rgb(147 88 255 / 0.3); } 50% { box-shadow: 0 0 0 5px rgb(147 88 255 / 0.25), 0 0 26px rgb(147 88 255 / 0.6); } }
+@keyframes rinari-breathe { 50% { opacity: 1; } }
 @keyframes rinari-draw { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
 @keyframes rinari-check-pop { 0% { transform: scale(0.6); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
 @keyframes rinari-flow { from { background-position: 150% 0; } to { background-position: -150% 0; } }
@@ -549,7 +549,15 @@ input[type='password']::-ms-clear {
 .composer-surface { position: relative; isolation: isolate; background: linear-gradient(180deg, rgb(26 19 44 / 0.92), rgb(18 14 31 / 0.94)); border-color: var(--line-2); box-shadow: var(--sh-2), var(--inset-hi); transition: border-color var(--dur-base), box-shadow var(--dur-base); }
 .composer-surface:focus-within { border-color: rgb(196 181 253 / 0.45); box-shadow: var(--sh-2), 0 0 0 4px rgb(147 88 255 / 0.1); }
 /* Mientras Rinari trabaja, el borde fluye y una luz respira bajo el composer. */
-.composer-surface[data-working]::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; padding: 1px; background: linear-gradient(90deg, rgb(167 139 250 / 0.18) 0%, rgb(167 139 250 / 0.18) 30%, var(--violet-500) 42%, var(--magenta-400) 50%, var(--cyan-300) 58%, rgb(167 139 250 / 0.18) 70%, rgb(167 139 250 / 0.18) 100%); background-size: 300% 100%; -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: rinari-flow 3.2s linear infinite; pointer-events: none; }
+/* The ring is a wide band that travels (transform) inside a 1 px ring mask: the same flow as
+   animating background-position, without repainting the ring on the main thread every frame. */
+.flow-ring { --ring-dim: rgb(167 139 250 / 0.18); position: absolute; inset: 0; z-index: -1; overflow: hidden; border-radius: inherit; padding: 1px; -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
+/* Nine widths of three-width gradient tiles; one loop moves two tiles, like 150% → -150% before. */
+.flow-ring > i { position: absolute; top: 0; bottom: 0; left: 0; width: 900%; background: linear-gradient(90deg, var(--ring-dim) 0%, var(--ring-dim) 30%, var(--violet-500) 42%, var(--magenta-400) 50%, var(--cyan-300) 58%, var(--ring-dim) 70%, var(--ring-dim) 100%) 0 0 / 33.3333% 100% repeat-x; animation: flow-ring-travel 3.2s linear infinite; will-change: transform; }
+@keyframes flow-ring-travel { from { transform: translateX(-66.6667%); } to { transform: translateX(0); } }
+/* Still (reduced motion): the phase the old background-position: 50% showed. */
+@media (prefers-reduced-motion: reduce) { .flow-ring > i { animation: none; transform: translateX(-44.4444%); } }
+html[data-motion='reduced'] .flow-ring > i { animation: none; transform: translateX(-44.4444%); }
 .composer-surface[data-working]::after { content: ''; position: absolute; left: 14%; right: 14%; bottom: -2px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, transparent, var(--magenta-400), var(--violet-500), transparent); filter: blur(1px); animation: rinari-pulse 2s ease-in-out infinite; pointer-events: none; }
 .composer-chip { position: relative; display: inline-flex; min-height: 32px; min-width: 0; cursor: pointer; align-items: center; gap: 6px; border-radius: 999px; border: 1px solid var(--line-2); background: rgb(10 8 18 / 0.55); padding: 0 11px; font-size: 12px; font-weight: 600; color: var(--text-muted); transition: border-color var(--dur-fast), color var(--dur-fast), background-color var(--dur-fast), box-shadow var(--dur-base); }
 .composer-chip:hover:not(:disabled) { color: var(--text); border-color: var(--line-3); background: var(--bg-hover); }
@@ -1783,7 +1791,9 @@ html[data-motion='reduced'] .browser-home, html[data-motion='reduced'] .browser-
 .rinari-avatar { position: relative; display: inline-grid; flex-shrink: 0; border-radius: 50%; isolation: isolate; }
 .rinari-avatar-face { position: relative; display: block; width: 100%; height: 100%; overflow: hidden; border-radius: 50%; background: radial-gradient(circle at 50% 30%, var(--ink-4), var(--ink-2)); border: 1.5px solid rgb(196 181 253 / 0.5); }
 .rinari-avatar-face > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scale(2.35); transform-origin: 50% 38%; animation: rinari-fade-in var(--dur-base) var(--ease-out); user-select: none; }
-.rinari-avatar[data-state='thinking'] .rinari-avatar-face, .rinari-avatar[data-state='streaming'] .rinari-avatar-face { animation: rinari-breathe 2.4s ease-in-out infinite; }
+.rinari-avatar[data-state='thinking'] .rinari-avatar-face, .rinari-avatar[data-state='streaming'] .rinari-avatar-face { box-shadow: 0 0 0 3px rgb(147 88 255 / 0.12), 0 0 14px rgb(147 88 255 / 0.3); }
+/* Breathing: the brighter halo fades in and out over the resting one (opacity, not box-shadow, so the compositor runs it). */
+.rinari-avatar[data-state='thinking']::after, .rinari-avatar[data-state='streaming']::after { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: 50%; box-shadow: 0 0 0 5px rgb(147 88 255 / 0.25), 0 0 26px rgb(147 88 255 / 0.6); opacity: 0; animation: rinari-breathe 2.4s ease-in-out infinite; pointer-events: none; }
 .rinari-avatar[data-state='waiting'] .rinari-avatar-face { border-color: var(--warning); box-shadow: 0 0 0 3px rgb(246 197 109 / 0.16); }
 .rinari-avatar[data-state='error'] .rinari-avatar-face { border-color: var(--danger); box-shadow: 0 0 0 3px rgb(255 122 147 / 0.16); }
 .rinari-avatar[data-state='done'] .rinari-avatar-face { border-color: rgb(91 224 165 / 0.7); }
@@ -1811,7 +1821,7 @@ html[data-motion='reduced'] .browser-home, html[data-motion='reduced'] .browser-
    y el borde vivo se enciende al final, para no arrancar a plena intensidad. */
 .turn-status-wrap[data-entering] { display: grid; grid-template-rows: 1fr; overflow: hidden; animation: turn-status-open 0.28s var(--ease-out) both; }
 .turn-status-wrap[data-entering] > .turn-status { min-height: 0; animation: turn-status-in 0.3s 0.06s var(--ease-out) both; }
-.turn-status-wrap[data-entering] > .turn-status[data-working]::before { animation: turn-status-ring-in 0.36s 0.22s var(--ease-out) both, rinari-flow 3.2s linear infinite; }
+.turn-status-wrap[data-entering] > .turn-status > .flow-ring { animation: turn-status-ring-in 0.36s 0.22s var(--ease-out) both; }
 @keyframes turn-status-open { from { grid-template-rows: 0fr; margin-top: -12px; } }
 @keyframes turn-status-in { from { opacity: 0; transform: translateY(6px) scale(0.985); } }
 @keyframes turn-status-ring-in { from { opacity: 0; } }
@@ -1826,7 +1836,7 @@ html[data-motion='reduced'] .browser-home, html[data-motion='reduced'] .browser-
 .turn-status-line { position: absolute; right: 14px; bottom: 0; left: 14px; height: 1px; overflow: hidden; background: rgb(167 139 250 / 0.14); }
 /* Trabajando, todo el borde fluye como el del composer (no solo la línea de abajo). */
 .turn-status[data-working] { isolation: isolate; border-color: transparent; }
-.turn-status[data-working]::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; padding: 1px; background: linear-gradient(90deg, rgb(167 139 250 / 0.2) 0%, rgb(167 139 250 / 0.2) 30%, var(--violet-500) 42%, var(--magenta-400) 50%, var(--cyan-300) 58%, rgb(167 139 250 / 0.2) 70%, rgb(167 139 250 / 0.2) 100%); background-size: 300% 100%; -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: rinari-flow 3.2s linear infinite; pointer-events: none; }
+.turn-status > .flow-ring { --ring-dim: rgb(167 139 250 / 0.2); }
 .turn-status[data-working] .turn-status-line { display: none; }
 /* En Boards la cara de Rinari vive en la cabecera del panel. */
 .session-pane-body .turn-status > .rinari-avatar { display: none; }
@@ -1838,9 +1848,8 @@ html[data-motion='reduced'] .browser-home, html[data-motion='reduced'] .browser-
   .turn-status-meta .turn-status-step.is-compact { display: inline; }
 }
 /* Movimiento reducido (la regla global corta toda animación): la tarjeta aparece ya puesta y el borde, quieto. */
-@media (prefers-reduced-motion: reduce) { .turn-status[data-working]::before, .turn-status-wrap[data-entering] > .turn-status[data-working]::before { animation: none; background-position: 50% 0; } }
-html[data-motion='reduced'] .turn-status[data-working]::before,
-html[data-motion='reduced'] .turn-status-wrap[data-entering] > .turn-status[data-working]::before { animation: none; background-position: 50% 0; }
+@media (prefers-reduced-motion: reduce) { .turn-status-wrap[data-entering] > .turn-status > .flow-ring { animation: none; } }
+html[data-motion='reduced'] .turn-status-wrap[data-entering] > .turn-status > .flow-ring { animation: none; }
 .turn-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
 /* En Boards la cara de Rinari vive en la cabecera de cada panel: dentro del
  * chat del panel no se repite (ni el nombre que la acompaña). */

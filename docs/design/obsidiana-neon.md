@@ -65,7 +65,7 @@ No crees una segunda familia de botones, badges o puntos de estado.
 
 ## 5. Movimiento
 
-- Todo lo que aparece, entra; todo lo que se va, sale. 120 ms para micro, 220 ms para controles, 420 ms para tarjetas y vistas.
+- Todo lo que aparece, entra; todo lo que se va, sale. 120 ms para micro, 220 ms para controles, 420 ms para tarjetas y vistas. Excepción, decidida por el dueño (2026-11-05): una entrada de presentación, la primera vista de algo grande con el arte de Rinari (el héroe de Boards vacío, el arte de Inicio, la oficina del tutorial de Agency), puede durar más, hasta 1,6 s. No vale para controles, tarjetas ni cambios de vista frecuentes.
 - Los **bucles** (brillo, órbita, borde que fluye) significan «sigue trabajando» y se apagan al terminar.
 - Celebrar solo lo que acaba de pasar: el check de una operación se dibuja si se vio pasar de «en curso» a «completada»; al volver a montarse aparece quieto.
 - Con «Reducir animaciones» (sistema o ajuste) queda el cambio de estado, sin desplazamiento ni bucles. En framer-motion usa `useCalmMotion()` y `instant`/`spring` de `src/lib/motion.ts`.

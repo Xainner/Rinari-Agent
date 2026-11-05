@@ -795,6 +795,7 @@ function Composer({
         data-toast-avoid=""
         className="composer-surface rounded-[22px] border p-2.5 transition-colors"
       >
+        {isStreaming && <span className="flow-ring" aria-hidden="true"><i /></span>}
         {attachments.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5 px-1">
             {attachments.map((file) => (

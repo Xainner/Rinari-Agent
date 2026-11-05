@@ -1,5 +1,6 @@
 import type { TurnTokenUsage } from '../../types/protocol.generated'
 import type { TurnTimeline } from './types'
+import { numberFormat } from '../../lib/numberFormat'
 
 const count = (value: unknown): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
 
@@ -49,6 +50,6 @@ export function legacyTokenUsage(calls: NonNullable<TurnTimeline['legacyUsage']>
  * once compact, so the counter keeps its width as it grows (§6.1).
  */
 export function formatTokens(total: number, lang: string): string {
-  if (total < 1000) return new Intl.NumberFormat(lang).format(total)
-  return new Intl.NumberFormat(lang, { notation: 'compact', minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(total)
+  if (total < 1000) return numberFormat(lang).format(total)
+  return numberFormat(lang, { notation: 'compact', minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(total)
 }

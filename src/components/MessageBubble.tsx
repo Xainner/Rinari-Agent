@@ -217,7 +217,7 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
         onClick={copy}
         aria-label={t('bubble.copy')}
         title={t('bubble.copy')}
-        className="mt-1 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-[var(--text-subtle)] opacity-0 transition-all group-hover:opacity-100 hover:bg-[var(--bg-hover)] hover:text-[var(--text)] focus-visible:opacity-100"
+        className="mt-1 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-[var(--text-subtle)] opacity-0 transition-[opacity,background-color,color] duration-[var(--dur-fast)] group-hover:opacity-100 hover:bg-[var(--bg-hover)] hover:text-[var(--text)] focus-visible:opacity-100"
       >
         {copied ? <Check size={13} /> : <Copy size={13} />}
         {copied ? t('markdown.copied') : t('bubble.copy')}

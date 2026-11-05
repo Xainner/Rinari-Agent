@@ -217,11 +217,13 @@ export default function Composer({
     pill.style.width = button.offsetWidth + 'px'
     pill.style.transform = 'translateX(' + button.offsetLeft + 'px)'
   }, [currentMode])
-  // Recolocar tras cada render (cambio de modo o de idioma) y ante
-  // cambios de tamaño (zoom, carga de fuentes, contenedor).
+  // Re-place on a mode or language change only: placePill reads layout, and
+  // running it after every render forced a synchronous layout on each
+  // streamed delta. Size changes (zoom, fonts, container) go through the
+  // ResizeObserver below.
   useLayoutEffect(() => {
     placePill()
-  })
+  }, [placePill, t])
   useEffect(() => {
     const group = modesGroupRef.current
     if (!group || typeof ResizeObserver === 'undefined') return
@@ -988,7 +990,7 @@ export default function Composer({
               style={{
                 transition:
                   pillArmed
-                    ? 'transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), width 0.22s cubic-bezier(0.22, 1, 0.36, 1)'
+                    ? 'transform var(--dur-base) var(--ease-out), width var(--dur-base) var(--ease-out)'
                     : 'none',
               }}
             />

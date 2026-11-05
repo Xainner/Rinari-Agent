@@ -180,7 +180,6 @@ function ChatView({
   const followRef = useRef(readScrollAnchor(sessionId)?.follow !== false)
   const virtRef = useRef<VirtualizerHandle>(null)
   const [atBottom, setAtBottom] = useState(() => readScrollAnchor(sessionId)?.follow !== false)
-  const [now, setNow] = useState(Date.now())
   const [planStarting, setPlanStarting] = useState(false)
   const planStartingRef = useRef(false)
   const [dismissedPlans, setDismissedPlans] = useState<Set<string>>(() => new Set())
@@ -210,12 +209,6 @@ function ChatView({
   const waitingOnYou = Object.values(timelines).some((turn) => turn.sessionId === sessionId && turn.status === 'approval')
   // Un resultado sin leer más abajo convierte «Ir al final» en «↓ Nuevo resultado» (#62).
   const unreadResults = useBoardAttentionStore((state) => unreadResultCount(state.sessions[sessionId]))
-
-  useEffect(() => {
-    if (!activeTimeline) return
-    const timer = window.setInterval(() => setNow(Date.now()), 200)
-    return () => window.clearInterval(timer)
-  }, [activeTimeline])
 
   // Ancla de lectura: fila superior visible y desplazamiento dentro de ella,
   // o «seguir el final». Se actualiza en cada scroll del usuario y se guarda
@@ -659,7 +652,6 @@ function ChatView({
                       surface={homeVariant === 'pane' ? 'pane' : 'chat'}
                       timeline={row.timeline}
                       user={row.user}
-                      now={now}
                       onResolveApproval={onResolveApproval}
                       onReviewChanges={onReviewChanges ? () => onReviewChanges(row.timeline) : undefined}
                       opened={<OpenedSessions children={openedByTurn.get(row.timeline.turnId) ?? []} />}

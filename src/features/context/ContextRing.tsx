@@ -6,6 +6,7 @@ import { commandMessage, engineApi, onEngineEvent } from '../../services/engine'
 import type { ContextStatus, ProviderUsageSnapshot } from '../../types/protocol.generated'
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
 import { lastCompaction, lastRequest } from './contextStatus'
+import { numberFormat } from '../../lib/numberFormat'
 
 /** Events after which the session's context may have grown or shrunk. */
 const REFRESH_EVENTS = new Set(['usage.updated', 'turn.completed', 'turn.failed', 'turn.cancelled', 'governor.compact'])
@@ -129,9 +130,9 @@ export default function ContextRing({ sessionId, modelId, providerAlias }: { ses
 
   const figures = ringFigures(status)
   if (!figures) return null
-  const count = (value: number) => new Intl.NumberFormat(lang).format(value)
-  const compact = (value: number) => new Intl.NumberFormat(lang, { notation: 'compact', maximumFractionDigits: 1 }).format(value)
-  const percent = new Intl.NumberFormat(lang, { style: 'percent' }).format(figures.ratio)
+  const count = (value: number) => numberFormat(lang).format(value)
+  const compact = (value: number) => numberFormat(lang, { notation: 'compact', maximumFractionDigits: 1 }).format(value)
+  const percent = numberFormat(lang, { style: 'percent' }).format(figures.ratio)
   const radius = 6
   const circumference = 2 * Math.PI * radius
   const threshold = status?.compaction_enabled === false ? null : status?.compact_at_percent ?? null

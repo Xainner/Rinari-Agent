@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { TriangleAlert } from 'lucide-react'
 import { useI18n } from '../../i18n'
+import { useNow } from '../../lib/clock'
 import { TurnAvatar } from './TurnAvatar'
 import { rinariStateForTurn } from '../rinari/turnState'
 import { useChecklistStore } from '../checklist/checklistStore'
@@ -65,8 +66,11 @@ function actionSince(timeline: TurnTimeline): number {
  * tiempo total y los tokens. Abajo, una línea viva mientras trabaja. En un
  * panel angosto queda en una sola línea, con el detalle al pasar el ratón.
  */
-export default function TurnStatusCard({ timeline, now }: { timeline: TurnTimeline; now: number }) {
+export default function TurnStatusCard({ timeline, now: fixedNow }: { timeline: TurnTimeline; now?: number }) {
   const { t } = useI18n()
+  // The card owns the turn's clock: a tick re-renders the card, not the chat.
+  const ticking = useNow(200, fixedNow === undefined)
+  const now = fixedNow ?? ticking
   const checklist = useChecklistStore((state) => state.bySession[timeline.sessionId]?.checklist ?? null)
   const state = activityState(timeline)
   const action = liveActionLabel(timeline, t)

@@ -71,5 +71,5 @@ scenario(async () => {
   // The fold happens under the summary card: what is above it never moves.
   assert(reading.slice(readDone - 1).every((frame) => frame.top === before.top), 'the turn being read does not move: ' + JSON.stringify(reading.slice(readDone - 1, readDone + 20)))
 
-  report({ reduced, following: { ghosts: ghosts.map((frame) => frame.ghost), total, maxJump: Math.max(0, ...jumps) }, reading: { before, after } })
+  report({ reduced, following: { ghosts: ghosts.map((frame) => frame.ghost), total, maxJump: Math.max(0, ...jumps), frames: following.slice(Math.max(0, done - 3), done + 45) }, reading: { before, after } })
 }, { width: 1500, height: 900 })

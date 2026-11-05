@@ -97,3 +97,13 @@ it('counts the images created and what they cost (plan 0.4.0 #28)', () => {
   render(<I18nProvider lang="es"><UsageReportCard report={{ ...REPORT, media }} sessionId="ses_a" /></I18nProvider>)
   expect(screen.getByTestId('usage-images').textContent).toBe('Imágenes creadas: 3 · $0.05')
 })
+
+it('says how many turns used too many tools, in singular and plural (H-11)', () => {
+  const many: UsageReport = { ...REPORT, warnings: [{ kind: 'tool_heavy', count: 3, max: 48 }] }
+  const { unmount } = render(<I18nProvider lang="es"><UsageReportCard report={many} sessionId="ses_a" /></I18nProvider>)
+  expect(screen.getByTestId('usage-report').querySelector('[data-warning="tool_heavy"]')?.textContent).toContain('3 turnos usaron muchas herramientas (hasta 48 en uno)')
+  unmount()
+  const one: UsageReport = { ...REPORT, warnings: [{ kind: 'tool_heavy', count: 1, max: 31 }] }
+  render(<I18nProvider lang="en"><UsageReportCard report={one} sessionId="ses_a" /></I18nProvider>)
+  expect(screen.getByTestId('usage-report').querySelector('[data-warning="tool_heavy"]')?.textContent).toContain('1 turn used many tools (31 calls)')
+})

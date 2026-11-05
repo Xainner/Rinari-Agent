@@ -3932,6 +3932,8 @@ export const en: Record<I18nKey, string> = {
   'usage.warning.no_cache': '{model} is not using the provider cache',
   'usage.warning.loops': '{n} loops stopped',
   'usage.warning.large_outputs': '{n} large outputs are still in the context (the largest, {max} characters)',
+  'usage.warning.tool_heavy': '{n} turns used many tools (up to {max} in one)',
+  'usage.warning.tool_heavy_one': '1 turn used many tools ({max} calls)',
   'usage.fix.models': 'See models',
   'usage.fix.compacted': 'Compacted: the model no longer carries that',
   'usage.time': 'Active time: {s} s',

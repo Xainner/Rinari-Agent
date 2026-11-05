@@ -7,7 +7,7 @@ import { copyText } from '../../lib/clipboard'
 import { useUIStore } from '../../stores/ui'
 import { commandMessage, engineApi } from '../../services/engine'
 import type { ContextStatus, ProviderUsageSnapshot } from '../../types/protocol.generated'
-import { usageApi, usageMarkdown, type UsageLimits, type UsageReport, type UsageScope } from './usageReport'
+import { usageApi, usageMarkdown, type UsageLimits, type UsageReport, type UsageScope, type UsageWarning } from './usageReport'
 import { SegTabPill } from '../../components/ui/SegTabPill'
 import { windowLabel } from '../providers/windowLabel'
 
@@ -26,6 +26,11 @@ const duration = (seconds: number) => {
   if (minutes < 60) return `${minutes} min`
   return `${Math.floor(minutes / 60)} h ${minutes % 60} min`
 }
+
+/** Avisos con forma propia para una sola vez («1 turno usó…» y no «1 turnos usaron…»). */
+const SINGULAR_FORM = new Set(['tool_heavy'])
+const warningKey = (warning: UsageWarning): I18nKey =>
+  (SINGULAR_FORM.has(warning.kind) && warning.count === 1 ? `usage.warning.${warning.kind}_one` : `usage.warning.${warning.kind}`) as I18nKey
 
 /** El tono de una barra de uso: tranquilo, cerca del límite o en él. */
 const level = (percent: number) => (percent >= 90 ? 'high' : percent >= 70 ? 'mid' : 'low')
@@ -228,7 +233,7 @@ export function UsageReportCard({ report: initial, sessionId, providerId: chosen
           : report.warnings.map((warning) => (
             <p key={warning.kind} className="usage-report-line" data-tone="warning" data-warning={warning.kind}>
               <TriangleAlert size={13} aria-hidden="true" />
-              {t(`usage.warning.${warning.kind}` as I18nKey, { n: warning.count, max: warning.max ?? 0, model: warning.model ?? '' })}
+              {t(warningKey(warning), { n: warning.count, max: warning.max ?? 0, model: warning.model ?? '' })}
               {/* El arreglo de un toque de cada aviso (#78). */}
               {FIX_COMPACT.has(warning.kind) && report.scope === 'session' && sessionId && (
                 <button type="button" className="btn btn-secondary btn-xs usage-fix" disabled={compacting} data-testid="usage-fix" onClick={() => void compactNow()}>

@@ -3950,6 +3950,8 @@ export const es = {
   'usage.warning.no_cache': '{model} no está usando la caché del proveedor',
   'usage.warning.loops': '{n} bucles detenidos',
   'usage.warning.large_outputs': 'Hay {n} salidas grandes que siguen en el contexto (la mayor, {max} caracteres)',
+  'usage.warning.tool_heavy': '{n} turnos usaron muchas herramientas (hasta {max} en uno)',
+  'usage.warning.tool_heavy_one': '1 turno usó muchas herramientas ({max} llamadas)',
   'usage.fix.models': 'Ver modelos',
   'usage.fix.compacted': 'Compactado: el modelo ya no carga eso',
   'usage.time': 'Tiempo activo: {s} s',

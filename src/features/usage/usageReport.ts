@@ -22,7 +22,7 @@ export interface UsageModelRow {
 export type UsageScope = 'session' | 'today' | 'project' | 'all'
 
 export interface UsageWarning {
-  kind: 'image_resent' | 'empty_answers' | 'no_cache' | 'loops' | (string & {})
+  kind: 'image_resent' | 'empty_answers' | 'no_cache' | 'loops' | 'tool_heavy' | (string & {})
   count: number
   max?: number
   model?: string | null

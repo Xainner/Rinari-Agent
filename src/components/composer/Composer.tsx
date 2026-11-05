@@ -253,8 +253,12 @@ export default function Composer({
   const [previewLoading, setPreviewLoading] = useState(false)
   const [attachmentNotice, setAttachmentNotice] = useState<string | undefined>()
   const reasoningCapabilities = activeModel?.capabilities ?? models.find(model => model.alias === activeAlias)?.capabilities
+  // Solo se vuelve a «Predeterminado» cuando se sabe que el modelo no admite
+  // ese nivel: mientras sus capacidades cargan, o si no dice nada de ellas
+  // (H-20), la elección se queda.
   useEffect(() => {
-    if (!supportsEffort(reasoningCapabilities, reasoningEffort)) onReasoningChange('off')
+    const known = reasoningCapabilities && Object.keys(reasoningCapabilities).length > 0
+    if (known && !supportsEffort(reasoningCapabilities, reasoningEffort)) onReasoningChange('off')
   }, [reasoningCapabilities, reasoningEffort, onReasoningChange])
   const attachments = draft.attachments
   const viewerImages = useMemo(() => attachmentViewerImages(attachments, fileWorkspace), [attachments, fileWorkspace])

@@ -10,6 +10,7 @@ import { createRuntimeStore, type RuntimeStore } from './runtimeStore'
 import { useActivityDisclosure } from '../../stores/activityDisclosure'
 import { applyChecklistEvent } from '../checklist/checklistStore'
 import { applyGoalEvent } from '../goal/goalStore'
+import { syncReasoningFromTurn } from '../../stores/sessionUi'
 import { applyResumeEvent } from '../resume/resumeStore'
 import { applyExternalBrowserEvent } from '../browser/externalBrowserStore'
 import { applyTrustChangedEvent } from '../projects/trustWarning'
@@ -66,6 +67,7 @@ export function useTurnRuntime(options: { onSessionsChanged: () => void }) {
       onProfileEvent(event.event)
       if (event.event === 'checklist.updated') applyChecklistEvent(event.payload)
       if (event.event === 'goal.updated') applyGoalEvent(event.payload)
+      if (event.event === 'turn.started') syncReasoningFromTurn(event.payload)
       // El aviso de «Rinari retomó…» lo da el notificador, con las reglas de los demás (#24).
       if (event.event === 'session.resume.updated') applyResumeEvent(event.payload)
       if (event.event === 'browser.external.changed') applyExternalBrowserEvent(event.payload)

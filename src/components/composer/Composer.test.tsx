@@ -159,3 +159,16 @@ it('la pill salta sin transición con movimiento reducido', () => {
     useUIStore.setState({ reduceMotion: false })
   }
 })
+
+it('H-20: keeps the chosen effort while the model capabilities are unknown, and drops it only when the model cannot', () => {
+  const onReasoningChange = vi.fn()
+  const props = { placement: 'bottom' as const, onSend: vi.fn(), isStreaming: false, onStop: vi.fn(), activeAlias: 'Alpha', onUseModel: vi.fn(), onDiscoverModels: vi.fn(), onOpenProviders: vi.fn(), sessionMode: 'build', onModeChange: vi.fn(), reasoningEffort: 'high' as const, onReasoningChange, permissionProfile: 'workspace' as const, effectivePermissionProfile: 'workspace' as const, permissionProfilesV2: true, onPermissionChange: vi.fn(), onSearchFiles: async () => ({ root: '/', files: [] }) }
+  // Los modelos todavía no llegaron, o el modelo no dice nada de sus capacidades.
+  const { rerender } = render(<I18nProvider lang="es"><Composer {...props} models={[]} /></I18nProvider>)
+  rerender(<I18nProvider lang="es"><Composer {...props} models={[{ id: 'a', alias: 'Alpha', provider: 'Local', provider_model_id: 'alpha', capabilities: {} }] as ModelSummary[]} /></I18nProvider>)
+  expect(onReasoningChange).not.toHaveBeenCalled()
+  expect(screen.getByTitle('Razonamiento').textContent).not.toContain('Predeterminado')
+  // Ahora se sabe que no razona: vuelve a «Predeterminado».
+  rerender(<I18nProvider lang="es"><Composer {...props} models={[{ id: 'a', alias: 'Alpha', provider: 'Local', provider_model_id: 'alpha', capabilities: { reasoning: false } }] as unknown as ModelSummary[]} /></I18nProvider>)
+  expect(onReasoningChange).toHaveBeenCalledWith('off')
+})

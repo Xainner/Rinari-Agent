@@ -1352,6 +1352,8 @@ export const en: Record<I18nKey, string> = {
   'approval.rule.gitPush': "Publish with git push",
   'approval.rule.forcePush': "Force push: rewrites remote history",
   'approval.rule.deleteOutside': "Delete outside the project",
+  'approval.rule.deleteRecursive': "Delete a whole folder inside the project (it does not go to the recycle bin)",
+  'approval.rule.readOnlyTests': "Run the tests with {runner} in read-only mode",
   'approval.rule.secret': "Access a system secret",
   'approval.rule.externalSend': "Send data after reading external content",
   'approval.rule.mcp': "Use an MCP tool",

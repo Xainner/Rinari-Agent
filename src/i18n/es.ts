@@ -1370,6 +1370,8 @@ export const es = {
   'approval.rule.gitPush': "Publicar con git push",
   'approval.rule.forcePush': "Force push: reescribe el historial remoto",
   'approval.rule.deleteOutside': "Borrar fuera del proyecto",
+  'approval.rule.deleteRecursive': "Borrar una carpeta entera dentro del proyecto (no va a la papelera)",
+  'approval.rule.readOnlyTests': "Correr las pruebas con {runner} en modo solo lectura",
   'approval.rule.secret': "Acceder a un secreto del sistema",
   'approval.rule.externalSend': "Enviar datos después de leer contenido externo",
   'approval.rule.mcp': "Usar una herramienta MCP",

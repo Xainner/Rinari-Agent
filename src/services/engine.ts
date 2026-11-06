@@ -1122,6 +1122,8 @@ const ERROR_WITH_DETAIL = new Set([
   // Códigos amplios: el motor explica el caso concreto («Checkpoints require a
   // Git repository…») y perderlo deja al dueño sin saber qué pasó.
   'INVALID_PARAMS', 'INVALID_ARGUMENT', 'INVALID_USAGE', 'NOT_FOUND', 'CONFLICT', 'PERMISSION_DENIED',
+  // «Conectar a mi servidor»: sin el motivo de red no se sabe qué revisar.
+  'SERVER_UNREACHABLE',
 ])
 
 /**

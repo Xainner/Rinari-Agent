@@ -3,7 +3,6 @@ import { ArrowUp, Check, CircleAlert, Folder, FolderPlus, LoaderCircle, ShieldCh
 import { toast } from 'sonner'
 import { useI18n, type I18nKey } from '../../i18n'
 import { cn } from '../../lib/utils'
-import { platform } from '../../platform'
 import { commandMessage, engineApi, type ProjectSummary, type SessionSummary } from '../../services/engine'
 import type { ProjectFolderCheck } from '../../types/protocol.generated'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog'
@@ -12,6 +11,7 @@ import { useProfileStore } from '../profiles/profileStore'
 import { branchLabel } from './ProjectBranch'
 import { useCreateProjectStore } from './createProjectStore'
 import { useProjectExpansionStore } from '../../stores/projectExpansion'
+import { useFolderPicker } from '../remote/useFolderPicker'
 
 interface Row {
   path: string
@@ -53,6 +53,7 @@ const baseName = (path: string) => path.split(/[\\/]/).filter(Boolean).pop() ?? 
  */
 export function CreateProjectDialog({ onCreated }: { onCreated: (project: ProjectSummary, session: SessionSummary | null) => void }) {
   const { t } = useI18n()
+  const { pickFolders, dialog: folderDialog } = useFolderPicker()
   const open = useCreateProjectStore((state) => state.open)
   const initialPaths = useCreateProjectStore((state) => state.paths)
   const close = useCreateProjectStore((state) => state.close)
@@ -114,7 +115,7 @@ export function CreateProjectDialog({ onCreated }: { onCreated: (project: Projec
   }), [t, name, targetProfile, nameOf, rows.length, trusted])
 
   async function addFolders() {
-    const picked = await platform().dialog.openFiles({ directory: true, multiple: true, title: t('createProject.pick') })
+    const picked = await pickFolders({ multiple: true, title: t('createProject.pick') })
     if (!picked?.length) return
     setRows((current) => [...current, ...picked.filter((path) => !current.some((row) => row.path === path))
       .map((path) => ({ path, trust: null }))])
@@ -260,6 +261,7 @@ export function CreateProjectDialog({ onCreated }: { onCreated: (project: Projec
             {creating ? <LoaderCircle size={14} className="motion-safe:animate-spin" aria-hidden="true" /> : <FolderPlus size={14} aria-hidden="true" />} {t('createProject.create')}
           </button>
         </DialogFooter>
+        {folderDialog}
       </DialogContent>
     </Dialog>
   )

@@ -11,6 +11,7 @@ import { duration, ease, instant, useCalmMotion } from '../../lib/motion'
 import ReviewFindings from './ReviewFindings'
 import { runSkillJob, type SkillJobOutcome } from './skillJobs'
 import { confirmedHash, importKindKey, needsConfirmation } from './skillsModel'
+import { useFolderPicker } from '../remote/useFolderPicker'
 
 type Tab = 'source' | 'import'
 const TABS: readonly Tab[] = ['source', 'import']
@@ -45,6 +46,7 @@ export default function InstallSkillDialog({
   onInstalled: () => void
 }) {
   const { t } = useI18n()
+  const { pickFolders, dialog: folderDialog } = useFolderPicker()
   const calm = useCalmMotion()
   const [tab, setTab] = useState<Tab>('source')
   const [source, setSource] = useState('')
@@ -87,7 +89,9 @@ export default function InstallSkillDialog({
   const busy = progress !== null
 
   async function pick(directory: boolean) {
-    const picked = await platform().dialog.openFiles({ directory, multiple: false, title: t('skills.pick') })
+    const picked = directory
+      ? await pickFolders({ title: t('skills.pick') })
+      : await platform().dialog.openFiles({ directory, multiple: false, title: t('skills.pick') })
     if (picked?.[0]) {
       setSource(picked[0])
       await inspect(picked[0])
@@ -421,6 +425,7 @@ export default function InstallSkillDialog({
             </button>
           </div>
         )}
+        {folderDialog}
       </DialogContent>
     </Dialog>
   )

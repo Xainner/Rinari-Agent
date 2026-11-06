@@ -3,10 +3,10 @@ import { Folder, FolderPlus, ShieldCheck, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
-import { platform } from '../../platform'
 import { commandMessage, engineApi } from '../../services/engine'
 import type { ProjectFolder } from '../../types/protocol.generated'
 import { branchLabel } from './ProjectBranch'
+import { useFolderPicker } from '../remote/useFolderPicker'
 
 const baseName = (path: string) => path.split(/[\\/]/).filter(Boolean).pop() ?? path
 
@@ -17,6 +17,7 @@ const baseName = (path: string) => path.split(/[\\/]/).filter(Boolean).pop() ?? 
  */
 export function ProjectFolders({ projectId, onChanged }: { projectId: string; onChanged?: () => void }) {
   const { t } = useI18n()
+  const { pickFolders, dialog: folderDialog } = useFolderPicker()
   const [folders, setFolders] = useState<ProjectFolder[] | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -45,7 +46,7 @@ export function ProjectFolders({ projectId, onChanged }: { projectId: string; on
   }
 
   async function add() {
-    const picked = await platform().dialog.openFiles({ directory: true, multiple: true, title: t('createProject.pick') })
+    const picked = await pickFolders({ multiple: true, title: t('createProject.pick') })
     if (!picked?.length) return
     await run(async () => {
       for (const path of picked) await engineApi.projectFolderAdd(projectId, path)
@@ -91,6 +92,7 @@ export function ProjectFolders({ projectId, onChanged }: { projectId: string; on
       {folders.some((folder) => !folder.primary && folder.trust_state !== 'trusted') && (
         <p className="text-[11px] leading-relaxed text-[var(--text-subtle)]">{t('projectFolders.untrustedNote')}</p>
       )}
+      {folderDialog}
     </section>
   )
 }

@@ -30,6 +30,7 @@ import {
   AlertDialogTitle,
 } from '../../components/ui/alert-dialog'
 import SoulEditorDialog, { type SoulDraft } from './SoulEditorDialog'
+import { useFolderPicker } from '../remote/useFolderPicker'
 
 export { soulIdFor } from './SoulEditorDialog'
 
@@ -44,6 +45,7 @@ export { soulIdFor } from './SoulEditorDialog'
  */
 export default function SoulsView({ onChanged }: { onChanged: () => void }) {
   const { t } = useI18n()
+  const { pickFolders, dialog: folderDialog } = useFolderPicker()
   const [souls, setSouls] = useState<SoulSummary[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [detail, setDetail] = useState<SoulDetail | null>(null)
@@ -97,7 +99,7 @@ export default function SoulsView({ onChanged }: { onChanged: () => void }) {
 
   async function exportSoul(soul: SoulSummary) {
     try {
-      const folder = (await platform().dialog.openFiles({ directory: true, title: t('soul.exportTitle') }))?.[0]
+      const folder = (await pickFolders({ title: t('soul.exportTitle') }))?.[0]
       if (!folder) return
       const result = await engineApi.soulExport(soul.id, folder)
       toast.success(t('soul.exported', { path: result.path }))
@@ -225,6 +227,7 @@ export default function SoulsView({ onChanged }: { onChanged: () => void }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {folderDialog}
     </div>
   )
 }

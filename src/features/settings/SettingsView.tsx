@@ -24,6 +24,7 @@ import MemorySettings from '../memory/MemorySettings'
 import DictationSettings from '../dictation/DictationSettings'
 import NotificationSettings from '../../components/settings/NotificationSettings'
 import BrowserSettings from '../../components/settings/BrowserSettings'
+import ServerSettings from '../remote/ServerSettings'
 import { ZoneBoundary } from '../../components/ZoneBoundary'
 
 /** Vista de ajustes: shell + sección activa. Terminal llega en Fase 10. */
@@ -94,10 +95,11 @@ export default function SettingsView({
         />
       )}
       {section === 'terminal' && <TerminalView />}
+      {section === 'servers' && <ServerSettings />}
       {section === 'advanced' && <AdvancedSettings models={models} providers={providers} activeSessionId={activeSessionId} />}
       {section === 'about' && <AboutSettings version={appVersion} />}
       {/* Solo lo que aún no tiene página: Dictado, Notificaciones y Navegador ya la tienen. */}
-      {!['context', 'memory', 'vision', 'general', 'shortcuts', 'appearance', 'providers', 'models', 'agents', 'soul', 'skills', 'mcp', 'plugins', 'tools', 'profiles', 'terminal', 'dictation', 'notifications', 'browser', 'advanced', 'about'].includes(section) && (
+      {!['context', 'memory', 'vision', 'general', 'shortcuts', 'appearance', 'providers', 'models', 'agents', 'soul', 'skills', 'mcp', 'plugins', 'tools', 'profiles', 'terminal', 'dictation', 'notifications', 'browser', 'advanced', 'servers', 'about'].includes(section) && (
         <SoonSettings />
       )}
       </ZoneBoundary>

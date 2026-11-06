@@ -39,6 +39,9 @@ import {
   type NotificationActionId,
   type SystemNotificationRequest,
   type FlowScopeRequest,
+  type EnginesView,
+  type PairServerRequest,
+  type RemoteEngine,
 } from '../../shared/contracts'
 import {
   ValidationError,
@@ -84,6 +87,30 @@ function assertMigrationPreferences(value: unknown): Record<string, string> {
   return result
 }
 
+/** `local` o el id (UUID) de un servidor emparejado. */
+export function assertEngineId(value: unknown): string {
+  if (value === 'local') return value
+  if (typeof value !== 'string' || !/^[0-9a-f-]{36}$/i.test(value)) {
+    throw new ValidationError('engine id must be "local" or a paired server id')
+  }
+  return value
+}
+
+/** Solo cadenas cortas y las claves conocidas: main valida la forma, la dirección la valida el emparejamiento. */
+export function assertPairRequest(value: unknown): PairServerRequest {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ValidationError('pair request must be an object')
+  const out: PairServerRequest = {}
+  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (key !== 'link' && key !== 'server' && key !== 'code' && key !== 'name') {
+      throw new ValidationError(`unknown pair field: ${key}`)
+    }
+    if (raw === undefined || raw === null) continue
+    if (typeof raw !== 'string' || raw.length > 2048) throw new ValidationError(`${key} must be a string up to 2048 chars`)
+    out[key] = raw
+  }
+  return out
+}
+
 /** Lo que el main sabe hacer; lo aporta `index.ts` al registrar. */
 export interface HostServices {
   engine: {
@@ -92,6 +119,13 @@ export interface HostServices {
     shutdown(): Promise<unknown>
     restart(): Promise<unknown>
     request(method: string, params?: Record<string, unknown>): Promise<unknown>
+  }
+  /** «Conectar a mi servidor». El token nunca vuelve al renderer. */
+  engines: {
+    list(): EnginesView
+    pair(request: PairServerRequest): Promise<RemoteEngine>
+    use(id: string): Promise<EnginesView>
+    forget(id: string): Promise<EnginesView>
   }
   window: {
     minimize(): void
@@ -444,6 +478,10 @@ export function registerIpc(registry: SenderRegistry, services: HostServices): (
     [CHANNEL.engineStart, guarded(registry, () => services.engine.start())],
     [CHANNEL.engineShutdown, guarded(registry, () => services.engine.shutdown())],
     [CHANNEL.engineRestart, guarded(registry, () => services.engine.restart())],
+    [CHANNEL.enginesList, guarded(registry, () => services.engines.list())],
+    [CHANNEL.enginesPair, guarded(registry, (_event, request) => services.engines.pair(assertPairRequest(request)))],
+    [CHANNEL.enginesUse, guarded(registry, (_event, id) => services.engines.use(assertEngineId(id)))],
+    [CHANNEL.enginesForget, guarded(registry, (_event, id) => services.engines.forget(assertEngineId(id)))],
     [
       CHANNEL.command,
       guarded(registry, (_event, name, params) =>

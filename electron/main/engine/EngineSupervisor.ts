@@ -11,6 +11,8 @@
 
 import { locateEngine, EngineNotFound, type EngineCommand } from './engineLocator'
 import { NdjsonTransport, TransportError } from './NdjsonTransport'
+import { CLOSE_UNPAIRED, WebSocketTransport, type SocketFactory } from './WebSocketTransport'
+import type { EngineTarget } from '../remote/engineTargets'
 import type { EngineEvent, Hello } from '../../shared/protocol'
 import type { EngineState, EngineStatus } from '../../shared/contracts'
 
@@ -125,6 +127,12 @@ function toCommandError(error: unknown): EngineCommandError {
   return new EngineCommandError('ENGINE_ERROR', error instanceof Error ? error.message : String(error))
 }
 
+/** Lo que el supervisor usa de un transporte: el NDJSON local o el WebSocket de un servidor. */
+type EngineTransport = Pick<NdjsonTransport, 'epoch' | 'engineHello' | 'request' | 'isRunning' | 'shutdown'>
+
+/** Reconexión a un servidor caído: 1 s, 2 s, 4 s… hasta 30 s. */
+const RECONNECT_MAX_MS = 30_000
+
 export interface SupervisorOptions {
   /** Reenvío al renderer. Un solo canal, no un lector por panel. */
   onEvent: (event: EngineEvent, epoch: number) => void
@@ -140,6 +148,10 @@ export interface SupervisorOptions {
   engineEnv?: () => Record<string, string>
   /** Lo que tardó el saludo: el host lo recuerda para el próximo límite (#70, #91). */
   onStarted?: (ms: number) => void
+  /** Con qué Engine arrancar, leído en cada arranque. Por defecto, el de este equipo. */
+  target?: () => EngineTarget
+  /** Solo pruebas: el WebSocket del transporte remoto. */
+  socket?: SocketFactory
 }
 
 /** Un arranque que falla así merece un segundo intento antes de mostrar el error (#70). */
@@ -148,7 +160,11 @@ const RETRYABLE_START = new Set(['ENGINE_HANDSHAKE', 'ENGINE_SPAWN', 'ENGINE_IO'
 export class EngineSupervisor {
   private state: EngineState = 'stopped'
   private detail: string | null = null
-  private transport: NdjsonTransport | null = null
+  private transport: EngineTransport | null = null
+  /** El servidor del último arranque, o `null` con el Engine de este equipo. */
+  private remote: { id: string; name: string; server: string } | null = null
+  private reconnectTimer: NodeJS.Timeout | null = null
+  private reconnectDelay = 1_000
   private hello: Hello | null = null
   /** Época de conexión: distingue esta instancia de las anteriores. */
   private epoch = 0
@@ -173,6 +189,7 @@ export class EngineSupervisor {
       detail,
       capabilities: this.hello?.capabilities ?? {},
       home_id: this.hello?.home_id ?? null,
+      remote: this.remote,
     }
   }
 
@@ -192,7 +209,11 @@ export class EngineSupervisor {
   start(): Promise<EngineStatus> {
     return this.serialize(async () => {
       if (this.status().state === 'ready') return this.status()
+      this.cancelReconnect()
+      const target = this.options.target?.() ?? { kind: 'local' }
+      this.remote = target.kind === 'remote' ? { id: target.id, name: target.name, server: target.server } : null
       this.setState('starting', null)
+      if (target.kind === 'remote') return this.connectOrRetry(target)
       let command: EngineCommand
       try {
         command = locateEngine({
@@ -220,13 +241,87 @@ export class EngineSupervisor {
     }
   }
 
+  private async connectOrRetry(target: Extract<EngineTarget, { kind: 'remote' }>): Promise<EngineStatus> {
+    try {
+      return await this.connectRemote(target)
+    } catch (error) {
+      if (!(error instanceof EngineCommandError) || !RETRYABLE_START.has(error.code)) throw error
+      this.options.onStderr?.(`server connection failed (${error.code}); retrying once`)
+      return this.connectRemote(target)
+    }
+  }
+
+  /** «Conectar a mi servidor»: el Engine del Gateway, por WebSocket. */
+  private async connectRemote(target: Extract<EngineTarget, { kind: 'remote' }>): Promise<EngineStatus> {
+    this.setState('handshaking', `connecting to ${target.server}`)
+    this.epoch += 1
+    const epoch = this.epoch
+    let transport: WebSocketTransport
+    try {
+      transport = await WebSocketTransport.connect({
+        server: target.server,
+        token: target.token,
+        epoch,
+        handshakeTimeoutMs: this.options.handshakeTimeoutMs?.(),
+        socket: this.options.socket,
+        onEvent: (event, at) => {
+          if (at !== this.epoch) return
+          this.options.onEvent(event, at)
+        },
+        onExit: (info) => {
+          if (info.epoch !== this.epoch) return
+          this.remoteClosed(info.closeCode)
+        },
+      })
+    } catch (reason) {
+      const error = toCommandError(reason)
+      this.setState('failed', error.message)
+      throw error
+    }
+    return this.accept(transport, Date.now())
+  }
+
+  /** El servidor cerró: revocado se queda así; lo demás reconecta solo. */
+  private remoteClosed(code: number): void {
+    if (code === CLOSE_UNPAIRED) {
+      this.setState('failed', 'REMOTE_UNPAIRED: this computer is no longer paired with the server')
+      return
+    }
+    if (this.state === 'ready') this.setState('degraded', 'server connection lost')
+    this.scheduleReconnect()
+  }
+
+  private scheduleReconnect(): void {
+    if (this.reconnectTimer) return
+    const delay = this.reconnectDelay
+    this.reconnectDelay = Math.min(this.reconnectDelay * 2, RECONNECT_MAX_MS)
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null
+      if (!this.remote || this.state === 'stopped' || this.state === 'ready') return
+      this.start().then(
+        () => {
+          this.reconnectDelay = 1_000
+        },
+        (error: unknown) => {
+          if (error instanceof EngineCommandError && error.code === 'REMOTE_UNPAIRED') return
+          this.scheduleReconnect()
+        },
+      )
+    }, delay)
+  }
+
+  private cancelReconnect(): void {
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
+    this.reconnectTimer = null
+  }
+
   /** Arranque explícito: sidecar, override o un engine falso en tests. */
   private async startWith(command: EngineCommand): Promise<EngineStatus> {
     this.setState('handshaking', `spawning ${command.program}`)
     this.epoch += 1
     const epoch = this.epoch
     const startedAt = Date.now()
-    let transport: NdjsonTransport
+    let transport: EngineTransport
     try {
       transport = await NdjsonTransport.spawn({
         program: command.program,
@@ -252,6 +347,11 @@ export class EngineSupervisor {
       throw error
     }
 
+    return this.accept(transport, startedAt)
+  }
+
+  /** El saludo llegó: se comprueban las capabilities y se da por listo. */
+  private async accept(transport: EngineTransport, startedAt: number): Promise<EngineStatus> {
     const capabilities = transport.engineHello.capabilities
     const missing = REQUIRED_CAPABILITIES.filter((name) => capabilities[name] !== true)
     if (missing.length > 0) {
@@ -262,9 +362,16 @@ export class EngineSupervisor {
 
     this.transport = transport
     this.hello = transport.engineHello
-    this.options.onStarted?.(Date.now() - startedAt)
+    // El tiempo de un arranque local guía el plazo del próximo; el de un servidor no.
+    if (!this.remote) this.options.onStarted?.(Date.now() - startedAt)
+    this.reconnectDelay = 1_000
     this.setState('ready', null)
     return this.status()
+  }
+
+  /** Con un Engine de servidor: su id, nombre y dirección. */
+  remoteTarget(): { id: string; name: string; server: string } | null {
+    return this.remote
   }
 
   /**
@@ -274,6 +381,7 @@ export class EngineSupervisor {
    */
   shutdown(): Promise<EngineStatus> {
     return this.serialize(async () => {
+      this.cancelReconnect()
       const transport = this.transport
       this.transport = null
       this.hello = null

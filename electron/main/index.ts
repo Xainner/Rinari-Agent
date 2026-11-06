@@ -6,11 +6,11 @@
  * herramientas y proveedores siguen siendo del Engine Python.
  */
 
-import { app, protocol, BrowserWindow, ClipboardItem, Menu, clipboard, crashReporter, dialog, nativeImage, shell } from 'electron'
+import { app, protocol, BrowserWindow, ClipboardItem, Menu, clipboard, crashReporter, dialog, nativeImage, safeStorage, shell } from 'electron'
 import { spawn } from 'node:child_process'
 import { statSync } from 'node:fs'
-import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
-import { homedir, release as osRelease } from 'node:os'
+import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { homedir, hostname, release as osRelease } from 'node:os'
 import { join } from 'node:path'
 
 import { APP_ORIGIN, APP_SCHEME, contentTypeFor, resolveAppUrl } from './appScheme'
@@ -27,6 +27,8 @@ import { ENGINE_BROKER_CAPABILITY, NativeBrowserHost } from './browser/NativeBro
 import { bundleFileName, createDiagnostics, logsDirFor } from './diagnostics'
 import { EngineCommandError, EngineSupervisor } from './engine/EngineSupervisor'
 import { translateCommand } from './engine/translateCommand'
+import { EngineTargets, RemoteSetupError, enginesFile, type EnginesView } from './remote/engineTargets'
+import { RemoteFileError, createRemoteFiles, uploadLocalPaths } from './remote/remoteFiles'
 import { registerIpc, type HostServices } from './ipc/register'
 import { SenderRegistry, originOf } from './ipc/validateSender'
 import { canPush } from './ipc/pushGuard'
@@ -246,7 +248,39 @@ let layoutCoordinator: ViewLayoutCoordinator | null = null
 /** Observadores de eventos del Engine; sólo los usa la prueba vertical. */
 const engineEventTaps = new Set<(event: Record<string, unknown>) => void>()
 
+/**
+ * «Conectar a mi servidor»: el Engine de este equipo o el de un servidor con
+ * Rinari Gateway. El token de cada servidor se guarda cifrado y no sale de main.
+ */
+const engineTargets = new EngineTargets({
+  ...enginesFile(join(app.getPath('userData'), 'engines.json')),
+  canEncrypt: () => safeStorage.isEncryptionAvailable(),
+  encrypt: (text) => safeStorage.encryptString(text),
+  decrypt: (data) => safeStorage.decryptString(data),
+  fetch: (input, init) => fetch(input, init),
+  deviceName: () => hostname(),
+})
+/** Archivos del Engine de un servidor: se descargan aquí para abrirlos; los adjuntos se suben. */
+const remoteFilesDir = join(app.getPath('userData'), 'remote-files')
+const remoteFiles = createRemoteFiles({ cacheDir: remoteFilesDir, fetch: (input, init) => fetch(input, init) })
+
+/** El servidor activo con su token, o `null` si la app usa el Engine de este equipo. */
+function activeRemote(): { id: string; server: string; token: string } | null {
+  if (!engine.remoteTarget()) return null
+  const target = engineTargets.target()
+  return target.kind === 'remote' ? { id: target.id, server: target.server, token: target.token } : null
+}
+
+function remoteError(error: unknown): unknown {
+  if (error instanceof RemoteFileError || error instanceof RemoteSetupError) {
+    return new EngineCommandError(error.code, error.message)
+  }
+  return error
+}
+
 const engine = new EngineSupervisor({
+  // Con qué Engine trabajar: el de este equipo o el de un servidor emparejado.
+  target: () => engineTargets.target(),
   // El plazo del saludo se adapta a lo que tardó la última vez (#70).
   handshakeTimeoutMs: () => handshakeLimitMs(hostSettings),
   // Registros detallados: el Engine también escribe sus avisos de detalle.
@@ -296,10 +330,13 @@ const engine = new EngineSupervisor({
     //
     // Se comprueba la capability antes de llamar: un Engine antiguo se degrada
     // al visor de capturas y **no** recibe métodos desconocidos una y otra vez.
+    // El navegador nativo es de este equipo: con el Engine de un servidor no se
+    // registra (el Gateway no reenvía `host.browser.*`) y queda el visor de capturas.
     if (
       status.state === 'ready' &&
       browserHost &&
       !browserHost.registered &&
+      !status.remote &&
       status.capabilities[ENGINE_BROKER_CAPABILITY] === true
     ) {
       void browserHost.register()
@@ -336,6 +373,16 @@ interface ResolvedFile {
  * un video de 30 MB. Nunca se usa la ruta que diga el renderer.
  */
 async function resolveWorkspaceFile(request: { session_id: string; path: string; turn_id?: string }): Promise<ResolvedFile> {
+  // Con el Engine de un servidor, su Gateway sirve el archivo que el Engine
+  // autoriza; se baja a una caché de este equipo y desde ahí se abre.
+  const remote = activeRemote()
+  if (remote) {
+    try {
+      return await remoteFiles.download(remote, request)
+    } catch (error) {
+      throw remoteError(error)
+    }
+  }
   // Un artefacto lo resuelve el Artifact Store del Engine; React nunca
   // deduce dónde están sus bytes.
   const call = request.path.startsWith('artifact://')
@@ -722,7 +769,18 @@ function buildServices(): HostServices {
         const started = performance.now()
         try {
           const call = translateCommand(name, params ?? {})
-          const result = await engine.request(call.method, call.params)
+          const remote = activeRemote()
+          // Con un servidor, las rutas de este equipo (adjuntos, almas, la
+          // fuente de una skill) se suben antes: su Engine no las vería.
+          const engineParams =
+            remote && call.params && typeof call.params === 'object'
+              ? await uploadLocalPaths(call.method, call.params as Record<string, unknown>, (path) =>
+                remoteFiles.upload(remote, path),
+              ).catch((error: unknown) => {
+                throw remoteError(error)
+              })
+              : call.params
+          const result = await engine.request(call.method, engineParams)
           diagnostics.commandDone(name, performance.now() - started)
           return result
         } catch (error) {
@@ -743,6 +801,39 @@ function buildServices(): HostServices {
       clampToWorkArea: async () => {
         const window = getWindow()
         if (window) clampToWorkArea(window)
+      },
+    },
+    engines: {
+      list: () => engineTargets.view(),
+      pair: async (request) => {
+        try {
+          return await engineTargets.pair(request)
+        } catch (error) {
+          throw remoteError(error)
+        }
+      },
+      use: async (id) => {
+        let view: EnginesView
+        try {
+          view = engineTargets.use(id)
+        } catch (error) {
+          throw remoteError(error)
+        }
+        // Otro Engine: se cierra la conexión actual y se abre la elegida.
+        diagnostics.log('info', `engine target changed: ${id === 'local' ? 'this computer' : 'server'}`)
+        await engine.restart().catch(() => undefined)
+        return view
+      },
+      forget: async (id) => {
+        const wasActive = engineTargets.view().active === id
+        let view: EnginesView
+        try {
+          view = engineTargets.forget(id)
+        } catch (error) {
+          throw remoteError(error)
+        }
+        if (wasActive) await engine.restart().catch(() => undefined)
+        return view
       },
     },
     dialog: createDialogs(getWindow),
@@ -847,6 +938,10 @@ function buildServices(): HostServices {
       openFolder: async (place) => {
         // Solo lugares conocidos: la carpeta de Rinari, los registros de la
         // app o el RINARI.md global (que se crea vacío si no existe).
+        // Con un servidor, su carpeta de Rinari y su RINARI.md están allí.
+        if (place !== 'logs' && activeRemote()) {
+          throw new EngineCommandError('REMOTE_LOCAL_ONLY', 'That folder is on the server, not on this computer')
+        }
         const home = rinariHome()
         if (place === 'logs') {
           const failure = await shell.openPath(logsDirFor(app.getPath('userData')))
@@ -1526,6 +1621,8 @@ if (!app.requestSingleInstanceLock({ handoff: launchRequest, update: launchUpdat
     // que el renderer montara y lo pidiera. `engine_start` del renderer se
     // une a este arranque (el supervisor los serializa).
     markStartup('engine-spawn')
+    // Las copias de archivos de un servidor son de la sesión anterior: fuera.
+    void rm(remoteFilesDir, { recursive: true, force: true }).catch(() => undefined)
     void engine.start().catch(() => {
       // El estado «failed» llega al renderer, que muestra el error y reintenta.
     })

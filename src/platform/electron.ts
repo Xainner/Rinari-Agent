@@ -44,6 +44,7 @@ import type {
   DiagnosticsExportResult,
   DiagnosticsPreview,
 } from './contract'
+import type { EnginesView, PairServerRequest, RemoteEngine } from '../../electron/shared/contracts'
 
 /** Superficie que expone el preload. Debe coincidir con `electron/preload`. */
 interface DesktopHostApi {
@@ -56,6 +57,12 @@ interface DesktopHostApi {
     restart(): Promise<EngineStatus>
     onEvent(callback: (event: EngineEventMessage) => void): Unsubscribe
     onStatus(callback: (status: unknown) => void): Unsubscribe
+  }
+  engines: {
+    list(): Promise<EnginesView>
+    pair(request: PairServerRequest): Promise<RemoteEngine>
+    use(id: string): Promise<EnginesView>
+    forget(id: string): Promise<EnginesView>
   }
   command<T>(name: string, params?: Record<string, unknown>): Promise<T>
   window: {
@@ -259,6 +266,13 @@ export const electronBridge: DesktopBridge = {
     start: () => required().engine.start(),
     shutdown: () => required().engine.shutdown(),
     restart: () => required().engine.restart(),
+  },
+
+  engines: {
+    list: () => required().engines.list(),
+    pair: (request) => required().engines.pair(request),
+    use: (id) => required().engines.use(id),
+    forget: (id) => required().engines.forget(id),
   },
 
   handoff: {

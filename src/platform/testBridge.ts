@@ -8,6 +8,7 @@
  */
 
 import type { AttentionIndicators } from '../../electron/shared/indicators'
+import type { EnginesView, PairServerRequest } from '../../electron/shared/contracts'
 import type { FlowResult } from '../types/protocol.generated'
 import type {
   ContextMenuItem,
@@ -61,6 +62,11 @@ export interface TestBridge extends DesktopBridge {
   replyNotification(reply: NotificationReply): void
   /** Operaciones de ciclo de vida pedidas, en orden. */
   readonly engineCalls: string[]
+  /** «Conectar a mi servidor»: Engines emparejados del host de prueba y emparejamientos pedidos. */
+  engineTargets: EnginesView
+  readonly pairRequests: PairServerRequest[]
+  /** Si no es `null`, el próximo `engines.pair` falla con este error del host. */
+  nextPairError: { code: string; message: string } | null
   engineStatus: EngineStatus
   initialHandoff: OpenRequest
   /** Archivos que se pidió abrir con la aplicación del sistema. */
@@ -176,6 +182,9 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
   const bridge: TestBridge = {
     calls: [],
     engineCalls: [],
+    engineTargets: { active: 'local', remotes: [] },
+    pairRequests: [],
+    nextPairError: null,
     browserContext: null,
     flowResult: null,
     flowCalls: [],
@@ -268,6 +277,45 @@ function emptyFlow(scope: FlowScopeRequest): FlowResult {
         bridge.engineCalls.push('restart')
         bridge.engineStatus = { ...bridge.engineStatus, state: 'ready' }
         return bridge.engineStatus
+      },
+    },
+
+    engines: {
+      async list() {
+        return bridge.engineTargets
+      },
+      async pair(request) {
+        bridge.pairRequests.push(request)
+        if (bridge.nextPairError) {
+          const error = bridge.nextPairError
+          bridge.nextPairError = null
+          throw Object.assign(new Error(error.message), error)
+        }
+        const remote = {
+          id: `00000000-0000-4000-8000-${String(bridge.engineTargets.remotes.length + 1).padStart(12, '0')}`,
+          name: 'rinari.example.test',
+          server: 'https://rinari.example.test',
+          device_id: 'dev_test',
+          paired_at: '2026-11-06T00:00:00.000Z',
+        }
+        bridge.engineTargets = { ...bridge.engineTargets, remotes: [...bridge.engineTargets.remotes, remote] }
+        return remote
+      },
+      async use(id) {
+        bridge.engineCalls.push(`use:${id}`)
+        bridge.engineTargets = { ...bridge.engineTargets, active: id }
+        const remote = bridge.engineTargets.remotes.find((item) => item.id === id) ?? null
+        bridge.engineStatus = {
+          ...bridge.engineStatus,
+          state: 'ready',
+          remote: remote && { id: remote.id, name: remote.name, server: remote.server },
+        }
+        return bridge.engineTargets
+      },
+      async forget(id) {
+        const remotes = bridge.engineTargets.remotes.filter((item) => item.id !== id)
+        bridge.engineTargets = { active: bridge.engineTargets.active === id ? 'local' : bridge.engineTargets.active, remotes }
+        return bridge.engineTargets
       },
     },
 

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, ChevronDown, Folder, FolderOpen, MessageCircle, Search } from 'lucide-react'
 import { useI18n } from '../../i18n'
-import { platform } from '../../platform'
 import { engineApi, type ProjectSummary } from '../../services/engine'
 import { cn } from '../../lib/utils'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
@@ -10,6 +9,7 @@ import { inProfile, useProfileStore } from '../../features/profiles/profileStore
 import { branchLabel } from '../../features/projects/ProjectBranch'
 import { useCreateProjectStore } from '../../features/projects/createProjectStore'
 import { SearchClearButton } from '../ui/SearchField'
+import { useFolderPicker } from '../../features/remote/useFolderPicker'
 
 /** Abre el selector de proyecto del composer enfocado (atajo de teclado, #42). */
 export const PROJECT_PICKER_EVENT = 'rinari:project-picker'
@@ -32,6 +32,7 @@ export interface ProjectChipProps {
  */
 export function ProjectChip({ projectId, onChange, primary = false, disabled = false }: ProjectChipProps) {
   const { t } = useI18n()
+  const { pickFolders, dialog: folderDialog } = useFolderPicker()
   const data = useOptionalEngineData()
   const commands = useOptionalEngineCommands()
   const activeProfile = useProfileStore((state) => state.activeId)
@@ -65,7 +66,7 @@ export function ProjectChip({ projectId, onChange, primary = false, disabled = f
 
   async function openFolder() {
     setOpen(false)
-    const picked = (await platform().dialog.openFiles({ directory: true }))?.[0] ?? null
+    const picked = (await pickFolders())?.[0] ?? null
     if (typeof picked !== 'string') return
     // Una carpeta que ya es de un proyecto elige ese proyecto: lo decide el
     // Engine, que compara rutas canónicas.
@@ -87,6 +88,7 @@ export function ProjectChip({ projectId, onChange, primary = false, disabled = f
 
   const label = current ? (current.name || baseName(current.root)) : t('composer.project.none')
   return (
+    <>
     <Popover open={open} onOpenChange={(next) => { setOpen(next); if (next) setQuery('') }}>
       <PopoverTrigger asChild>
         <button
@@ -146,6 +148,8 @@ export function ProjectChip({ projectId, onChange, primary = false, disabled = f
         </div>
       </PopoverContent>
     </Popover>
+    {folderDialog}
+    </>
   )
 }
 

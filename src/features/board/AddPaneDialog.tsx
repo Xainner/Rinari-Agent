@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { Folder, FolderOpen, MessageSquare, MessageSquarePlus, Search } from 'lucide-react'
-import { platform } from '../../platform'
 import { useI18n } from '../../i18n'
 import { engineApi, type ProjectSummary, type SessionSummary } from '../../services/engine'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../components/ui/dialog'
@@ -21,6 +20,7 @@ import { useProjectExpansionStore } from '../../stores/projectExpansion'
 import { inProfile, useProfileStore } from '../profiles/profileStore'
 import { useCreateProjectStore } from '../projects/createProjectStore'
 import { SearchClearButton } from '../../components/ui/SearchField'
+import { useFolderPicker } from '../remote/useFolderPicker'
 
 const SEARCH_THRESHOLD = 8
 
@@ -47,6 +47,7 @@ type PendingProject = { project: ProjectSummary; sharedWith: string[] }
  */
 export default function AddPaneDialog({ open, onOpenChange, onAdded, onAddDraft }: AddPaneDialogProps) {
   const { t } = useI18n()
+  const { pickFolders, dialog: folderDialog } = useFolderPicker()
   const commands = useEngineCommands()
   const data = useEngineData()
   const panes = useBoardStore((state) => state.panes)
@@ -121,7 +122,7 @@ export default function AddPaneDialog({ open, onOpenChange, onAdded, onAddDraft 
   }
 
   async function chooseFolder() {
-    const picked = (await platform().dialog.openFiles({ directory: true }))?.[0] ?? null
+    const picked = (await pickFolders())?.[0] ?? null
     if (typeof picked !== 'string') return
     // Una carpeta de un proyecto ya visible abre ese proyecto, como elegirlo en la
     // lista. Lo decide el Engine: compara rutas canónicas (nombres cortos de
@@ -236,6 +237,7 @@ export default function AddPaneDialog({ open, onOpenChange, onAdded, onAddDraft 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {folderDialog}
     </>
   )
 }

@@ -13,6 +13,11 @@ export const CHANNEL = {
   engineStart: 'rinari:engine.start',
   engineShutdown: 'rinari:engine.shutdown',
   engineRestart: 'rinari:engine.restart',
+  /** «Conectar a mi servidor»: Engines emparejados, emparejar, usar y olvidar. */
+  enginesList: 'rinari:engines.list',
+  enginesPair: 'rinari:engines.pair',
+  enginesUse: 'rinari:engines.use',
+  enginesForget: 'rinari:engines.forget',
   /** Despachador de dominio: método de la allowlist + parámetros. */
   command: 'rinari:command',
   windowMinimize: 'rinari:window.minimize',
@@ -149,6 +154,32 @@ export interface EngineStatus {
   capabilities: Record<string, boolean>
   /** Del hello: espacia por home el estado de presentación por sesión. */
   home_id: string | null
+  /** El servidor cuando la app trabaja con el Engine de un Gateway; `null` en este equipo. */
+  remote?: { id: string; name: string; server: string } | null
+}
+
+/** Un servidor con Rinari Gateway emparejado en este equipo. Sin su token. */
+export interface RemoteEngine {
+  id: string
+  name: string
+  /** Origen del servidor: `https://host[:puerto]`. */
+  server: string
+  device_id: string
+  paired_at: string
+}
+
+/** Con qué Engine trabaja la app: `active` es `local` o el id de un servidor. */
+export interface EnginesView {
+  active: string
+  remotes: RemoteEngine[]
+}
+
+/** Emparejar: el enlace del panel o la dirección y el código. */
+export interface PairServerRequest {
+  link?: string
+  server?: string
+  code?: string
+  name?: string
 }
 
 export interface OpenRequest {

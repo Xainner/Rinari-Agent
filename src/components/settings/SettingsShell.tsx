@@ -23,6 +23,7 @@ import {
   Gauge,
   Bell,
   Globe,
+  Server,
 } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { useUIStore, type SettingsSection } from '../../stores/ui'
@@ -52,6 +53,7 @@ const GROUPS: Array<{ title: 'settings.group.rinari' | 'settings.group.models' |
   ] },
   { title: 'settings.group.app', items: [
     { id: 'general', icon: SlidersHorizontal },
+    { id: 'servers', icon: Server },
     { id: 'notifications', icon: Bell },
     { id: 'appearance', icon: Palette },
     { id: 'shortcuts', icon: Keyboard },

@@ -39,6 +39,9 @@ import {
   type DiagnosticsExportResult,
   type DiagnosticsPreview,
   type EngineStatus,
+  type EnginesView,
+  type PairServerRequest,
+  type RemoteEngine,
   type NotificationSupport,
   type NotificationReply,
   type NotificationTarget,
@@ -150,6 +153,14 @@ const api = {
     onEvent: (callback: (event: EngineEventMessage) => void) =>
       subscribe<EngineEventMessage>(PUSH.engineEvent, callback),
     onStatus: (callback: (status: EngineStatus) => void) => subscribe<EngineStatus>(PUSH.engineStatus, callback),
+  },
+
+  /** «Conectar a mi servidor»: el token de cada servidor se queda en main. */
+  engines: {
+    list: () => call<EnginesView>(CHANNEL.enginesList),
+    pair: (request: PairServerRequest) => call<RemoteEngine>(CHANNEL.enginesPair, request),
+    use: (id: string) => call<EnginesView>(CHANNEL.enginesUse, id),
+    forget: (id: string) => call<EnginesView>(CHANNEL.enginesForget, id),
   },
 
   /**

@@ -16,6 +16,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { tmpdir } from 'node:os'
 import { scriptedModel, startFakeModel, startRoutedModel } from '../../scripts/fake-model.mjs'
+import { gatewayConfigured, startGateway } from './gateway.mjs'
 
 /** The artifact uri of the last image an image.generate result named in the request. */
 const lastImageUri = (request) => {
@@ -823,6 +824,28 @@ export const scenarios = {
         { text: 'OTRA' },
       ],
     }, laneOf),
+  },
+  'remote-server': {
+    title: 'Conectar a mi servidor: emparejar con el enlace del panel, conversar con el Rinari del servidor, reconectar al abrir, revocado y vuelta a este equipo (real con RINARI_E2E_GATEWAY; sin él, el error de un servidor inalcanzable)',
+    phases: ['exercise', 'restart'],
+    // El Gateway y su Engine viven en la carpeta del escenario; el modelo falso
+    // lo usa el Engine del servidor, que la app configura por la conexión remota.
+    model: async (data) => {
+      const model = await startRoutedModel({
+        title: [{ text: 'Saludo al servidor' }],
+        main: [{ text: 'HOLA DESDE EL SERVIDOR' }],
+      }, laneOf)
+      // Sin Gateway configurado (CI) el escenario prueba solo la parte de la app.
+      if (!gatewayConfigured()) return model
+      let gateway
+      try {
+        gateway = await startGateway(data)
+      } catch (error) {
+        await model.close()
+        throw error
+      }
+      return { baseUrl: model.baseUrl, close: async () => { await gateway.close(); await model.close() } }
+    },
   },
   'session-title': {
     title: 'Barra lateral: título que resume el primer mensaje',

@@ -61,6 +61,7 @@ export type SettingsSection =
   | 'profiles'
   | 'terminal'
   | 'advanced'
+  | 'servers'
   | 'about'
 
 export type ShortcutAction = 'newChat' | 'palette' | 'settings' | 'sidebar' | 'sidePanel' | 'boards' | 'flows' | 'collapsePane' | 'expandPane' | 'projectPicker' | 'nextNeedsYou'

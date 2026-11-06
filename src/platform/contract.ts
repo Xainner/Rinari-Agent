@@ -20,7 +20,7 @@
 
 import type { AttentionIndicators } from '../../electron/shared/indicators'
 import type { EngineBackedCommand } from './commands.generated'
-import type { BackgroundPatch, BackgroundSettings, HostSettings, HostSettingsPatch, ReviewExportRequest, DiagnosticsExportResult, DiagnosticsPreview, FlowScopeRequest, OpenJsonRequest, OpenJsonResult, SaveJsonRequest, SaveJsonResult, WorkspaceMedia } from '../../electron/shared/contracts'
+import type { BackgroundPatch, BackgroundSettings, HostSettings, HostSettingsPatch, ReviewExportRequest, DiagnosticsExportResult, DiagnosticsPreview, EnginesView, FlowScopeRequest, OpenJsonRequest, OpenJsonResult, PairServerRequest, RemoteEngine, SaveJsonRequest, SaveJsonResult, WorkspaceMedia } from '../../electron/shared/contracts'
 import type { FlowResult } from '../types/protocol.generated'
 import type { EngineStatus } from './engineStatus'
 import type { Language } from '../types'
@@ -148,6 +148,17 @@ export interface DesktopBridge {
     start(): Promise<EngineStatus>
     shutdown(): Promise<EngineStatus>
     restart(): Promise<EngineStatus>
+  }
+
+  /**
+   * «Conectar a mi servidor»: con qué Engine trabaja la app, uno a la vez.
+   * `use` y `forget` reconectan; el token de cada servidor nunca llega aquí.
+   */
+  engines: {
+    list(): Promise<EnginesView>
+    pair(request: PairServerRequest): Promise<RemoteEngine>
+    use(id: string): Promise<EnginesView>
+    forget(id: string): Promise<EnginesView>
   }
 
   handoff: {

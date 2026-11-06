@@ -193,7 +193,7 @@ flowchart LR
     Engine --> State["Sessions · Context · Memory"]
 ```
 
-The desktop is **React 19 + TypeScript + Electron**. A sandboxed preload exposes a narrow platform contract, and a versioned NDJSON protocol over stdio connects the Electron main process to the Python engine. The compatible engine revision and required capabilities are pinned in [engine-manifest.json](engine-manifest.json).
+The desktop is **React 19 + TypeScript + Electron**. A sandboxed preload exposes a narrow platform contract, and a versioned NDJSON protocol over stdio connects the Electron main process to the Python engine. The compatible engine revision and required capabilities are pinned in [engine-manifest.json](engine-manifest.json). The app can also work with the engine of your own server running Rinari Gateway, over a WebSocket ([connect to my server](docs/remote-server.md)).
 
 ## Know the boundaries
 

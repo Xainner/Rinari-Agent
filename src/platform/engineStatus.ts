@@ -23,4 +23,6 @@ export interface EngineStatus {
   capabilities: Record<string, boolean>
   /** Identidad estable del Engine home; `null` en engines antiguos. */
   home_id?: string | null
+  /** El servidor con el que trabaja la app («Conectar a mi servidor»); `null` en este equipo. */
+  remote?: { id: string; name: string; server: string } | null
 }

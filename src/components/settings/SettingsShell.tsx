@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import {
+  Orbit,
   ArrowLeft,
   Bot,
   Cable,
@@ -31,6 +32,7 @@ import { useUIStore, type SettingsSection } from '../../stores/ui'
 /** Secciones agrupadas por para qué sirven, no por cómo se implementan. */
 const GROUPS: Array<{ title: 'settings.group.rinari' | 'settings.group.models' | 'settings.group.tools' | 'settings.group.app'; items: Array<{ id: SettingsSection; icon: typeof Info }> }> = [
   { title: 'settings.group.rinari', items: [
+    { id: 'presence', icon: Orbit },
     { id: 'soul', icon: Sparkles },
     { id: 'profiles', icon: Layers },
     { id: 'memory', icon: Brain },

@@ -14,7 +14,7 @@ import type {
   MessageOrigin,
   QueuedPromptEntry,
 } from '../types/protocol.generated'
-import type { Checklist, FollowupSuggestion, Goal, GoalBudget, ProjectFolderCheck, ConversationSummary, RepoStatus, SessionResume } from '../types/protocol.generated'
+import type { Checklist, FollowupSuggestion, Goal, GoalBudget, PresenceState, ProjectFolderCheck, ConversationSummary, RepoStatus, SessionResume } from '../types/protocol.generated'
 import type { AttachmentRef, Language } from '../types'
 import type {
   AgencyAgent,
@@ -1649,6 +1649,10 @@ export const engineApi = {
     platform().command<{ settings: { character_intensity: 'minimal' | 'balanced' | 'full'; options: string[]; default: string } }>("soul_settings_get"),
   soulSettingsSet: (character_intensity: 'minimal' | 'balanced' | 'full') =>
     platform().command<{ settings: { character_intensity: 'minimal' | 'balanced' | 'full'; options: string[]; default: string } }>("soul_settings_set", { character_intensity }),
+  /** Presencia: la conversación continua con Rinari (`presence_v1`). */
+  presenceGet: () => platform().command<{ presence: PresenceState }>("presence_get"),
+  presenceSet: (enabled: boolean) =>
+    platform().command<{ presence: PresenceState }>("presence_set", { enabled }),
   pluginList: () => platform().command<{ plugins: PluginInfo[] }>("plugin_list"),
   pluginSetEnabled: (name: string, enabled: boolean) =>
     platform().command<{ plugin: PluginInfo }>("plugin_set_enabled", { name, enabled }),

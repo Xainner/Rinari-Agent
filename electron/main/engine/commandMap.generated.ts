@@ -173,6 +173,8 @@ export const COMMAND_MAP: Record<string, CommandTranslation> = {
   "plugin_list": {"method":"plugin.list","params":[]},
   "plugin_set_enabled": {"method":"plugin.enable","params":[{"key":"name","from":"name","optional":false}],"manual":true},
   "policy_get": {"method":"policy.get","params":[]},
+  "presence_get": {"method":"presence.get","params":[]},
+  "presence_set": {"method":"presence.set","params":[{"key":"enabled","from":"enabled","optional":false}]},
   "process_orphan_stop": {"method":"process.orphan.stop","params":[{"key":"id","from":"id","optional":false}]},
   "process_orphans_list": {"method":"process.orphans.list","params":[]},
   "process_persistent_list": {"method":"process.persistent.list","params":[]},

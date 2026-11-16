@@ -718,6 +718,14 @@ export const scenarios = {
       ],
     }, laneOf),
   },
+  presence: {
+    title: 'Presencia: la conversación continua con Rinari, en Ajustes, en la barra lateral y a pantalla completa',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: [{ text: 'Saludo' }],
+      main: [{ text: 'AQUÍ ESTOY. Todo en orden.' }],
+    }, laneOf),
+  },
   'conversation-draft': {
     title: 'Conversación nueva: borrador hasta el primer mensaje',
     phases: ['exercise'],

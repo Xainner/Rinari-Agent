@@ -25,6 +25,7 @@ export default function AppShell({ sidebar, topbar, children, banner }: AppShell
   const mobileOpen = useUIStore((s) => s.sidebarOpen)
   const setMobileOpen = useUIStore((s) => s.setSidebarOpen)
   const collapsed = useUIStore((s) => s.sidebarCollapsed)
+  const hidden = useUIStore((s) => s.sidebarHidden)
   const width = useUIStore((s) => s.sidebarWidth)
   const setWidth = useUIStore((s) => s.setSidebarWidth)
   const lang = useUIStore((s) => s.lang)
@@ -44,7 +45,7 @@ export default function AppShell({ sidebar, topbar, children, banner }: AppShell
   return (
     <div className="relative flex h-dvh flex-col overflow-hidden bg-[var(--bg-app)] text-[var(--text)]">
       <div className="flex min-h-0 flex-1">
-        <aside
+        {!hidden && <aside
           className={cn('app-sidebar relative hidden shrink-0 flex-col border-r border-[var(--line-1)] bg-[var(--bg-sidebar)] lg:flex')}
           style={{ width: collapsed ? 72 : liveWidth ?? width }}
           data-resizing={liveWidth !== null || undefined}
@@ -60,7 +61,7 @@ export default function AppShell({ sidebar, topbar, children, banner }: AppShell
               onDoubleClick={() => setWidth(SIDEBAR_WIDTH.initial)}
             />
           )}
-        </aside>
+        </aside>}
 
         <Drawer.Root open={mobileOpen} onOpenChange={setMobileOpen} direction="left">
           <Drawer.Portal>

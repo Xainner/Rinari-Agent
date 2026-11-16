@@ -1,6 +1,6 @@
 # Presencia: una sola Rinari, siempre encendida
 
-Estado: **en construcción** (2026-11-16). Hecho en la rama `feat/presencia` de los dos repositorios, sin fusionar: lo de la sección 12. Diseñado con el dueño el 2026-11-11. Las decisiones de abajo son del dueño en esa conversación; lo marcado «por verificar» no se ha comprobado contra el código.
+Estado: **en construcción** (2026-11-16). Primera entrega: lo de la sección 12. Diseñado con el dueño el 2026-11-11. Las decisiones de abajo son del dueño en esa conversación; lo marcado «por verificar» no se ha comprobado contra el código.
 
 Se relaciona con [idea-rinari-agency.md](idea-rinari-agency.md) (ella queda por encima de la Agency), [plan-gateway.md](plan-gateway.md) (donde reside cuando hay servidor), [plan-permisos-v4.md](plan-permisos-v4.md) y [plan-sesiones-hijas.md](plan-sesiones-hijas.md).
 
@@ -257,7 +257,7 @@ Las fases 1 y 2 ya dan algo usable; de la 3 en adelante cada una suma sin rehace
 
 ## 12. Estado de la implementación (2026-11-16)
 
-En `feat/presencia` de Rinari-CLI y Rinari-Agent, con commits locales y sin PR.
+El Engine está fusionado ([Xainner/Rinari-CLI#81](https://github.com/Xainner/Rinari-CLI/pull/81), 27e8104) y fijado en la app, con `presence_v1` entre las capacidades opcionales. La app va en [Xainner/Rinari-Agent#129](https://github.com/Xainner/Rinari-Agent/pull/129).
 
 **Hecho (fases 1 y 2, primera entrega):**
 
@@ -274,4 +274,3 @@ En `feat/presencia` de Rinari-CLI y Rinari-Agent, con commits locales y sin PR.
 - El diario por día.
 - Responder desde el panel a lo que espera (hoy cada fila abre su chat).
 - Probar el registro humano con modelos reales, pequeños incluidos: hoy solo está comprobado que llega al prompt.
-- Que `presence_v1` entre en `engine-manifest.json` al fijar el Engine ya fusionado, y `protocol:check` contra ese commit.

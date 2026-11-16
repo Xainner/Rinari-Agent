@@ -59,6 +59,7 @@ import {
 import { Switch } from '../ui/switch'
 import ApplicationMenu, { SidebarFooter } from './ApplicationMenu'
 import SidebarIdentity from './SidebarIdentity'
+import { RinariAvatar } from '../../features/rinari/RinariAvatar'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ease, useCalmMotion } from '../../lib/motion'
 import { art } from '../../features/rinari/art'
@@ -77,6 +78,8 @@ export interface AppSidebarProps {
    * `compact` en el riel). Ausente si esta versión de Rinari no la tiene.
    */
   agencyCard?: (compact: boolean) => ReactNode
+  /** Presencia: la entrada fija a la conversación continua. Ausente con el modo apagado. */
+  presence?: { active: boolean; onOpen: () => void }
   onSearch: () => void
   onOpenSettings: () => void
   onOpenEngine: () => void
@@ -156,6 +159,7 @@ function RailButton({
 export function AppSidebar({
   collapsed,
   agencyCard,
+  presence,
   onSearch,
   onOpenEngine,
   onOpenSchedules,
@@ -525,6 +529,11 @@ export function AppSidebar({
   if (rail) {
     return (
       <div className="flex h-full w-full flex-col items-center gap-1 px-2 pt-4 pb-3">
+        {presence && (
+          <RailButton label={t('presence.sidebar')} onClick={presence.onOpen}>
+            <RinariAvatar size={20} />
+          </RailButton>
+        )}
         <RailButton label={t('sidebar.newChat')} onClick={onNewChat}>
           <Plus size={17} />
         </RailButton>
@@ -555,6 +564,18 @@ export function AppSidebar({
     <div className="concept-sidebar flex h-full w-full min-w-0 flex-col gap-3 overflow-hidden px-3 pt-3 pb-0">
       <SidebarIdentity busy={busySessionIds?.size ?? 0} waiting={approvals.length} activeSessionId={activeId || null} />
       <div className="shrink-0 space-y-1">
+      {presence && (
+        <button
+          type="button"
+          onClick={presence.onOpen}
+          className="sidebar-link sidebar-presence"
+          aria-current={presence.active ? 'page' : undefined}
+          data-testid="sidebar-presence"
+        >
+          <RinariAvatar size={18} />
+          <span className="truncate">{t('presence.sidebar')}</span>
+        </button>
+      )}
       <div className="flex items-center gap-1">
         <button
           type="button"

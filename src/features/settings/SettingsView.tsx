@@ -12,6 +12,7 @@ import ProvidersView from '../providers/ProvidersView'
 import ModelsView from '../providers/ModelsView'
 import AgentsView from '../agents/AgentsView'
 import SoulsView from '../souls/SoulsView'
+import PresenceSettings from '../presence/PresenceSettings'
 import ConnectorsView from '../connectors/ConnectorsView'
 import SkillsView from '../skills/SkillsView'
 import PluginsView from '../ecosystem/PluginsView'
@@ -83,6 +84,7 @@ export default function SettingsView({
           onChanged={onCatalogChanged}
         />
       )}
+      {section === 'presence' && <PresenceSettings />}
       {section === 'soul' && <SoulsView onChanged={onCatalogChanged} />}
       {section === 'skills' && <SkillsView />}
       {section === 'mcp' && <ConnectorsView onChanged={onCatalogChanged} engineCapabilities={engineCapabilities} />}
@@ -99,7 +101,7 @@ export default function SettingsView({
       {section === 'advanced' && <AdvancedSettings models={models} providers={providers} activeSessionId={activeSessionId} />}
       {section === 'about' && <AboutSettings version={appVersion} />}
       {/* Solo lo que aún no tiene página: Dictado, Notificaciones y Navegador ya la tienen. */}
-      {!['context', 'memory', 'vision', 'general', 'shortcuts', 'appearance', 'providers', 'models', 'agents', 'soul', 'skills', 'mcp', 'plugins', 'tools', 'profiles', 'terminal', 'dictation', 'notifications', 'browser', 'advanced', 'servers', 'about'].includes(section) && (
+      {!['presence', 'context', 'memory', 'vision', 'general', 'shortcuts', 'appearance', 'providers', 'models', 'agents', 'soul', 'skills', 'mcp', 'plugins', 'tools', 'profiles', 'terminal', 'dictation', 'notifications', 'browser', 'advanced', 'servers', 'about'].includes(section) && (
         <SoonSettings />
       )}
       </ZoneBoundary>

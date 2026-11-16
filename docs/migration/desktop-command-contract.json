@@ -3786,6 +3786,40 @@
       "host_effects": []
     },
     {
+      "command": "presence_get",
+      "module": "presence",
+      "args": [],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "presence.get",
+      "engine_params": [],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "presence_set",
+      "module": "presence",
+      "args": [
+        {
+          "name": "enabled",
+          "type": "bool",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "presence.set",
+      "engine_params": [
+        {
+          "key": "enabled",
+          "from": "enabled",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "mcp_list",
       "module": "ecosystem",
       "args": [],

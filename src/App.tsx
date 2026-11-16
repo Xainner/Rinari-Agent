@@ -21,6 +21,9 @@ import { useEngineSession } from './features/engine/useEngineSession'
 import { EngineProvider } from './features/engine/EngineContext'
 import { useSessionHasContent } from './features/engine/sessionSelectors'
 import SingleSessionView from './features/engine/SingleSessionView'
+import PresenceBar from './features/presence/PresenceBar'
+import PresencePanel from './features/presence/PresencePanel'
+import { usePresenceStore } from './stores/presence'
 import BoardActivityController from './features/board/BoardActivityController'
 import SkillLearnedNotifier from './features/skills/SkillLearnedNotifier'
 import ScheduleForm from './features/schedules/ScheduleForm'
@@ -611,6 +614,42 @@ function App() {
         halted: agency.halted,
       }
     : undefined
+  // -- Presencia: la conversación continua con Rinari -------------------------------
+  const presenceSupported = session.status?.capabilities.presence_v1 === true
+  const presenceEnabled = usePresenceStore((state) => state.enabled)
+  const presenceId = usePresenceStore((state) => state.sessionId)
+  const presenceFull = usePresenceStore((state) => state.full)
+  useEffect(() => {
+    // Un Engine anterior no tiene el modo: no se ofrece nada.
+    void usePresenceStore.getState().load(presenceSupported).catch(() => undefined)
+  }, [presenceSupported, homeId])
+  // Con el modo encendido la app se abre en ella (una vez por conexión, y al encenderlo).
+  const presenceOpened = useRef<string | null>(null)
+  useEffect(() => {
+    if (!presenceEnabled || !presenceId) { presenceOpened.current = null; return }
+    if (presenceOpened.current === presenceId || inAgency) return
+    presenceOpened.current = presenceId
+    void session.selectSession(presenceId)
+  }, [presenceEnabled, presenceId, inAgency])
+  const openPresence = () => {
+    if (!presenceId) return
+    void session.selectSession(presenceId)
+    goChat()
+  }
+  const presenceActive = !inAgency && view === 'chat' && presenceEnabled && presenceId !== null && session.activeSession === presenceId
+  const presenceFullActive = presenceActive && presenceFull
+  useEffect(() => {
+    useUIStore.getState().setSidebarHidden(presenceFullActive)
+    return () => useUIStore.getState().setSidebarHidden(false)
+  }, [presenceFullActive])
+  const presenceChat = (id: string) => {
+    const root = session.sessionsById[id]?.project_root
+    return { id, title: boardLabelFor(id), project: root ? projectDisplayName(root) : null }
+  }
+  const presenceWorking = [...(session.busySessionIds ?? [])].filter((id) => id !== presenceId).map(presenceChat)
+  const presenceWaiting = Object.keys(signalBySession)
+    .filter((id) => id !== presenceId && signalBySession[id] === 'needs_you')
+    .map(presenceChat)
   // Un puesto es una conversación como el chat directo; la oficina y las fichas no.
   const agencyMain = inAgency && view === 'chat' && agencyPage.kind !== 'agent' && agencyPage.kind !== 'post'
   const stopAllAgents = async () => {
@@ -758,7 +797,9 @@ function App() {
         case 'close-session': {
           // Contextual: en Boards quita el panel enfocado sin cerrar su sesión.
           if (resolveContextualAction('close', { view }) === 'remove-pane') { boardActionsRef.current.removePane(); break }
-          if (session.activeSession) void session.closeSession(session.activeSession); break
+          // La conversación de Presencia no se cierra: se apaga el modo en Ajustes.
+          if (session.activeSession && session.activeSession !== usePresenceStore.getState().sessionId) void session.closeSession(session.activeSession)
+          break
         }
         case 'settings': goSettings(); break
         case 'appearance': goSettings('appearance'); break
@@ -936,6 +977,7 @@ function App() {
           />
         ) : (
           <AppSidebar
+            presence={presenceEnabled && presenceId ? { active: presenceActive, onOpen: openPresence } : undefined}
             collapsed={sidebarCollapsed}
             agencyCard={agencyEnabled
               ? (compact) => <AgencyCard mode="enter" status={agency.status} onClick={enterAgency} compact={compact} />
@@ -1087,7 +1129,23 @@ function App() {
             movería el rectángulo del navegador nativo durante la entrada). */}
         <AgencyDataContext.Provider value={agencyData}>
         <div key={view} className="view-stage">
-        {view === 'chat' && !agencyMain && <SingleSessionView onOpenProviders={() => goSettings('providers')} processesOpenSignal={processesSignal} persona={agencyPersona} />}
+        {view === 'chat' && !agencyMain && !presenceActive && <SingleSessionView onOpenProviders={() => goSettings('providers')} processesOpenSignal={processesSignal} persona={agencyPersona} />}
+        {presenceActive && (
+          <div className="presence-stage" data-full={presenceFullActive ? '' : undefined} data-testid="presence-stage">
+            <div className="presence-main">
+              <PresenceBar
+                working={presenceWorking.length}
+                waiting={presenceWaiting.length}
+                full={presenceFullActive}
+                onToggleFull={() => usePresenceStore.getState().setFull(!presenceFull)}
+              />
+              <div className="presence-chat">
+                <SingleSessionView onOpenProviders={() => goSettings('providers')} processesOpenSignal={processesSignal} />
+              </div>
+            </div>
+            {presenceFullActive && <PresencePanel waiting={presenceWaiting} working={presenceWorking} onOpen={chooseSession} />}
+          </div>
+        )}
         {agencyMain && agencyPage.kind === 'home' && (
           <AgencyHome
             agents={agency.agents}

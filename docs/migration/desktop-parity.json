@@ -1381,6 +1381,24 @@
       "callers": []
     },
     {
+      "command": "presence_get",
+      "kind": "engine",
+      "method": "presence.get",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
+      "command": "presence_set",
+      "kind": "engine",
+      "method": "presence.set",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "process_orphan_stop",
       "kind": "engine",
       "method": "process.orphan.stop",
@@ -2898,8 +2916,8 @@
     }
   ],
   "summary": {
-    "commands": 346,
-    "engine_backed": 340,
+    "commands": 348,
+    "engine_backed": 342,
     "host_only": 6,
     "manual_adapters": 8,
     "without_callers": 113

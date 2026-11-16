@@ -63,6 +63,7 @@ export type SettingsSection =
   | 'advanced'
   | 'servers'
   | 'about'
+  | 'presence'
 
 export type ShortcutAction = 'newChat' | 'palette' | 'settings' | 'sidebar' | 'sidePanel' | 'boards' | 'flows' | 'collapsePane' | 'expandPane' | 'projectPicker' | 'nextNeedsYou'
 export type ShortcutBindings = Record<ShortcutAction, string>
@@ -226,6 +227,9 @@ interface UIState {
   sidebarOpen: boolean
   /** Rail colapsado en desktop (solo iconos). Persistido. */
   sidebarCollapsed: boolean
+  /** La barra lateral no se dibuja (Presencia a pantalla completa). No se guarda. */
+  sidebarHidden: boolean
+  setSidebarHidden: (hidden: boolean) => void
   sidebarWidth: number
   paletteOpen: boolean
   theme: Theme
@@ -388,6 +392,8 @@ export const useUIStore = create<UIState>((set) => ({
     set({ lang })
   },
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
+  sidebarHidden: false,
+  setSidebarHidden: (hidden) => set({ sidebarHidden: hidden }),
   setSidebarCollapsed: (collapsed) => {
     writeBool('rinari.sidebarCollapsed', collapsed)
     set({ sidebarCollapsed: collapsed })

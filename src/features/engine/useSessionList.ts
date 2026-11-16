@@ -21,7 +21,8 @@ import { useConversationDraftStore } from '../../stores/conversationDraft'
 import { isAgencySession, useAgencyStore } from '../../stores/agency'
 import { historyToMessages } from './history'
 import type { TimelineAction } from '../activity/turnTimelineReducer'
-import { isSessionHidden, partitionSessions } from './sessionVisibility'
+import { isPresenceSession, isSessionHidden, partitionSessions } from './sessionVisibility'
+import { usePresenceStore } from '../../stores/presence'
 import { useTitleMotionStore } from '../../stores/titleMotion'
 
 /** The title each conversation was last renamed to by the Engine (`session.renamed`). */
@@ -179,7 +180,7 @@ export function useSessionList(options: {
     () =>
       recentSessionIds
         .map((id) => sessionsById[id])
-        .filter((row): row is SessionSummary => Boolean(row) && !isSessionHidden(row)),
+        .filter((row): row is SessionSummary => Boolean(row) && !isSessionHidden(row) && !isPresenceSession(row)),
     [recentSessionIds, sessionsById],
   )
 
@@ -231,7 +232,8 @@ export function useSessionList(options: {
     setSessionsById((current) => {
       const stale = Object.keys(current).filter(
         // Las de la Agency no están en session.list: su fila (modelo, título) se queda.
-        (id) => !present.has(id) && (learntDuring.current.get(id) ?? 0) < seq && !isAgencySession(id),
+        // Presencia tampoco está en session.list.
+        (id) => !present.has(id) && (learntDuring.current.get(id) ?? 0) < seq && !isAgencySession(id) && !isPresenceSession(current[id]),
       )
       if (stale.length === 0) return current
       const next = { ...current }
@@ -284,6 +286,8 @@ export function useSessionList(options: {
         // Rinari Agency: sus chats y puestos no están en `session.list`; quien
         // escribe en el chat de un agente sigue en él.
         if (current !== '' && isAgencySession(current)) return current
+        // Presencia: tampoco está en `session.list`, y quien habla con ella sigue ahí.
+        if (current !== '' && current === usePresenceStore.getState().sessionId) return current
         if (current !== '' && activatedAt.current.id === current && activatedAt.current.seq >= seq) return current
         if (current !== '' && opening.current === current) return current
         // Una conversación nueva en borrador no es «ninguna sesión»: se queda.
@@ -421,7 +425,7 @@ export function useSessionList(options: {
     (opened: { session: SessionSummary }) => {
       rememberRows([opened.session])
       // Las conversaciones de la Agency no entran en los recientes de Rinari.
-      if (!isSessionHidden(opened.session) && !opened.session.agent_id) {
+      if (!isSessionHidden(opened.session) && !opened.session.agent_id && !isPresenceSession(opened.session)) {
         setRecentSessionIds((current) =>
           current.includes(opened.session.id) ? current : [opened.session.id, ...current],
         )

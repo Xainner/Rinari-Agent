@@ -164,6 +164,8 @@ export type DesktopCommand =
   | "plugin_list"
   | "plugin_set_enabled"
   | "policy_get"
+  | "presence_get"
+  | "presence_set"
   | "process_orphan_stop"
   | "process_orphans_list"
   | "process_persistent_list"
@@ -512,6 +514,8 @@ export const DESKTOP_COMMANDS: readonly DesktopCommand[] = [
   "plugin_list",
   "plugin_set_enabled",
   "policy_get",
+  "presence_get",
+  "presence_set",
   "process_orphan_stop",
   "process_orphans_list",
   "process_persistent_list",
@@ -875,6 +879,8 @@ export const ENGINE_BACKED_COMMANDS: readonly EngineBackedCommand[] = [
   "plugin_list",
   "plugin_set_enabled",
   "policy_get",
+  "presence_get",
+  "presence_set",
   "process_orphan_stop",
   "process_orphans_list",
   "process_persistent_list",

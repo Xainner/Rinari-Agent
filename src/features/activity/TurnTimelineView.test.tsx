@@ -44,43 +44,17 @@ describe('TurnTimelineView', () => {
     expect(screen.getByRole('region', { name: 'Plan propuesto' })).toBeTruthy()
     expect(screen.getByText('Revisar requisitos')).toBeTruthy()
   })
-  it('debounces thinking and keeps ordinary chat free of completion cards', () => {
-    // #51: the live header waits for the sent message to finish arriving (500 ms).
-    const rendered = view({ ...base, items: [{ id: 'system:prep', type: 'system', activitySeq: 0, occurredAt: 1_010, kind: 'turn_preparing' }] }, 1_499)
-    expect(screen.queryByText('Pensando…')).toBeNull()
-    rendered.rerender(<I18nProvider lang="es"><TurnTimelineView timeline={base} now={1_501} onResolveApproval={vi.fn()} onContinue={vi.fn()} /></I18nProvider>)
-    expect(screen.getByText('Pensando…')).toBeTruthy()
+  it('a running turn shows only its work: the live status is above the composer (plan C)', () => {
+    const rendered = view({ ...base, items: [{ id: 'system:prep', type: 'system', activitySeq: 0, occurredAt: 1_010, kind: 'turn_preparing' }] }, 3_000)
+    expect(document.querySelector('[data-live-activity]')).toBeNull()
+    expect(screen.queryByText('Preparando el turno…')).toBeNull()
+    rendered.rerender(<I18nProvider lang="es"><TurnTimelineView timeline={{ ...base, items: [{ id: 'tool:a', type: 'tool', activitySeq: 1, occurredAt: 2_900, toolCallId: 'a', tool: 'fs.read', status: 'running' }] }} now={3_000} onResolveApproval={vi.fn()} onContinue={vi.fn()} /></I18nProvider>)
+    expect(document.querySelector('[data-live-activity]')).toBeNull()
+    expect(document.querySelector('[data-operation-group]')).not.toBeNull()
     rendered.rerender(<I18nProvider lang="es"><TurnTimelineView timeline={{ ...base, status: 'completed', completedAt: 2_000, items: [{ id: 'model:m1', type: 'model', activitySeq: 1, occurredAt: 2_000, modelCallId: 'm1', status: 'completed', content: 'Hola', outputKind: 'final' }] }} now={2_000} onResolveApproval={vi.fn()} onContinue={vi.fn()} /></I18nProvider>)
     expect(screen.getAllByText('Hola')).toHaveLength(2)
     expect(screen.queryByText(/acciones/)).toBeNull()
     expect(screen.queryByText('Completado')).toBeNull()
-  })
-
-  it('a pane shows no live header while the turn only prepares; the chat does (plan-boards C1)', () => {
-    const preparing: TurnTimeline = { ...base, items: [{ id: 'system:prep', type: 'system', activitySeq: 0, occurredAt: 1_010, kind: 'turn_preparing' }] }
-    const pane = (timeline: TurnTimeline, now: number) => <I18nProvider lang="es"><TurnTimelineView timeline={timeline} now={now} surface="pane" onResolveApproval={vi.fn()} onContinue={vi.fn()} /></I18nProvider>
-    // Long past the arrival and the 300 ms floor: a busy machine stays here.
-    const rendered = render(pane(preparing, 3_000))
-    expect(screen.queryByText('Preparando el turno…')).toBeNull()
-    expect(document.querySelector('[data-live-activity]')).toBeNull()
-    // Something to tell (an action) brings the header.
-    rendered.rerender(pane({ ...preparing, items: [...preparing.items, { id: 'tool:a', type: 'tool', activitySeq: 1, occurredAt: 2_900, toolCallId: 'a', tool: 'fs.read', status: 'running' }] }, 3_000))
-    expect(document.querySelector('[data-live-activity]')).not.toBeNull()
-    cleanup()
-    // The chat keeps «Preparando el turno…».
-    view(preparing, 3_000)
-    expect(screen.getByText('Preparando el turno…')).toBeTruthy()
-  })
-
-  it('#51: with reduced motion the live header does not wait for the arrival', async () => {
-    const { useUIStore } = await import('../../stores/ui')
-    useUIStore.setState({ reduceMotion: true })
-    try {
-      view(base, 1_301)
-      expect(screen.getByText('Pensando…')).toBeTruthy()
-    } finally {
-      useUIStore.setState({ reduceMotion: false })
-    }
   })
 
   it('resolves an approval from its chronological row', async () => {
@@ -92,7 +66,6 @@ describe('TurnTimelineView', () => {
 
   it('shows cancelling immediately and disables pending approval controls', () => {
     view({ ...base, status: 'cancelling', items: [{ id: 'approval:p1', type: 'approval', activitySeq: 1, occurredAt: 1_100, approvalId: 'p1', status: 'resolving', capability: 'shell.exec', risk: 'high', description: 'Ejecutar comando' }] }, 1_101)
-    expect(screen.getByText('Cancelando…')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Permitir una vez' }).hasAttribute('disabled')).toBe(true)
   })
 
@@ -180,23 +153,6 @@ it('opens an agent card with its own messages and execution context', async () =
   expect(screen.getByText('Hardware encontrado')).toBeTruthy()
   expect(screen.getByText('Inspeccionar SSH')).toBeTruthy()
   expect(screen.getByText('full-access · C:/Proyecto')).toBeTruthy()
-})
-
-it('keeps «Pensando…» while a subagent runs beside the coordinator', () => {
-  view({ ...base, items: [{
-    id: 'agent:a', type: 'agent', activitySeq: 1, occurredAt: 1_100,
-    agentId: 'a', agent: 'implementer', phase: 'started', status: 'running',
-    objective: 'Escribir generate.ps1', items: [],
-  }] }, 2_500)
-  expect(screen.getByText('Pensando…')).toBeTruthy()
-})
-
-it('shows «Pensando…» hidden only while the coordinator waits on a tool', () => {
-  view({ ...base, items: [{
-    id: 'tool:w', type: 'tool', activitySeq: 1, occurredAt: 1_100, toolCallId: 'w',
-    tool: 'agent.wait', status: 'running',
-  }] as TurnTimeline['items'] }, 2_500)
-  expect(screen.queryByText('Pensando…')).toBeNull()
 })
 
 it('offers to compact and continue when a compaction stopped the turn', async () => {

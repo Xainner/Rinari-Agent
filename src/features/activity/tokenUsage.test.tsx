@@ -40,9 +40,9 @@ describe('turn token aggregates', () => {
   ] as const)('formats compact values and exposes full accessible details (%s)', (lang, compact) => {
     [999,1000,12400,1000000].forEach((n, i) => {
       expect(formatTokens(n, lang)).toBe(compact[i])
-      const view=render(<I18nProvider lang={lang}><TokenUsage usage={usage(1,n)} /></I18nProvider>)
+      const view=render(<I18nProvider lang={lang}><TokenUsage usage={{ ...usage(1, n + 10), input_tokens: 10, output_tokens: n }} /></I18nProvider>)
       const visible = screen.getByTestId('token-usage')
-      expect(visible.textContent).toBe(`~${compact[i]} tokens`)
+      expect(visible.textContent).toBe(`↓ ~${compact[i]} tokens`)
       // The compact number is hidden from assistive technology; the full
       // breakdown is real text, not an aria-label on a generic span.
       expect(visible.getAttribute('aria-hidden')).toBe('true')
@@ -53,12 +53,26 @@ describe('turn token aggregates', () => {
       view.unmount()
     })
   })
-  it('shows what the conversation occupies and keeps the turn cost in the details', () => {
-    render(<I18nProvider lang="es"><TokenUsage usage={{ ...usage(1, 31000), source: 'reported', context_tokens: 10600 }} /></I18nProvider>)
-    expect(screen.getByTestId('token-usage').textContent).toBe(`${formatTokens(10600, 'es')} tokens`)
+  it('shows what the model produced and keeps the input, the cost and the context in the details', () => {
+    render(<I18nProvider lang="es"><TokenUsage usage={{ ...usage(1, 31000), input_tokens: 29800, output_tokens: 1200, source: 'reported', context_tokens: 10600 }} /></I18nProvider>)
+    expect(screen.getByTestId('token-usage').textContent).toBe(`↓ ${formatTokens(1200, 'es')} tokens`)
     const details = screen.getByTestId('token-usage').parentElement?.getAttribute('title') ?? ''
+    expect(details).toContain(`Salida: ${new Intl.NumberFormat('es').format(1200)} tokens`)
+    expect(details).toContain('Entrada: 29.800')
     expect(details).toContain('Contexto al terminar: 10.600')
     expect(details).toContain('Consumo del turno: 31.000 tokens')
+  })
+
+  it('says nothing before the first output token', () => {
+    render(<I18nProvider lang="es"><TokenUsage usage={{ ...usage(1, 14000), input_tokens: 14000, output_tokens: 0 }} /></I18nProvider>)
+    expect(screen.queryByTestId('token-usage')).toBeNull()
+  })
+
+  it('keeps the context the Engine reports (it was dropped when parsing)', () => {
+    let state = turnTimelineReducer(createInitialTimelineState(), event('usage.updated', { ...usage(1, 31000), context_tokens: 10600 }))
+    expect(state.timelines.t1.usage?.context_tokens).toBe(10600)
+    state = turnTimelineReducer(state, event('usage.updated', { ...usage(2, 31000), context_tokens: -1 }))
+    expect(state.timelines.t1.usage?.context_tokens).toBeUndefined()
   })
 
   it('removes the approximation only for fully reported totals', () => {
@@ -86,9 +100,10 @@ it('merges persisted legacy calls with live calls and keeps newer snapshot revis
 it('keeps short terminal usage visible and shares the indicator during tool activity', () => {
   const base = {turnId:'t1',sessionId:'s1',startedAt:1000,completedAt:1500,userMessage:'',items:[],usage:usage(2,70)}
   const view=render(<I18nProvider lang="en"><TurnTimelineView timeline={{...base,status:'completed'}} now={1500} onResolveApproval={()=>{}} /></I18nProvider>)
-  expect(screen.getByTestId('turn-meta').textContent).toContain('70 tokens')
+  expect(screen.getByTestId('turn-meta').textContent).toContain('↓ ~10 tokens')
   view.rerender(<I18nProvider lang="en"><TurnTimelineView timeline={{...base,status:'running',items:[{id:'tool:x',type:'tool',toolCallId:'x',tool:'inspect',status:'running',activitySeq:1,occurredAt:1200}]}} now={1500} onResolveApproval={()=>{}} /></I18nProvider>)
-  expect(screen.getAllByTestId('token-usage')).toHaveLength(1)
+  // While it runs, the count is in the status above the composer (plan C), not in the turn.
+  expect(screen.queryAllByTestId('token-usage')).toHaveLength(0)
   expect(screen.queryByTestId('turn-meta')).toBeNull()
 })
 

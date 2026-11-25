@@ -244,7 +244,7 @@ it('M04: Normal and Boards use one terminal token indicator even after a short t
  const verify=(container:HTMLElement)=>{
   const counters=within(container).getAllByTestId('token-usage')
   expect(counters).toHaveLength(1)
-  expect(counters[0].textContent).toBe('120 tokens')
+  expect(counters[0].textContent).toBe('↓ 20 tokens')
   expect(counters[0].closest('[aria-live]')).toBeNull()
  }
  const normal=render(<BoardHarness engine={engine}><SingleSessionView onOpenProviders={()=>{}}/></BoardHarness>)

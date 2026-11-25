@@ -704,7 +704,6 @@ html[data-motion='reduced'] .flow-ring > i { animation: none; transform: transla
   overflow-y: visible;
 }
 .conversation-shell.is-conversation .conversation-composer-slot > * { flex-shrink: 0; }
-.conversation-shell.is-conversation .conversation-composer-slot > .checklist-dock,
 .conversation-shell.is-conversation .conversation-composer-slot > .processes-dock { flex-shrink: 1; min-height: 0; }
 .home-suggestions { width: min(calc(100% - 32px), 1080px); margin: 24px auto 0; }
 .home-card-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
@@ -896,7 +895,6 @@ button.child-report-title:hover { color: var(--text); text-decoration-color: var
 .queue-dock-who { display: inline-flex; flex-shrink: 0; align-items: center; gap: 4px; font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-subtle); }
 .queue-dock-who.is-task { text-transform: none; letter-spacing: 0; color: var(--accent-2); }
 .checklist-dock { container-type: inline-size; display: flex; flex-direction: column; min-height: 0; flex-shrink: 0; margin-bottom: 8px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: linear-gradient(180deg, rgb(147 88 255 / 0.05), transparent 70%), var(--bg-subtle); box-shadow: var(--inset-hi); }
-.checklist-dock.is-live { animation: rinari-rise var(--dur-base) var(--ease-out) both; }
 .checklist-dock[data-state='interrupted'] { border-color: color-mix(in srgb, var(--warning) 38%, transparent); }
 .checklist-dock[data-state='completed'] { border-color: color-mix(in srgb, var(--success) 32%, transparent); }
 .checklist-bar { display: flex; flex-shrink: 0; align-items: center; gap: 4px; padding: 3px 4px 3px 3px; }
@@ -963,6 +961,60 @@ button.child-report-title:hover { color: var(--text); text-decoration-color: var
 @keyframes checklist-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 @container (max-width: 420px) { .checklist-count { display: none; } .checklist-items { padding-inline: 4px; } }
 .checklist-complete:hover { color: var(--success); background: color-mix(in srgb, var(--success) 12%, transparent); }
+
+/* -- Estado del composer (plan C) ---------------------------------------------
+   Lo que hace Rinari y su lista, arriba dentro del composer: un solo borde vivo
+   (el del composer) para los dos. Entra cuando empieza un turno: su alto crece
+   desde 0 y el contenido sube con un fundido; sale cuando acaba: se fija el
+   alto que tenía y se pliega a 0. Montar la vista con un turno en curso no
+   anima nada. La lista se abre hacia arriba, así el composer no se mueve. */
+.composer-status { display: grid; grid-template-rows: 1fr; margin: -10px -10px 8px; transition: grid-template-rows var(--dur-base) var(--ease-out), height var(--dur-base) var(--ease-out), margin-bottom var(--dur-base) var(--ease-out); }
+.composer-status[data-phase='opening'] { grid-template-rows: 0fr; margin-bottom: 0; }
+.composer-status[data-phase='closing'] { display: block; overflow: hidden; margin-bottom: 0; }
+/* La cabecera es parte del composer: sigue sus esquinas de arriba, sin caja propia. */
+.composer-status-clip { min-height: 0; overflow: clip; border-radius: 21px 21px 0 0; }
+.composer-status .checklist-dock { position: relative; margin: 0; border: 0; border-radius: 0; background: none; box-shadow: none; transition: opacity var(--dur-base) var(--ease-out) 50ms, transform var(--dur-base) var(--ease-out) 50ms; }
+/* Una línea fina la separa de lo que escribes, sin llegar a los bordes. */
+.composer-status .checklist-dock::after { content: ''; position: absolute; right: 16px; bottom: 0; left: 16px; height: 1px; background: linear-gradient(90deg, transparent, var(--line-2) 12%, var(--line-2) 88%, transparent); pointer-events: none; }
+.composer-status .checklist-dock[data-state='completed']::after { background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--success) 30%, transparent) 12%, color-mix(in srgb, var(--success) 30%, transparent) 88%, transparent); }
+.composer-status .checklist-dock[data-state='interrupted']::after { background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--warning) 34%, transparent) 12%, color-mix(in srgb, var(--warning) 34%, transparent) 88%, transparent); }
+.composer-status .checklist-dock.just-finished { animation: none; }
+.composer-status[data-phase='opening'] .checklist-dock { opacity: 0; transform: translateY(6px); }
+.composer-status[data-phase='closing'] .checklist-dock { opacity: 0; transform: translateY(4px); transition-duration: var(--dur-fast); transition-delay: 0s; }
+.composer-status .checklist-bar { min-height: 42px; padding: 4px 10px 4px 4px; }
+.composer-status .checklist-toggle { padding: 5px 6px; }
+/* Sin fondo al pasar: se aclaran el texto y la flecha, nada parece una caja. */
+.composer-status .checklist-toggle:hover { background: none; }
+.composer-status .checklist-toggle:hover .turn-line-title, .composer-status .checklist-toggle:hover .checklist-headline { color: var(--text); }
+.composer-status .checklist-toggle:hover .checklist-chevron { color: var(--text); }
+.composer-status .checklist-toggle:hover .turn-line, .composer-status .checklist-toggle:hover .checklist-count { color: var(--text-muted); }
+.composer-status .checklist-body-inner { max-height: min(260px, 32dvh); }
+.composer-status .checklist-items { padding: 8px 12px 2px; }
+.composer-status .checklist-item[data-status='in_progress'] { box-shadow: none; background: linear-gradient(90deg, rgb(147 88 255 / 0.12), transparent 75%); }
+.checklist-toggle.is-static { cursor: default; }
+.checklist-toggle.is-static:hover { background: none; color: inherit; }
+.checklist-bar-content { display: flex; min-width: 0; flex: 1 1 auto; align-items: center; gap: 9px; }
+/* Al cambiar de turno vivo a lista (o al revés) el contenido entra; montar la vista no lo anima. */
+.checklist-bar-content.is-swapped { animation: status-swap-in var(--dur-base) var(--ease-out) both; }
+@keyframes status-swap-in { from { opacity: 0; transform: translateY(4px); } }
+/* Clicar la franja no enciende el foco de escritura del composer. */
+.composer-surface:focus-within:has(.composer-status :focus) { border-color: var(--line-2); box-shadow: var(--sh-2), var(--inset-hi); }
+
+/* La línea del turno en curso: cara, paso, título, acción con su reloj; a la derecha, tiempo y tokens. */
+.turn-line { display: flex; min-width: 0; flex: 1 1 auto; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-muted); }
+.turn-line-avatar { display: grid; flex-shrink: 0; }
+.turn-line-count { flex-shrink: 0; font-family: var(--font-mono); font-size: 11px; font-variant-numeric: tabular-nums; color: var(--accent-2); }
+.turn-line-title { min-width: 0; flex: 0 1 auto; overflow: hidden; font-size: 13px; font-weight: 600; color: var(--text); text-overflow: ellipsis; white-space: nowrap; }
+.turn-line-detail { display: flex; min-width: 0; flex: 0 1 auto; align-items: center; overflow: hidden; font-size: 12px; white-space: nowrap; color: var(--text-subtle); }
+.turn-line-detail > span { flex-shrink: 0; }
+.turn-line-detail > span::before { content: '·'; margin: 0 6px; color: var(--line-3); }
+.turn-line-clock { font-variant-numeric: tabular-nums; }
+.turn-line-meta { display: flex; flex-shrink: 0; align-items: center; gap: 10px; margin-left: auto; padding-left: 8px; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted); }
+.token-usage-arrow { color: var(--accent-2); }
+/* En Boards la cara de Rinari vive en la cabecera del panel. */
+.session-pane-body .turn-line-avatar { display: none; }
+@container (max-width: 560px) { .turn-line-detail { display: none; } }
+@container (max-width: 380px) { .turn-line-meta [data-testid='turn-total-time'] { display: none; } }
 
 /* Objetivo de la conversación (plan 0.4.0 #23): misma familia que la lista. */
 .goal-dock { container-type: inline-size; display: flex; flex-direction: column; flex-shrink: 0; gap: 6px; margin-bottom: 8px; padding: 6px 6px 6px 7px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: linear-gradient(180deg, rgb(147 88 255 / 0.07), transparent 70%), var(--bg-subtle); box-shadow: var(--inset-hi); transition: border-color var(--dur-slow); }
@@ -1813,43 +1865,6 @@ html[data-motion='reduced'] .browser-home, html[data-motion='reduced'] .browser-
 @keyframes stream-word { from { opacity: 0; } to { opacity: 1; } }
 
 /* -- Conversación: turno de Rinari con riel y nodos -------------------------- */
-/* El turno en curso como tarjeta de estado (#49): qué hace, el paso, su tiempo y una línea viva. */
-.turn-status-wrap { container-type: inline-size; }
-.turn-status { position: relative; display: flex; align-items: center; gap: 12px; min-width: 0; min-height: 64px; padding: 10px 14px 12px 10px; overflow: hidden; border: 1px solid rgb(167 139 250 / 0.22); border-radius: var(--r-lg); background: linear-gradient(160deg, rgb(147 88 255 / 0.07), transparent 60%), rgb(16 12 27 / 0.55); }
-/* Entrada (una vez por turno): el hueco crece desde 0 (también el espacio con lo de arriba, por eso el
-   margen negativo) y el chat baja con él en lugar de saltar; la tarjeta sube y aparece un poco después,
-   y el borde vivo se enciende al final, para no arrancar a plena intensidad. */
-.turn-status-wrap[data-entering] { display: grid; grid-template-rows: 1fr; overflow: hidden; animation: turn-status-open 0.28s var(--ease-out) both; }
-.turn-status-wrap[data-entering] > .turn-status { min-height: 0; animation: turn-status-in 0.3s 0.06s var(--ease-out) both; }
-.turn-status-wrap[data-entering] > .turn-status > .flow-ring { animation: turn-status-ring-in 0.36s 0.22s var(--ease-out) both; }
-@keyframes turn-status-open { from { grid-template-rows: 0fr; margin-top: -12px; } }
-@keyframes turn-status-in { from { opacity: 0; transform: translateY(6px) scale(0.985); } }
-@keyframes turn-status-ring-in { from { opacity: 0; } }
-.turn-status-body { display: flex; min-width: 0; flex: 1 1 auto; flex-direction: column; gap: 3px; }
-.turn-status-title { display: block; overflow: hidden; font-size: 14px; font-weight: 600; color: var(--text); text-overflow: ellipsis; white-space: nowrap; }
-.turn-status-detail { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 4px 0; font-size: 12px; color: var(--text-subtle); }
-.turn-status-detail > span:not(:first-child)::before { content: '·'; margin: 0 6px; color: var(--line-3); }
-.turn-status-step { font-family: var(--font-mono); font-size: 11px; color: var(--accent-2); font-variant-numeric: tabular-nums; }
-.turn-status-clock { font-variant-numeric: tabular-nums; }
-.turn-status-meta { display: flex; flex-shrink: 0; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted); }
-.turn-status-meta .turn-status-step.is-compact { display: none; }
-.turn-status-line { position: absolute; right: 14px; bottom: 0; left: 14px; height: 1px; overflow: hidden; background: rgb(167 139 250 / 0.14); }
-/* Trabajando, todo el borde fluye como el del composer (no solo la línea de abajo). */
-.turn-status[data-working] { isolation: isolate; border-color: transparent; }
-.turn-status > .flow-ring { --ring-dim: rgb(167 139 250 / 0.2); }
-.turn-status[data-working] .turn-status-line { display: none; }
-/* En Boards la cara de Rinari vive en la cabecera del panel. */
-.session-pane-body .turn-status > .rinari-avatar { display: none; }
-@container (max-width: 420px) {
-  .turn-status { gap: 8px; min-height: 0; padding: 7px 10px 8px; }
-  .turn-status-detail { display: none; }
-  .turn-status-title { font-size: 13px; }
-  .turn-status-meta { gap: 7px; font-size: 11px; }
-  .turn-status-meta .turn-status-step.is-compact { display: inline; }
-}
-/* Movimiento reducido (la regla global corta toda animación): la tarjeta aparece ya puesta y el borde, quieto. */
-@media (prefers-reduced-motion: reduce) { .turn-status-wrap[data-entering] > .turn-status > .flow-ring { animation: none; } }
-html[data-motion='reduced'] .turn-status-wrap[data-entering] > .turn-status > .flow-ring { animation: none; }
 .turn-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
 /* En Boards la cara de Rinari vive en la cabecera de cada panel: dentro del
  * chat del panel no se repite (ni el nombre que la acompaña). */
@@ -1886,6 +1901,9 @@ html[data-motion='reduced'] .turn-rail[data-live='true']::after { display: none;
 @keyframes activity-body-in { from { opacity: 0; transform: translateY(-4px); } }
 /* A finished turn folds its operations into the summary card: the space they leave closes, like the side panel's ghost (§5). */
 .turn-fold-ghost { pointer-events: none; animation: turn-fold var(--dur-base) var(--ease-out) forwards; }
+/* Al terminar, la tarjeta del turno llega al sitio de sus operaciones (el estado vivo estaba en el composer). */
+[data-activity-turn][data-arriving] .is-turn-card { animation: turn-card-arrive var(--dur-base) var(--ease-out) both; }
+@keyframes turn-card-arrive { from { opacity: 0; transform: translateY(4px); } }
 @keyframes turn-fold { to { height: 0; margin-block: 0; } }
 .act-tile { display: grid; width: 26px; height: 26px; flex-shrink: 0; place-items: center; border-radius: 8px; border: 1px solid var(--line-2); background: var(--bg-hover); color: var(--text-muted); }
 .act-tile[data-state='done'] { color: var(--success); border-color: rgb(91 224 165 / 0.3); background: rgb(91 224 165 / 0.1); }

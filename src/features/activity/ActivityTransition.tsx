@@ -22,6 +22,7 @@ export class ActivityTransition extends Component<Props> {
   private root = createRef<HTMLDivElement>()
   private ghost: HTMLElement | null = null
   private ghostTimer = 0
+  private arrivalTimer = 0
 
   getSnapshotBeforeUpdate(previous: Readonly<Props>): Snapshot {
     if (previous.identity === this.props.identity || !this.root.current) return null
@@ -40,12 +41,29 @@ export class ActivityTransition extends Component<Props> {
   componentDidUpdate(_previous: Readonly<Props>, _state: unknown, snapshot: Snapshot) {
     if (typeof snapshot === 'function') snapshot()
     else if (snapshot) {
+      this.arrive()
       this.fold(snapshot.fold)
       this.restoreFocus(snapshot.focused)
     }
   }
 
-  componentWillUnmount() { this.dropGhost() }
+  componentWillUnmount() {
+    this.dropGhost()
+    window.clearTimeout(this.arrivalTimer)
+  }
+
+  /**
+   * The live status was above the composer; at the end the turn's card
+   * («Ha trabajado durante…») appears where its operations were, and enters
+   * instead of popping in. Only on that change, never when a turn mounts.
+   */
+  private arrive() {
+    const root = this.root.current
+    if (!root) return
+    root.dataset.arriving = ''
+    window.clearTimeout(this.arrivalTimer)
+    this.arrivalTimer = window.setTimeout(() => { delete root.dataset.arriving }, FOLD_GHOST_MAX_MS)
+  }
 
   private fold(before: number) {
     const root = this.root.current

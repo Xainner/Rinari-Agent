@@ -8,8 +8,10 @@ export function parseTokenUsage(value: Record<string, unknown>): TurnTokenUsage 
   if (!['input_tokens', 'output_tokens', 'total_tokens', 'model_calls', 'revision'].every(key => count(value[key]))) return
   if (value.total_tokens !== (value.input_tokens as number) + (value.output_tokens as number)) return
   if (!['estimated', 'mixed', 'reported'].includes(String(value.source)) || !['thinking', 'streaming', 'settled'].includes(String(value.phase))) return
-  return Object.fromEntries(['input_tokens', 'output_tokens', 'total_tokens', 'model_calls', 'revision', 'source', 'phase', 'cached_input_tokens', 'reasoning_tokens']
-    .filter(key => value[key] !== undefined && (key !== 'cached_input_tokens' && key !== 'reasoning_tokens' || value[key] === null || count(value[key])))
+  // `context_tokens` is what the conversation occupies after the turn: the
+  // token details show it next to the turn's cost.
+  return Object.fromEntries(['input_tokens', 'output_tokens', 'total_tokens', 'model_calls', 'revision', 'source', 'phase', 'cached_input_tokens', 'reasoning_tokens', 'context_tokens']
+    .filter(key => value[key] !== undefined && (key === 'context_tokens' ? count(value[key]) : key !== 'cached_input_tokens' && key !== 'reasoning_tokens' || value[key] === null || count(value[key])))
     .map(key => [key, value[key]])) as unknown as TurnTokenUsage
 }
 

@@ -212,7 +212,7 @@ function CollapsedPaneStrip({ paneId, session, focused, providers, variant = 'st
             <ProviderLogo productId={providerRecord?.product_id} alias={providerAlias} endpoint={providerRecord?.endpoint} size={12} />
             <span className="truncate" title={modelLabel}>{activeModel?.alias ?? modelLabel}</span>
             <span className="pane-column-foot-meta">
-              {digest.tokens != null && <span>{formatTokens(digest.tokens, lang)}</span>}
+              {digest.tokens != null && <span title={t('usage.output')}>↓ {formatTokens(digest.tokens, lang)}</span>}
               {digest.elapsedMs != null && <span>{shortElapsed(digest.elapsedMs)}</span>}
             </span>
             <PaneMenu onExpand={onExpand} onOpenSingle={onOpenSingle} onRemove={onRemove} session={session} side="bottom" />

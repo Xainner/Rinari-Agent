@@ -53,14 +53,15 @@ scenario(async () => {
   await wait(`document.querySelector(${JSON.stringify(DOCK)})?.dataset.state === 'open'`)
   const dock = (expr) => `(() => { const d = document.querySelector(${JSON.stringify(DOCK)}); return ${expr} })()`
   assert(await evaluate(dock("d.textContent.includes('Quedan 2 pasos') && d.textContent.includes('1/3')")), 'open list with its progress')
-  // Above the composer, never over it.
+  // The top of the composer (plan C): inside it, above what you write, never over it.
   await settleAnimations()
   const layout = await evaluate(`(() => {
     const d = document.querySelector(${JSON.stringify(DOCK)}).getBoundingClientRect()
     const c = document.querySelector('.composer-surface').getBoundingClientRect()
-    return { dockBottom: d.bottom, composerTop: c.top, dockHeight: d.height }
+    const t = document.querySelector('.composer-surface textarea').getBoundingClientRect()
+    return { dockTop: d.top, dockBottom: d.bottom, composerTop: c.top, textTop: t.top, dockHeight: d.height }
   })()`)
-  assert(layout.dockBottom <= layout.composerTop + 1, 'dock sits above the composer')
+  assert(layout.dockTop >= layout.composerTop - 1 && layout.dockBottom <= layout.textTop + 1, 'the list is the top of the composer: ' + JSON.stringify(layout))
   assert(layout.dockHeight < 60, 'collapsed dock is one line')
   await assertNoSlotScroll('collapsed dock')
   await screenshot('collapsed-open')

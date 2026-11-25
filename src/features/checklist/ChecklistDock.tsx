@@ -4,26 +4,13 @@ import { useI18n } from '../../i18n'
 import { cn } from '../../lib/utils'
 import { engineApi } from '../../services/engine'
 import type { Checklist, ChecklistItem } from '../../types/protocol.generated'
+import type { TurnTimeline } from '../activity/types'
+import TurnStatusLine from '../activity/TurnStatusCard'
 import { useChecklistStore } from './checklistStore'
 
-/**
- * The live checklist above the composer: what Rinari is doing, step by step,
- * as she reports it (`checklist.update`). Collapsed it is one line (progress
- * ring, count and the step in progress); expanded it is the list.
- *
- * Truthful by construction: a step is checked only when the Engine says so,
- * an interrupted list says so, and nothing appears for conversations that do
- * not need a list. Motion marks changes seen live (an item that arrives, a
- * step that completes), never a list that was already there when it mounted.
- */
-export function ChecklistDock({ sessionId }: { sessionId: string }) {
-  const { t } = useI18n()
-  const entry = useChecklistStore((state) => state.bySession[sessionId])
-  const expanded = useChecklistStore((state) => state.expanded[sessionId] ?? false)
-  const setExpanded = useChecklistStore((state) => state.setExpanded)
+/** Reads a conversation's list once, if no live event brought it first. */
+export function useChecklistLoad(sessionId: string) {
   const apply = useChecklistStore((state) => state.apply)
-  const bodyId = useId()
-
   useEffect(() => {
     if (!sessionId || useChecklistStore.getState().bySession[sessionId]) return
     let cancelled = false
@@ -36,17 +23,41 @@ export function ChecklistDock({ sessionId }: { sessionId: string }) {
       .catch(() => { /* an older Engine or a closed session: no list */ })
     return () => { cancelled = true }
   }, [sessionId, apply])
+}
+
+/**
+ * The status at the top of the composer: what Rinari is doing now and, when
+ * she keeps a list (`checklist.update`), her steps. While a turn runs its bar
+ * is the turn's live line (face, step, action, time, tokens); otherwise it is
+ * the list's progress (ring, count, headline). Expanded, the list opens above
+ * the bar.
+ *
+ * Truthful by construction: a step is checked only when the Engine says so,
+ * an interrupted list says so, and nothing appears for conversations that do
+ * not need a list. Motion marks changes seen live (an item that arrives, a
+ * step that completes), never a list that was already there when it mounted.
+ */
+export function ChecklistDock({ sessionId, live = null }: { sessionId: string; live?: TurnTimeline | null }) {
+  const { t } = useI18n()
+  const entry = useChecklistStore((state) => state.bySession[sessionId])
+  const expanded = useChecklistStore((state) => state.expanded[sessionId] ?? false)
+  const setExpanded = useChecklistStore((state) => state.setExpanded)
+  const apply = useChecklistStore((state) => state.apply)
+  const bodyId = useId()
 
   const checklist = entry?.checklist ?? null
   const seen = useSeenStatuses(checklist)
   const finishedLive = useFinishedLive(checklist?.state ?? null)
-  const settled = useSettledOpen(expanded)
-  if (!checklist) return null
+  const settled = useSettledOpen(expanded && Boolean(checklist))
+  const mode = live ? 'live' : 'list'
+  const swapped = useSwapped(checklist || live ? mode : null)
+  if (!checklist && !live) return null
 
-  const { counts, state } = checklist
+  const counts = checklist?.counts ?? { pending: 0, in_progress: 0, completed: 0, blocked: 0, total: 0 }
+  const state = checklist?.state ?? 'active'
   const working = state === 'active'
-  const current = checklist.items.find((item) => item.status === 'in_progress')
-    ?? (working ? checklist.items.find((item) => item.status === 'pending') : undefined)
+  const current = checklist?.items.find((item) => item.status === 'in_progress')
+    ?? (working ? checklist?.items.find((item) => item.status === 'pending') : undefined)
   const left = counts.total - counts.completed
   // Con su plural: «Queda 1 paso», no «Quedan 1 pasos» (#6).
   const headline = state === 'interrupted'
@@ -73,49 +84,65 @@ export function ChecklistDock({ sessionId }: { sessionId: string }) {
     } catch { /* the turn may have started again; the list stays */ }
   }
 
+  const lineContent = live ? (
+    <span key="live" className={cn('checklist-bar-content', swapped && 'is-swapped')}><TurnStatusLine timeline={live} checklist={checklist} /></span>
+  ) : checklist ? (
+    <span key="list" className={cn('checklist-bar-content', swapped && 'is-swapped')}>
+      <ProgressRing done={counts.completed} total={counts.total} working={working} finished={state === 'completed'} />
+      {/* Mientras trabaja cuenta el paso en curso («Paso 2/3»); si no, los hechos. */}
+      <span className="checklist-count" aria-label={t('checklist.progress', { done: counts.completed, total: counts.total })}>
+        {working && current ? t('turn.status.step', { n: checklist.items.indexOf(current) + 1, total: counts.total }) : `${counts.completed}/${counts.total}`}
+      </span>
+      <span key={headline} className="checklist-headline" role={working ? 'status' : undefined}>{headline}</span>
+    </span>
+  ) : null
+
   return (
     <section
-      className={cn('checklist-dock', entry?.live && 'is-live', finishedLive && 'just-finished')}
-      data-state={state}
-      data-testid="checklist-dock"
-      aria-label={t('checklist.label')}
+      className={cn('checklist-dock', finishedLive && 'just-finished')}
+      data-state={checklist ? state : 'live'}
+      data-mode={mode}
+      data-testid={checklist ? 'checklist-dock' : undefined}
+      aria-label={checklist ? t('checklist.label') : undefined}
     >
+      {/* The list opens above its bar: the composer stays where it is. */}
+      {checklist && (
+        <div id={bodyId} className="checklist-body" data-open={expanded || undefined} data-settled={settled || undefined} inert={!expanded || undefined}>
+          <div className="checklist-body-inner">
+            {checklist.explanation && <p className="checklist-note">{checklist.explanation}</p>}
+            <ol className="checklist-items">
+              {checklist.items.map((item) => (
+                <ChecklistRow key={item.id} item={item} working={working} arrived={seen.arrived.has(item.id)} justDone={seen.completed.has(item.id)} />
+              ))}
+            </ol>
+          </div>
+        </div>
+      )}
       <div className="checklist-bar">
-        <button
-          type="button"
-          className="checklist-toggle"
-          aria-expanded={expanded}
-          aria-controls={bodyId}
-          onClick={() => setExpanded(sessionId, !expanded)}
-        >
-          <ProgressRing done={counts.completed} total={counts.total} working={working} finished={state === 'completed'} />
-          {/* Mientras trabaja cuenta el paso en curso, igual que la cabecera del turno («Paso 2/3»); si no, los hechos. */}
-          <span className="checklist-count" aria-label={t('checklist.progress', { done: counts.completed, total: counts.total })}>
-            {working && current ? t('turn.status.step', { n: checklist.items.indexOf(current) + 1, total: counts.total }) : `${counts.completed}/${counts.total}`}
-          </span>
-          <span key={headline} className="checklist-headline" role={working ? 'status' : undefined}>{headline}</span>
-          <ChevronUp size={14} aria-hidden="true" className="checklist-chevron" />
-        </button>
-        {(state === 'open' || state === 'interrupted') && (
+        {checklist ? (
+          <button
+            type="button"
+            className="checklist-toggle"
+            aria-expanded={expanded}
+            aria-controls={bodyId}
+            onClick={() => setExpanded(sessionId, !expanded)}
+          >
+            {lineContent}
+            <ChevronUp size={14} aria-hidden="true" className="checklist-chevron" />
+          </button>
+        ) : (
+          <div className="checklist-toggle is-static">{lineContent}</div>
+        )}
+        {checklist && !live && (state === 'open' || state === 'interrupted') && (
           <button type="button" className="checklist-dismiss checklist-complete" onClick={() => void completeAll()} aria-label={t('checklist.completeAll')} title={t('checklist.completeAll')}>
             <CheckCheck size={13} aria-hidden="true" />
           </button>
         )}
-        {!working && (
+        {checklist && !working && !live && (
           <button type="button" className="checklist-dismiss" onClick={() => void dismiss()} aria-label={t('checklist.dismiss')} title={t('checklist.dismiss')}>
             <X size={13} aria-hidden="true" />
           </button>
         )}
-      </div>
-      <div id={bodyId} className="checklist-body" data-open={expanded || undefined} data-settled={settled || undefined} inert={!expanded || undefined}>
-        <div className="checklist-body-inner">
-          {checklist.explanation && <p className="checklist-note">{checklist.explanation}</p>}
-          <ol className="checklist-items">
-            {checklist.items.map((item) => (
-              <ChecklistRow key={item.id} item={item} working={working} arrived={seen.arrived.has(item.id)} justDone={seen.completed.has(item.id)} />
-            ))}
-          </ol>
-        </div>
       </div>
     </section>
   )
@@ -167,6 +194,17 @@ function ProgressRing({ done, total, working, finished }: { done: number; total:
       </svg>
     </span>
   )
+}
+
+/**
+ * Whether the bar's content changed kind (the turn's live line, the list's
+ * progress) while on screen: only then does the new content enter. Kept for
+ * the life of that content, so a later render does not cut its entrance.
+ */
+function useSwapped(mode: string | null): boolean {
+  const seen = useRef<{ mode: string | null; swapped: boolean }>({ mode, swapped: false })
+  if (seen.current.mode !== mode) seen.current = { mode, swapped: seen.current.mode !== null && mode !== null }
+  return seen.current.swapped
 }
 
 /** True only when the list became completed while it was on screen: that is the moment to celebrate, once. */

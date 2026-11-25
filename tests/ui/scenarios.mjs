@@ -514,6 +514,22 @@ export const scenarios = {
     phases: ['exercise'],
     model: () => heldModel([{ text: 'PRUEBA DE BANDEJA TERMINADA' }]),
   },
+  'composer-status': {
+    title: 'Estado del turno arriba del composer: entra y sale con su alto, une la lista de pasos y cuenta los tokens de salida',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: Array.from({ length: 4 }, () => ({ text: 'Estado' })),
+      main: [
+        { tool: 'fs.glob', args: { pattern: 'src/auth/**/*.ts' }, say: 'Reviso dónde vive la autenticación.\n\n', streamDelayMs: 30, streamChunk: 8 },
+        { tool: 'checklist.update', args: { items: [{ id: 'a', content: 'Leer el registro', status: 'in_progress', active_form: 'Leyendo el registro' }, { id: 'b', content: 'Corregir la clave', status: 'pending' }, { id: 'c', content: 'Probar la entrada', status: 'pending' }] }, say: 'Armo la lista.\n\n' },
+        { tool: 'fs.glob', args: { pattern: 'logs/*.log' }, say: 'Miro el registro del panel.\n\n', streamDelayMs: 30, streamChunk: 8 },
+        { tool: 'checklist.update', args: { items: [{ id: 'a', content: 'Leer el registro', status: 'completed' }, { id: 'b', content: 'Corregir la clave', status: 'completed' }, { id: 'c', content: 'Probar la entrada', status: 'completed' }] }, say: 'Listo todo.\n\n' },
+        { text: 'RESPUESTA DE ESTADO\n\n' + paragraphs(10, (n) => `Párrafo ${n}: la clave que firma la cookie cambia en cada arranque y el panel vuelve a pedir la entrada.`), streamDelayMs: 20, streamChunk: 12 },
+        { tool: 'fs.glob', args: { pattern: 'docs/*.md' }, say: 'Busco la nota.\n\n', streamDelayMs: 30, streamChunk: 8 },
+        { text: 'SEGUNDA RESPUESTA\n\n' + paragraphs(4, (n) => `Línea ${n} de la segunda respuesta.`), streamDelayMs: 20, streamChunk: 12 },
+      ],
+    }, laneOf, { held: ['main'] }),
+  },
   'turn-fold': {
     title: 'Al terminar un turno, el hueco de las operaciones plegadas se cierra con un fantasma en vez de saltar; leyendo arriba nada se mueve',
     phases: ['exercise'],

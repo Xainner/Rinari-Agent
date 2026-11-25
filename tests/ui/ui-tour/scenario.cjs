@@ -239,6 +239,12 @@ scenario(async () => {
     await key('Escape')
     await delay(600)
     await screenshot('19-agency-home')
+    // «Arma tu equipo con Rinari»: la pantalla de describir (sin modelo, nada se pide).
+    if (await evaluate(`Boolean(document.querySelector('[data-testid="agency-home-build"], [data-testid="agency-home-build-team"]'))`)) {
+      await evaluate(`document.querySelector('[data-testid="agency-home-build"], [data-testid="agency-home-build-team"]').click()`)
+      await delay(900)
+      await screenshot('19-agency-builder')
+    }
     await evaluate(`document.querySelector('[data-testid="agency-card"][data-mode="leave"]')?.click()`)
     await delay(600)
   })

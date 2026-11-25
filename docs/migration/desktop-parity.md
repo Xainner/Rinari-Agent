@@ -6,8 +6,8 @@ iniciales vinieron de la captura de Tauri 0.1.3 hecha para la migración, y
 desde entonces el fichero es el inventario de Electron. La regla para añadir
 un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 
-- Comandos: **348**
-- Respaldados por Engine: **342**
+- Comandos: **353**
+- Respaldados por Engine: **347**
 - Resueltos por el host: **6**
 - Adaptadores manuales fail-closed: **8**
 - Imports Tauri activos: **0**
@@ -45,9 +45,12 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `agency_settings_set` | engine | `agency.settings.set` | `src/services/engine.ts` |
 | `agency_status` | engine | `agency.status` | `src/services/engine.ts` |
 | `agency_stop_all` | engine | `agency.stop_all` | **ninguno** |
+| `agency_team_apply` | engine | `agency.team.apply` | `src/services/engine.ts` |
 | `agency_team_archive` | engine | `agency.team.archive` | **ninguno** |
+| `agency_team_check` | engine | `agency.team.check` | `src/services/engine.ts` |
 | `agency_team_create` | engine | `agency.team.create` | `src/services/engine.ts` |
 | `agency_team_delete` | engine | `agency.team.delete` | **ninguno** |
+| `agency_team_draft` | engine | `agency.team.draft` | **ninguno** |
 | `agency_team_duplicate` | engine | `agency.team.duplicate` | `src/services/engine.ts` |
 | `agency_team_from_template` | engine | `agency.team.from_template` | **ninguno** |
 | `agency_team_get` | engine | `agency.team.get` | **ninguno** |
@@ -58,6 +61,8 @@ un comando o una intención está en AGENTS.md, «Comandos e intenciones».
 | `agency_team_memory_list` | engine | `agency.team.memory.list` | **ninguno** |
 | `agency_team_overview` | engine | `agency.team.overview` | `src/services/engine.ts` |
 | `agency_team_resume` | engine | `agency.team.resume` | **ninguno** |
+| `agency_team_setup_get` | engine | `agency.team.setup.get` | **ninguno** |
+| `agency_team_setup_resolve` | engine | `agency.team.setup.resolve` | **ninguno** |
 | `agency_team_stop` | engine | `agency.team.stop` | **ninguno** |
 | `agency_team_template` | engine | `agency.team.template` | `src/services/engine.ts` |
 | `agency_team_unarchive` | engine | `agency.team.unarchive` | **ninguno** |

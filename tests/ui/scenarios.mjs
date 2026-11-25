@@ -18,6 +18,43 @@ import { tmpdir } from 'node:os'
 import { scriptedModel, startFakeModel, startRoutedModel } from '../../scripts/fake-model.mjs'
 import { gatewayConfigured, startGateway } from './gateway.mjs'
 
+/** The proposal the fake model returns in `agency-builder` (generic: research). */
+function builderPlan(data) {
+  return {
+    team: {
+      name: 'Investigación semanal',
+      purpose: 'Investigar un tema cada semana y dejar un informe con fuentes.',
+      manual: 'La investigadora recibe cada tema, lo investiga y deja el borrador; la Revisora lo revisa antes de guardarlo.',
+      chief: 'investigadora',
+      project_folder: null,
+      work_folders: [join(data, 'salidas', 'informes')],
+    },
+    agents: [
+      {
+        key: 'investigadora', name: 'Investigadora', role: 'Busca fuentes y escribe el informe',
+        instructions: 'Investiga el tema, cita cada fuente y deja el informe en la carpeta de informes.',
+        permission_profile: 'workspace',
+        uses: [{ kind: 'tools', group: 'web' }, { kind: 'catalog', id: 'notion' }],
+      },
+      {
+        key: 'revisora', name: 'Revisora', role: 'Revisa el informe', instructions: 'Revisa tono y datos.',
+        permission_profile: 'read-only', uses: [{ kind: 'missing', need: 'publicar el informe en la intranet' }],
+        suggest_reuse: 'Revisora',
+      },
+    ],
+    flow: {
+      name: 'Informe semanal',
+      description: 'Del tema al informe revisado.',
+      steps: [
+        { name: 'Investigar', agents: ['investigadora'], instructions: 'Busca y lee fuentes; escribe el borrador.', approval: 'auto' },
+        { name: 'Revisar', agents: ['revisora'], instructions: 'Revisa el borrador y marca lo dudoso.', approval: 'auto' },
+      ],
+    },
+    routines: [{ name: 'Cada lunes', schedule: { kind: 'weekly', days: [0], time: '08:00' }, starts_flow: true, input: 'El tema de esta semana' }],
+    assumptions: ['El informe va en Markdown'],
+  }
+}
+
 /** The artifact uri of the last image an image.generate result named in the request. */
 const lastImageUri = (request) => {
   const found = [...JSON.stringify(request.messages ?? []).matchAll(/artifact:\/\/[\w./-]+?\.png/g)]
@@ -794,6 +831,12 @@ export const scenarios = {
     phases: ['exercise'],
     // Cada turno de un puesto responde «listo»: alcanza para ver la respuesta en la oficina y el recado entregado.
     model: () => startFakeModel([]),
+  },
+  'agency-builder': {
+    title: 'Arma tu equipo con Rinari: describir, la propuesta (agentes, jefe, flujo, rutina, carpeta, lo que falta), reutilizar un agente, crear de una vez y «Para empezar»',
+    phases: ['exercise'],
+    // The proposal is the first model answer; the folder lives in the scenario's own data.
+    model: (data) => startFakeModel([{ text: JSON.stringify(builderPlan(data)) }]),
   },
   'agency-chat-model': {
     title: 'Agency: el modelo del chat de un agente cambia cada vez desde el composer y el de siempre de Rinari no se mueve',

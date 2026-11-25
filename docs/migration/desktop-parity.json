@@ -274,11 +274,29 @@
       "callers": []
     },
     {
+      "command": "agency_team_apply",
+      "kind": "engine",
+      "method": "agency.team.apply",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
+    },
+    {
       "command": "agency_team_archive",
       "kind": "engine",
       "method": "agency.team.archive",
       "manual": false,
       "callers": []
+    },
+    {
+      "command": "agency_team_check",
+      "kind": "engine",
+      "method": "agency.team.check",
+      "manual": false,
+      "callers": [
+        "src/services/engine.ts"
+      ]
     },
     {
       "command": "agency_team_create",
@@ -293,6 +311,13 @@
       "command": "agency_team_delete",
       "kind": "engine",
       "method": "agency.team.delete",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "agency_team_draft",
+      "kind": "engine",
+      "method": "agency.team.draft",
       "manual": false,
       "callers": []
     },
@@ -375,6 +400,20 @@
       "command": "agency_team_resume",
       "kind": "engine",
       "method": "agency.team.resume",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "agency_team_setup_get",
+      "kind": "engine",
+      "method": "agency.team.setup.get",
+      "manual": false,
+      "callers": []
+    },
+    {
+      "command": "agency_team_setup_resolve",
+      "kind": "engine",
+      "method": "agency.team.setup.resolve",
       "manual": false,
       "callers": []
     },
@@ -2916,10 +2955,10 @@
     }
   ],
   "summary": {
-    "commands": 348,
-    "engine_backed": 342,
+    "commands": 353,
+    "engine_backed": 347,
     "host_only": 6,
     "manual_adapters": 8,
-    "without_callers": 113
+    "without_callers": 116
   }
 }

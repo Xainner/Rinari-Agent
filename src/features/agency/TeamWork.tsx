@@ -10,6 +10,7 @@ import AgentAvatar from './AgentAvatar'
 import { useAgencyData } from './AgencyData'
 import { useTeamEvents } from './Board'
 import type { AgencyAgent, AgencyFlow, FlowApproval, FlowInput, FlowRun, TeamOverview, TeamRoutine } from './types'
+import TeamSetup from './builder/TeamSetup'
 
 const MAX_MANUAL = 20000
 const MAX_TEXT = 8000
@@ -220,26 +221,35 @@ function RoutinesSection({ overview, members, onSaved }: { overview: TeamOvervie
         <ul className="agency-work-list">
           {overview.routines.map((routine: TeamRoutine) => {
             const agent = routine.agent_id ? byId.get(routine.agent_id) ?? null : null
+            // A routine that starts a flow (no model): edited from its flow, not as an agent's task.
+            const startsFlow = routine.kind === 'flow'
             return (
               <li key={routine.id} className="agency-work-item" data-testid="agency-routine">
                 <div className="agency-work-item-head">
-                  {agent ? <AgentAvatar agent={agent} size={20} /> : <Repeat size={14} aria-hidden="true" />}
+                  {startsFlow ? <Workflow size={14} aria-hidden="true" /> : agent ? <AgentAvatar agent={agent} size={20} /> : <Repeat size={14} aria-hidden="true" />}
                   <span className="min-w-0 flex-1 truncate font-medium text-[var(--text)]">{routine.name}</span>
-                  {!routine.enabled && <span className="r-chip">{t('agency.work.routine.paused')}</span>}
+                  {!routine.enabled && (routine.paused_by === 'setup'
+                    ? <span className="r-chip" data-tone="warning" title={t('agency.setup.hint')}>{t('agency.work.routine.waitsSetup')}</span>
+                    : <span className="r-chip">{t('agency.work.routine.paused')}</span>)}
                   {routine.last && <span className="r-chip" data-tone={toneOf(runTone(routine.last.status))}>{t(RUN_STATUS_KEYS[routine.last.status])}</span>}
-                  <button
-                    type="button"
-                    className="btn btn-quiet btn-icon btn-xs"
-                    aria-label={t('agency.work.routine.edit')}
-                    title={t('agency.work.routine.edit')}
-                    onClick={() => setDraft({ agentId: routine.agent_id ?? '', name: routine.name, schedule: routine.schedule, prompt: routine.prompt })}
-                  >
-                    <Pencil size={12} aria-hidden="true" />
-                  </button>
+                  {!startsFlow && (
+                    <button
+                      type="button"
+                      className="btn btn-quiet btn-icon btn-xs"
+                      aria-label={t('agency.work.routine.edit')}
+                      title={t('agency.work.routine.edit')}
+                      onClick={() => setDraft({ agentId: routine.agent_id ?? '', name: routine.name, schedule: routine.schedule, prompt: routine.prompt })}
+                    >
+                      <Pencil size={12} aria-hidden="true" />
+                    </button>
+                  )}
                   <RoutineActions routine={routine} onChanged={onSaved} />
                 </div>
                 <p className="agency-work-item-line">
-                  {[agent?.name ?? routine.agent, describeSchedule(routine.schedule, t, locale)].filter(Boolean).join(' · ')}
+                  {[
+                    startsFlow ? t('agency.work.routine.startsFlow', { flow: routine.flow?.name ?? '' }) : agent?.name ?? routine.agent,
+                    describeSchedule(routine.schedule, t, locale),
+                  ].filter(Boolean).join(' · ')}
                 </p>
                 {routine.enabled && routine.next_run_at && (
                   <p className="agency-work-item-line">{t('agency.work.routine.next', { when: formatWhen(routine.next_run_at, locale, routine.schedule) })}</p>
@@ -622,6 +632,9 @@ export function TeamWorkPanel({ teamId }: { teamId: string }) {
     <div className="office-panel" data-testid="agency-team-work">
       <div className="office-panel-body">
         <p className="office-panel-lead"><BookOpen size={14} aria-hidden="true" />{t('agency.work.lead')}</p>
+        {(overview.team.setup?.length ?? 0) > 0 && (
+          <TeamSetup teamId={overview.team.id} items={overview.team.setup ?? []} onChanged={() => void reload()} />
+        )}
         <ManualSection overview={overview} onSaved={() => void reload()} />
         <RoutinesSection overview={overview} members={members} onSaved={() => void reload()} />
         <FlowsSection overview={overview} members={members} onChanged={() => void reload()} />

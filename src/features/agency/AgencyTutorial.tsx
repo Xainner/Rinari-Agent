@@ -43,8 +43,8 @@ const POINTS: Partial<Record<Step, Array<{ icon: Icon; key: string }>>> = {
   ],
 }
 
-/** `create`: «Créalo con Rinari»; `template`: elegir una plantilla; `later`: cerrar. */
-export type AgencyTutorialNext = 'create' | 'template' | 'later'
+/** `build`: «Arma tu equipo con Rinari»; `create`: «Créalo con Rinari»; `template`: elegir una plantilla; `later`: cerrar. */
+export type AgencyTutorialNext = 'build' | 'create' | 'template' | 'later'
 
 interface AgencyTutorialProps {
   open: boolean
@@ -53,6 +53,8 @@ interface AgencyTutorialProps {
   templatesAvailable?: boolean
   /** «Créalo con Rinari» (`agency_draft_v1`); sin él, la primera opción es crear a mano. */
   draftAvailable?: boolean
+  /** «Arma tu equipo con Rinari» (`agency_team_builder_v1`): con él, es la primera opción. */
+  builderAvailable?: boolean
 }
 
 /**
@@ -62,7 +64,7 @@ interface AgencyTutorialProps {
  * así: nunca se ofrece como algo que ya se puede usar. El último paso es
  * una elección: crear con Rinari, usar una plantilla o dejarlo para después.
  */
-export default function AgencyTutorial({ open, onClose, templatesAvailable = false, draftAvailable = true }: AgencyTutorialProps) {
+export default function AgencyTutorial({ open, onClose, templatesAvailable = false, draftAvailable = true, builderAvailable = false }: AgencyTutorialProps) {
   const { t } = useI18n()
   const [step, setStep] = useState<Step>('intro')
 
@@ -128,8 +130,17 @@ export default function AgencyTutorial({ open, onClose, templatesAvailable = fal
 
           {last && (
             <div className="agency-tour-choices" role="group" aria-label={t('agency.tutorial.start.title')}>
-              <button type="button" className="agency-tour-choice is-primary" onClick={() => onClose('create')} data-testid="agency-tutorial-create">
-                <span className="agency-tour-icon">{draftAvailable ? <Sparkles size={16} aria-hidden="true" /> : <UserPlus size={16} aria-hidden="true" />}</span>
+              {builderAvailable && (
+                <button type="button" className="agency-tour-choice is-primary" onClick={() => onClose('build')} data-testid="agency-tutorial-build">
+                  <span className="agency-tour-icon"><Sparkles size={16} aria-hidden="true" /></span>
+                  <span className="min-w-0">
+                    <b>{t('agency.builder.menu')}</b>
+                    <small>{t('agency.tutorial.buildCopy')}</small>
+                  </span>
+                </button>
+              )}
+              <button type="button" className={builderAvailable ? 'agency-tour-choice' : 'agency-tour-choice is-primary'} onClick={() => onClose('create')} data-testid="agency-tutorial-create">
+                <span className="agency-tour-icon">{draftAvailable && !builderAvailable ? <Sparkles size={16} aria-hidden="true" /> : <UserPlus size={16} aria-hidden="true" />}</span>
                 <span className="min-w-0">
                   <b>{t(draftAvailable ? 'agency.tutorial.createWithRinari' : 'agency.tutorial.create')}</b>
                   <small>{t(draftAvailable ? 'agency.tutorial.createWithRinariCopy' : 'agency.tutorial.createCopy')}</small>

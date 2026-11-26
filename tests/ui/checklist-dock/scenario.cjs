@@ -119,6 +119,7 @@ scenario(async () => {
   await send('Sigue con lo que falta')
   await wait(text('TODO LISTO'))
   await wait(`document.querySelector(${JSON.stringify(DOCK)})?.dataset.state === 'completed'`)
+  await wait(dock("d?.dataset.mode === 'list'")) // the turn has closed: the list's headline, not the live line
   assert(await evaluate(dock("d.textContent.includes('Todo hecho') && d.textContent.includes('3/3')")))
   await screenshot('completed')
   await send('Gracias')

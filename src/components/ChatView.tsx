@@ -28,7 +28,6 @@ import { readScrollAnchor, saveScrollAnchor, type ScrollAnchor } from '../featur
 import ScrollToBottom from './chat/ScrollToBottom'
 import { unreadResultCount, useBoardAttentionStore } from '../stores/boardAttention'
 import type { HistoryPhase } from '../features/engine/useSessionList'
-import { ChecklistDock } from '../features/checklist/ChecklistDock'
 import { GoalDock } from '../features/goal/GoalDock'
 import { useGoalStore } from '../features/goal/goalStore'
 import { ChildDecisions, OpenedSessions, childrenByTurn, useSessionChildren } from '../features/children/ChildrenDock'
@@ -723,7 +722,6 @@ function ChatView({
                     <UsageReportCard report={row.report} sessionId={sessionId} />
                   ) : row.kind === 'timeline' ? (
                     <TurnTimelineView
-                      surface={homeVariant === 'pane' ? 'pane' : 'chat'}
                       timeline={row.timeline}
                       user={row.user}
                       onResolveApproval={onResolveApproval}
@@ -780,7 +778,6 @@ function ChatView({
         <>
           {sessionId !== '' && <GoalDock key={`goal:${sessionId}`} sessionId={sessionId} onHint={(text) => void onSend(text)} />}
           {sessionId !== '' && <ChildDecisions key={`children:${sessionId}`} sessionId={sessionId} />}
-          {sessionId !== '' && <ChecklistDock key={`checklist:${sessionId}`} sessionId={sessionId} />}
           <Questions key={`questions:${sessionId}`} sessionId={sessionId} />
           {queue}
           {composer}

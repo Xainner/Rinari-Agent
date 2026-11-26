@@ -60,8 +60,8 @@ it('stops motion while a subagent approval is pending and resumes after it is re
 it('keeps progress in place until completion and renders the final once', () => {
   const rendered = render(view())
   const publicNode = screen.getByText('Texto público')
-  // La tarjeta del turno en curso (#49): el tiempo total va a la derecha.
-  expect(screen.getByTestId('turn-total-time').textContent).toBe('4 s')
+  // The running turn's status lives above the composer (plan C), not here.
+  expect(document.querySelector('[data-live-activity]')).toBeNull()
   expect(screen.queryByTestId('turn-result')).toBeNull()
   expect(screen.queryByRole('button', { name: 'Ver actividad del turno' })).toBeNull()
   const progress: TurnTimeline = { ...base, items: [{ ...model, outputKind: 'progress', status: 'completed' }] }

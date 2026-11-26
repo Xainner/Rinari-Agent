@@ -20,11 +20,12 @@ scenario(async () => {
   await seedBoard({ boardId: 'activity', panes: panesFor(ids), focusedPaneId: 'pane_0' })
   await click('.view-switcher button[aria-label="Normal"]')
   await clickText('Actividad A', 'aside button', { includes: true })
-  // The live card enters (sampled frame by frame from the send): its slot grows instead of popping in,
-  // the chat follows without a jump the size of the card, and the card fades up. Reduced motion: it is just there.
-  await evaluate(`(() => { const out = window.__cardFrames = []; const start = performance.now(); const tick = () => { const wrap = document.querySelector('.turn-status-wrap'); const card = wrap?.querySelector('.turn-status'); const scroll = document.querySelector('${scroller}'); out.push({ h: wrap ? wrap.getBoundingClientRect().height : null, o: card ? Number(getComputedStyle(card).opacity) : null, top: scroll ? scroll.scrollTop : null }); if (performance.now() - start < 2500) requestAnimationFrame(tick) }; requestAnimationFrame(tick) })();0`)
+  // The live status enters at the top of the composer (plan C), sampled frame by frame from the send:
+  // its slot grows instead of popping in, the chat follows without a jump the size of the status, and
+  // its content fades up. Reduced motion: it is just there.
+  await evaluate(`(() => { const out = window.__cardFrames = []; const start = performance.now(); const tick = () => { const wrap = document.querySelector('.composer-surface [data-testid="composer-status"]'); const card = wrap?.querySelector('.checklist-dock'); const scroll = document.querySelector('${scroller}'); out.push({ h: wrap ? wrap.getBoundingClientRect().height : null, o: card ? Number(getComputedStyle(card).opacity) : null, top: scroll ? scroll.scrollTop : null }); if (performance.now() - start < 2500) requestAnimationFrame(tick) }; requestAnimationFrame(tick) })();0`)
   await send('', 'Revisa los archivos locales paso a paso')
-  await wait(`Boolean(document.querySelector('.turn-status-wrap'))`)
+  await wait(`Boolean(document.querySelector('.composer-surface [data-testid="composer-status"]'))`)
   await delay(900)
   {
     const reduced = await evaluate(`document.documentElement.dataset.motion === 'reduced' || matchMedia('(prefers-reduced-motion: reduce)').matches`)
@@ -46,7 +47,8 @@ scenario(async () => {
   await wait(`document.body.innerText.includes('PROGRESO 1')`)
   assert.equal(await evaluate(`Boolean(${q(body)})`), false)
   assert.equal(await evaluate(`Boolean(${q(show)})`), false, 'running legend never folds the turn')
-  // The live turn is a status card (#49): what Rinari does and, on the right, the total time.
+  // The live turn's status (plan C): what Rinari does and, on the right, the total time; never in the turn.
+  assert.equal(await evaluate(`Boolean(document.querySelector('[data-activity-turn] [data-live-activity]'))`), false, 'no live card at the top of the turn')
   assert(await evaluate(`/[0-9]+ (s|min)/.test(document.querySelector('[data-live-activity] [data-testid="turn-total-time"]')?.textContent ?? '')`), 'live status card with its total time')
   await screenshot('normal-live-visible')
   await evaluate(`${q('[data-operation-group] details > summary')}.click()`)

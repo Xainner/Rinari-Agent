@@ -77,7 +77,8 @@ export function paneDigest(input: {
     steps,
     action,
     lastResponse: lastFinalResponse(input.timelines, input.sessionId),
-    tokens: latest?.usage ? (latest.usage.context_tokens || latest.usage.total_tokens) : null,
+    // What the turn produced, like the composer's status and the turn's footer.
+    tokens: latest?.usage && latest.usage.output_tokens > 0 ? latest.usage.output_tokens : null,
     elapsedMs: latest ? turnDuration(latest, input.now) : null,
     children: working > 0 ? { done: input.children.length - working, total: input.children.length } : null,
   }

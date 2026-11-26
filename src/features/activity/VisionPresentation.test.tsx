@@ -4,6 +4,7 @@ import { afterEach, expect, it } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import { useUIStore } from '../../stores/ui'
 import TurnTimelineView from './TurnTimelineView'
+import TurnStatusLine from './TurnStatusCard'
 import { useActivityDisclosure } from '../../stores/activityDisclosure'
 import type { TurnTimeline, VisionTimelineItem } from './types'
 
@@ -17,6 +18,12 @@ function view(items: VisionTimelineItem[], status: TurnTimeline['status'] = 'com
     userMessage: 'Inspect this', items }
   return <I18nProvider lang="es"><TurnTimelineView timeline={timeline} now={2000}
     onResolveApproval={() => {}} onContinue={() => {}} /></I18nProvider>
+}
+/** The turn and, while it runs, its status above the composer (plan C). */
+function live(items: VisionTimelineItem[], status: TurnTimeline['status']) {
+  const timeline: TurnTimeline = { turnId: 't', sessionId: 's', status, startedAt: 1, userMessage: 'Inspect this', items }
+  return <I18nProvider lang="es"><TurnTimelineView timeline={timeline} now={2000} onResolveApproval={() => {}} onContinue={() => {}} />
+    <TurnStatusLine timeline={timeline} checklist={null} now={2000} /></I18nProvider>
 }
 function show(items: VisionTimelineItem[], status: TurnTimeline['status'] = 'completed', technical = false) {
   useUIStore.setState({ showTechnicalActivityNames: technical })
@@ -36,7 +43,8 @@ it('does not render ten successful auxiliary cards or their internal content', (
 it('shows one progress line and removes it after the last result arrives', () => {
   const batch = Array.from({ length: 9 }, (_, i) => ({ ...item, id: String(i),
     status: (i < 6 ? 'completed' : i === 6 ? 'running' : 'queued') as VisionTimelineItem['status'] }))
-  const result = show(batch, 'running')
+  useUIStore.setState({ showTechnicalActivityNames: false })
+  const result = render(live(batch, 'running'))
   expect(screen.getAllByRole('status')).toHaveLength(1)
   expect(screen.getByText('Analizando imágenes · 6 de 9')).toBeTruthy()
   expect(screen.queryByText('Pensando…')).toBeNull()
@@ -72,7 +80,8 @@ it('does not leave a stale historical operation spinning after a stopped turn', 
   expect(screen.getByText('Análisis interrumpido')).toBeTruthy()
 })
 it('uses a single cancellation indicator for an active visual batch', () => {
-  show([{ ...item, status: 'running' }, { ...item, id: 'q', status: 'queued' }], 'cancelling')
+  useUIStore.setState({ showTechnicalActivityNames: false })
+  render(live([{ ...item, status: 'running' }, { ...item, id: 'q', status: 'queued' }], 'cancelling'))
   expect(screen.getAllByRole('status')).toHaveLength(1)
   expect(screen.getByText('Cancelando…')).toBeTruthy()
 })

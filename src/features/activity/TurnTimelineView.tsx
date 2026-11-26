@@ -57,7 +57,7 @@ import { AgentInstruction, useAgentLabel } from '../agents/agentLabel'
 import { TurnSessionContext } from './turnSession'
 import { PresentedFiles } from './PresentedFiles'
 import LiveText from './LiveText'
-import TurnStatusCard, { TurnDoneHeader } from './TurnStatusCard'
+import { TurnDoneHeader } from './TurnStatusCard'
 import { SteerBubble } from './SteerBubble'
 import { commandMessage, engineApi } from '../../services/engine'
 import { agentInstruction, formatTool, toolCategory, type ToolCategory } from './formatActivity'
@@ -75,7 +75,6 @@ import { activityKey, useActivityDisclosure } from '../../stores/activityDisclos
 import { useAgentFocusStore } from '../../stores/agentFocus'
 import { useSessionDockStore } from '../../stores/sessionDock'
 import { useReducedMotion } from 'framer-motion'
-import { useTimeReached } from '../../lib/clock'
 import { runsInItsConversation } from '../schedules/scheduleModel'
 
 interface Props {
@@ -90,11 +89,6 @@ interface Props {
   opened?: ReactNode
   /** Abre la superficie de cambios de la sesión (fila de metadatos del turno). */
   onReviewChanges?: () => void
-  /**
-   * Dónde se pinta. En un panel de Boards la cara y el estado de Rinari viven
-   * en la cabecera del panel: aquí no se repite «Pensando…».
-   */
-  surface?: 'chat' | 'pane'
 }
 
 const ActivityActive = createContext(true)
@@ -888,10 +882,8 @@ const TurnTimelineView = memo(function TurnTimelineView(props: Props) {
 export default TurnTimelineView
 
 /** Lo que escribiste mientras Rinari trabajaba, en el punto donde lo leyó. */
-/** La subida del mensaje recién enviado (`.user-bubble.is-fresh`, `rinari-send 0.5s`). */
-const SEND_ARRIVAL_MS = 500
 
-function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions, opened, onReviewChanges, surface = 'chat' }: Props) {
+function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions, opened, onReviewChanges }: Props) {
   const { t } = useI18n()
   const home = useUIStore(s => s.flowHomeId)
   const technical = useUIStore(s => s.showTechnicalActivityNames)
@@ -903,22 +895,10 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
   const systemReducedMotion = useReducedMotion()
   const appReducedMotion = useUIStore(s => s.reduceMotion)
   const reducedMotion = appReducedMotion || Boolean(systemReducedMotion)
-  // En un panel, «pensando» y «preparando el turno» (sin acciones ni texto aún)
-  // ya lo dice la cabecera del panel con la cara de Rinari: la fila viva
-  // aparece cuando hay algo que contar (una acción, la respuesta, un
-  // reintento, la cancelación). `preparing` pasaba de 300 ms en un equipo
-  // ocupado y la fila salía un instante (plan-boards C1).
-  const paneThinking = surface === 'pane' && (state.kind === 'thinking' || state.kind === 'preparing') && timeline.status !== 'cancelling'
-  // Primero llega tu mensaje, después aparece Rinari (#51): la cabecera viva
-  // espera a que termine la subida de la burbuja (`rinari-send`, 500 ms; nada
-  // con movimiento reducido), y `turn.preparing` no cuenta como algo que
-  // contar.
-  const arrival = reducedMotion ? 0 : SEND_ARRIVAL_MS
-  const meaningful = timeline.items.some((item) => !(item.type === 'system' && item.kind === 'turn_preparing'))
-  const headerAt = timeline.startedAt + (meaningful ? arrival : Math.max(300, arrival))
-  // One wake-up when the header is due, not a clock re-rendering the turn.
-  const headerDue = useTimeReached(headerAt, active && now === undefined)
-  const showHeader = !paneThinking && (!active || timeline.status === 'cancelling' || (now === undefined ? headerDue : now >= headerAt))
+  // The live status lives above the composer (ComposerStatus): a running
+  // turn shows only its work here. A finished turn's card says how long it
+  // took, so the footer does not repeat it.
+  const durationInHeader = !active
   const emphasis = Boolean(projection.final) && (projection.actions >= 3 || (turnDuration(timeline, now ?? Date.now()) ?? 0) >= 10_000)
   // El cambio de modelo va arriba del turno, antes del primer mensaje (#29); en
   // un historial viejo, con el aviso después del texto, también se sube aquí.
@@ -930,8 +910,6 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
     <ActivityMotion.Provider value={working}><ActivityActive.Provider value={active}><ActivityTransition identity={`${active}:${projection.final?.id ?? ''}:${projection.segments.length}`} live={active} calm={reducedMotion}>
       {user ? <MessageBubble message={user.origin || !timeline.origin ? user : { ...user, origin: timeline.origin }} /> : timeline.userMessage ? <MessageBubble message={{ id: `user-${timeline.turnId}`, role: 'user', content: timeline.userMessage, createdAt: timeline.startedAt, turnId: timeline.turnId, origin: timeline.origin }} /> : null}
       {modelChange && <ModelChangeNotice change={modelChange} animate={active} />}
-      {/* La cabecera del turno en curso, como tarjeta de estado (#49). */}
-      {active && showHeader && <TurnStatusCard timeline={timeline} now={now} />}
       {projection.segments.map((segment, index) => {
         const previous = index < projection.segments.length - 1
         const items = renderableActivity(segment.items, technical, active)
@@ -961,7 +939,7 @@ function TurnTimelineBody({ timeline, user, now, onResolveApproval, planActions,
       {projection.recoveries.map(item => item.type !== 'model' && <InspectionScope.Provider key={item.id} value={activityKey(home, timeline.sessionId, timeline.turnId, item.id)}><ActivityRow item={item} onResolveApproval={onResolveApproval} /></InspectionScope.Provider>)}
       <TurnResult timeline={timeline} planActions={planActions} provisional={!active ? projection.provisional : undefined} />
       {opened}
-      <TurnMeta timeline={timeline} user={user} actions={projection.actions} emphasis={emphasis} durationInHeader={showHeader} onReviewChanges={onReviewChanges} />
+      <TurnMeta timeline={timeline} user={user} actions={projection.actions} emphasis={emphasis} durationInHeader={durationInHeader} onReviewChanges={onReviewChanges} />
     </ActivityTransition></ActivityActive.Provider></ActivityMotion.Provider>
   )
 }

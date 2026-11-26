@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import { engineApi } from '../../services/engine'
 import type { Checklist, ChecklistItem } from '../../types/protocol.generated'
-import { ChecklistDock } from './ChecklistDock'
+import { ComposerStatus } from '../activity/ComposerStatus'
 import { applyChecklistEvent, useChecklistStore } from './checklistStore'
 
 function list(state: Checklist['state'], items: ChecklistItem[], revision = 1): Checklist {
@@ -18,7 +18,7 @@ const steps = (...statuses: ChecklistItem['status'][]): ChecklistItem[] =>
   statuses.map((status, i) => ({ id: `s${i + 1}`, content: `Paso ${i + 1}`, status }))
 
 function mount() {
-  return render(<I18nProvider lang="es"><ChecklistDock sessionId="s1" /></I18nProvider>)
+  return render(<I18nProvider lang="es"><ComposerStatus sessionId="s1" /></I18nProvider>)
 }
 
 beforeEach(() => {

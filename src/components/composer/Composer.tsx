@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent } from 'react'
+import { ComposerStatus } from '../../features/activity/ComposerStatus'
 import DictationButton from '../../features/dictation/DictationButton'
 import { useDictationPrefs } from '../../features/dictation/dictationPrefs'
 import { useReducedMotion } from 'framer-motion'
@@ -796,6 +797,8 @@ function Composer({
         className="composer-surface rounded-[22px] border p-2.5 transition-colors"
       >
         {isStreaming && <span className="flow-ring" aria-hidden="true"><i /></span>}
+        {/* Lo que hace Rinari y su lista de pasos, siempre a la vista (plan C). */}
+        {sessionId && <ComposerStatus sessionId={sessionId} />}
         {attachments.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5 px-1">
             {attachments.map((file) => (

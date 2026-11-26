@@ -1,14 +1,13 @@
-import { useEffect, useState } from 'react'
 import { TriangleAlert } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { useNow } from '../../lib/clock'
 import { TurnAvatar } from './TurnAvatar'
 import { rinariStateForTurn } from '../rinari/turnState'
-import { useChecklistStore } from '../checklist/checklistStore'
 import { activityState, turnDuration } from './activityPresentation'
-import { ActivityText } from './ActivityText'
+import { ActivityMotion, ActivityText } from './ActivityText'
 import { ActivityHeader, liveActionLabel } from './ActivityHeader'
 import TokenUsage from './TokenUsageIndicator'
+import type { Checklist } from '../../types/protocol.generated'
 import type { TimelineItem, TurnTimeline } from './types'
 
 /** «25 s», «20 min», «1 h 05 min»: corto, para la tarjeta. */
@@ -21,18 +20,10 @@ export function shortElapsed(ms: number): string {
 }
 
 /**
- * Turnos cuya tarjeta ya entró: si se vuelve a montar (Virtua al desplazarte
- * lejos y volver, cambiar de vista) aparece quieta, sin repetir la entrada.
- */
-const entered = new Set<string>()
-const ENTERED_KEEP = 200
-
-/**
- * La cabecera de un turno terminado (#E de la ronda 1434), con el diseño de
- * la tarjeta de trabajando: la cara de Rinari al acabar, «Ha trabajado
- * durante…» y, a la derecha, las incidencias en un chip ámbar. Va dentro del
- * botón que despliega la actividad, sin borde vivo: el turno ya no trabaja.
- * Mide lo mismo que la de trabajando, así el cambio al terminar no salta.
+ * La cabecera de un turno terminado (#E de la ronda 1434): la cara de Rinari
+ * al acabar, «Ha trabajado durante…» y, a la derecha, las incidencias en un
+ * chip ámbar. Va dentro del botón que despliega la actividad, sin borde vivo:
+ * el turno ya no trabaja.
  */
 export function TurnDoneHeader({ timeline, now, issues }: { timeline: TurnTimeline; now: number; issues: number }) {
   const { t } = useI18n()
@@ -58,63 +49,61 @@ function actionSince(timeline: TurnTimeline): number {
   return model?.occurredAt ?? timeline.startedAt
 }
 
+/** The list's step in progress, when the list belongs to this turn. */
+export function turnStep(timeline: TurnTimeline, checklist: Checklist | null) {
+  const own = checklist && (!checklist.turn_id || checklist.turn_id === timeline.turnId) ? checklist : null
+  const index = own ? own.items.findIndex((item) => item.status === 'in_progress') : -1
+  return own && index >= 0 ? { item: own.items[index], index, total: own.items.length } : null
+}
+
 /**
- * La cabecera del turno en curso (plan 0.4.0 #49, diseño A): qué hace Rinari
- * (el paso de la lista si hay lista; si no, la acción del momento), «Paso
- * n/m», la acción con su propio tiempo (se reinicia con cada acción: así se
- * distingue un turno largo que avanza de uno trabado), y a la derecha el
- * tiempo total y los tokens. Abajo, una línea viva mientras trabaja. En un
- * panel angosto queda en una sola línea, con el detalle al pasar el ratón.
+ * The running turn in one line, for the status above the composer (plan C):
+ * Rinari's face, the step of the list («3/4») or the action of the moment as
+ * the title, then the action with its own clock (it restarts with each
+ * action, so a long turn that moves reads apart from a stuck one), and on the
+ * right the turn's total time and the tokens the model has produced.
+ *
+ * It owns the turn's clock: a tick re-renders this line, not the chat.
  */
-export default function TurnStatusCard({ timeline, now: fixedNow }: { timeline: TurnTimeline; now?: number }) {
+export default function TurnStatusLine({ timeline, checklist, now: fixedNow }: { timeline: TurnTimeline; checklist: Checklist | null; now?: number }) {
   const { t } = useI18n()
-  // The card owns the turn's clock: a tick re-renders the card, not the chat.
   const ticking = useNow(200, fixedNow === undefined)
   const now = fixedNow ?? ticking
-  const checklist = useChecklistStore((state) => state.bySession[timeline.sessionId]?.checklist ?? null)
   const state = activityState(timeline)
   const action = liveActionLabel(timeline, t)
-  // La lista vale si es de este turno (o sin turno marcado) y tiene un paso en curso.
-  const ownList = checklist && (!checklist.turn_id || checklist.turn_id === timeline.turnId) ? checklist : null
-  const stepIndex = ownList ? ownList.items.findIndex((item) => item.status === 'in_progress') : -1
-  const step = stepIndex >= 0 && ownList ? ownList.items[stepIndex] : null
-  const title = step ? (step.active_form || step.content) : action
+  const step = turnStep(timeline, checklist)
+  const title = step ? (step.item.active_form || step.item.content) : action
   const total = turnDuration(timeline, now)
   const since = actionSince(timeline)
-  const actionMs = Math.max(0, now - since)
   // Mientras la acción empezó con el turno, su reloj marca lo mismo que el
   // total: se muestra solo el total (plan 0.4.0 extras, E2).
-  const ownClock = since - timeline.startedAt >= 2000
-  const stepLabel = step && ownList ? t('turn.status.step', { n: stepIndex + 1, total: ownList.items.length }) : null
-  const detail = [stepLabel, step ? action : null, ownClock ? shortElapsed(actionMs) : null].filter(Boolean).join(' · ')
+  // Y un reloj que acaba de empezar no dice nada («0 s»): sale al primer segundo.
+  const ownClock = since - timeline.startedAt >= 2000 && now - since >= 1000
   const working = !['approval', 'question', 'cancelling'].includes(state.kind)
-  // La primera vez, entra: su hueco crece (el chat baja con él, sin saltar) y la tarjeta llega después.
-  const [entering] = useState(() => !entered.has(timeline.turnId))
-  useEffect(() => {
-    entered.add(timeline.turnId)
-    if (entered.size > ENTERED_KEEP) entered.delete(entered.values().next().value!)
-  }, [timeline.turnId])
+  const detail = [
+    step ? action : null,
+    ownClock ? shortElapsed(Math.max(0, now - since)) : null,
+    state.parallel > 0 ? t('activity.parallelAgents', { n: state.parallel }) : null,
+  ].filter((part): part is string => Boolean(part))
+  const label = [step ? t('turn.status.step', { n: step.index + 1, total: step.total }) : null, title, ...detail].filter(Boolean).join(' · ')
   return (
-    <div className="turn-status-wrap" data-entering={entering || undefined}>
-      <div data-live-activity className="turn-status" data-working={working || undefined} title={`${title} · ${detail}`}>
-        {working && <span className="flow-ring" aria-hidden="true"><i /></span>}
-        <TurnAvatar sessionId={timeline.sessionId} state={rinariStateForTurn(state.kind)} size={38} />
-        <div className="turn-status-body">
-          <ActivityText active={working} role="status" aria-live="polite" className="turn-status-title">{title}</ActivityText>
-          <div className="turn-status-detail">
-            {stepLabel && <span className="turn-status-step">{stepLabel}</span>}
-            {step && <span className="turn-status-action">{action}</span>}
-            {ownClock && <span className="turn-status-clock" data-testid="turn-action-time">{shortElapsed(actionMs)}</span>}
-            {state.parallel > 0 && <span>{t('activity.parallelAgents', { n: state.parallel })}</span>}
-          </div>
-        </div>
-        <div className="turn-status-meta">
-          {stepLabel && <span className="turn-status-step is-compact">{stepIndex + 1}/{ownList!.items.length}</span>}
-          <span className="tabular-nums" data-testid="turn-total-time">{total === null ? '—' : shortElapsed(total)}</span>
-          <TokenUsage usage={timeline.usage} />
-        </div>
-        <span className="turn-status-line" aria-hidden="true" />
-      </div>
-    </div>
+    <span className="turn-line" data-live-activity data-working={working || undefined} data-state={state.kind} title={label}>
+      <span className="turn-line-avatar"><TurnAvatar sessionId={timeline.sessionId} state={rinariStateForTurn(state.kind)} size={22} /></span>
+      {step && <span className="turn-line-count" aria-label={t('turn.status.step', { n: step.index + 1, total: step.total })}>{step.index + 1}/{step.total}</span>}
+      <ActivityMotion.Provider value={working}>
+        <ActivityText active={working} role="status" aria-live="polite" className="turn-line-title">{title}</ActivityText>
+      </ActivityMotion.Provider>
+      {detail.length > 0 && (
+        <span className="turn-line-detail">
+          {step && <span className="turn-line-action">{action}</span>}
+          {ownClock && <span className="turn-line-clock" data-testid="turn-action-time">{shortElapsed(Math.max(0, now - since))}</span>}
+          {state.parallel > 0 && <span>{t('activity.parallelAgents', { n: state.parallel })}</span>}
+        </span>
+      )}
+      <span className="turn-line-meta">
+        <span className="tabular-nums" data-testid="turn-total-time">{total === null ? '—' : shortElapsed(total)}</span>
+        <TokenUsage usage={timeline.usage} />
+      </span>
+    </span>
   )
 }

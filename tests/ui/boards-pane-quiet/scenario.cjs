@@ -1,8 +1,8 @@
-// Boards (plan-boards C1): al enviar en un panel, la fila viva del turno no
-// aparece mientras Rinari solo prepara el turno o piensa; eso ya lo dice la
-// cara de Rinari en la cabecera del panel. Se muestrea cuadro a cuadro desde
-// el envío hasta que el modelo (retenido) responde. Con la respuesta, sí hay
-// algo que contar y el resultado se ve.
+// Boards (plan-boards C1, plan C): al enviar en un panel, ninguna fila viva
+// aparece en el chat mientras Rinari prepara el turno o piensa. Lo que hace va
+// en la cabecera del composer del panel, sin su cara: la cara vive en la
+// cabecera del panel. Se muestrea cuadro a cuadro desde el envío hasta que el
+// modelo (retenido) responde. Con la respuesta, el resultado se ve.
 const assert = require('node:assert/strict')
 const { ui, click, command, evaluate, input, report, scenario, screenshot, seedBoard, panesFor, until, useLocalModel, wait } = require('../harness.cjs')
 
@@ -20,8 +20,9 @@ scenario(async () => {
     const tick = () => {
       const root = document.querySelector('${pane}')
       out.push({
-        live: Boolean(root?.querySelector('[data-live-activity]')),
-        preparing: Boolean(root?.innerText.includes('Preparando el turno')),
+        live: Boolean(root?.querySelector('[data-activity-turn] [data-live-activity]')),
+        status: Boolean(root?.querySelector('.composer-surface [data-live-activity]')),
+        composerFace: [...(root?.querySelectorAll('.composer-surface .turn-line-avatar') ?? [])].some((node) => node.getBoundingClientRect().width > 0),
         face: root?.querySelector('.pane-header-face') ? 1 : 0,
       })
       if (!window.__quietStop) requestAnimationFrame(tick)
@@ -36,8 +37,9 @@ scenario(async () => {
   await new Promise((resolve) => setTimeout(resolve, 1500))
   const frames = await evaluate(`window.__quietFrames.slice()`)
   assert(frames.length > 20, 'frames were sampled while the turn prepared and thought: ' + frames.length)
-  assert.equal(frames.filter((frame) => frame.live).length, 0, 'no live activity row in the pane before there is something to tell')
-  assert.equal(frames.filter((frame) => frame.preparing).length, 0, '«Preparando el turno…» never shows in the pane')
+  assert.equal(frames.filter((frame) => frame.live).length, 0, 'no live activity row in the pane chat')
+  assert(frames.some((frame) => frame.status), 'the pane composer says what Rinari is doing')
+  assert.equal(frames.filter((frame) => frame.composerFace).length, 0, 'without her face: it is in the pane header')
   assert(frames.every((frame) => frame.face === 1), 'Rinari\'s face stays in the pane header')
   await screenshot('pane-waiting')
   const release = await (await fetch(origin() + '/__release')).json()
@@ -45,5 +47,5 @@ scenario(async () => {
   await wait(`document.querySelector('${pane}')?.innerText.includes('RESPUESTA DEL PANEL')`)
   await evaluate(`window.__quietStop = true;0`)
   await screenshot('pane-answered')
-  report({ frames: frames.length, live: 0, preparing: 0 })
+  report({ frames: frames.length, live: 0, status: frames.filter((frame) => frame.status).length })
 })

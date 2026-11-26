@@ -59,6 +59,7 @@ Antes de escribir estilos, usa lo que ya existe:
 - Panel lateral (#47): un botón por vista en la barra de título (`DockViewButtons`, con su indicador vivo) y hasta cuatro vistas en mosaico (`SessionDock`). Una vista nueva del panel se añade a `DockView` en `stores/sessionDock.ts`, con su icono y nombre en `features/session/dockViews.tsx`; no se crea otra barra de pestañas.
 - Tarjetas de ajustes: `Section` (`.settings-card`). Tostadas: Sonner con `.rinari-toast`.
 - Estados vacíos: un chibi de Rinari + título en display + una frase útil (`.dock-empty`, `.mcp-empty`, `.notify-empty`).
+- Estado del turno: vive arriba dentro del composer (`ComposerStatus`), como su cabecera de borde a borde y sin caja propia: cara, paso de la lista («2/3») o acción, la acción con su reloj, el tiempo total y los tokens de salida («↓ 1,2 mil tokens»). La lista de pasos comparte esa barra y se abre hacia arriba. Entra con su alto desde 0 al empezar el turno y se pliega al terminar; en el turno solo queda el trabajo, y al acabar llega la tarjeta «Ha trabajado durante…». En Boards va sin la cara (vive en la cabecera del panel). No pongas otra tarjeta de estado dentro del chat.
 - Rinari: `<RinariAvatar state=…>` (`src/features/rinari`). Estados: `idle`, `listening`, `thinking`, `working`, `streaming`, `waiting`, `done`, `error`, `offline`.
 
 No crees una segunda familia de botones, badges o puntos de estado.

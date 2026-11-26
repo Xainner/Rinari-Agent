@@ -3807,6 +3807,10 @@ button.memory-origin:hover { color: var(--text); text-decoration: underline; tex
 .agency-tour-points small, .agency-tour-choice small { display: block; margin-top: 2px; font-size: 12px; line-height: 1.45; color: var(--text-muted); }
 .agency-tour-icon { display: grid; width: 30px; height: 30px; flex-shrink: 0; place-items: center; border-radius: 9px; background: color-mix(in srgb, var(--accent) 14%, transparent); box-shadow: inset 0 0 0 1px var(--line-2); color: var(--accent-2); }
 .agency-tour-choices { display: grid; gap: 8px; margin-top: 20px; }
+/* Four ways to start («Arma tu equipo» first): tighter cards, and the repeat note is the last choice's own copy. */
+.agency-tour-choices:has(> :nth-child(4)) { gap: 6px; margin-top: 14px; }
+.agency-tour-choices:has(> :nth-child(4)) .agency-tour-choice { padding-top: 9px; padding-bottom: 9px; }
+.welcome-panel:has(.agency-tour-choices > :nth-child(4)) .welcome-note { display: none; }
 .agency-tour-choice { display: flex; min-width: 0; align-items: flex-start; gap: 12px; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--bg-subtle); text-align: left; transition: border-color var(--dur-fast), background-color var(--dur-fast); }
 .agency-tour-choice:hover:not(:disabled) { border-color: var(--line-3); background: var(--bg-hover); }
 .agency-tour-choice:disabled { cursor: default; opacity: 0.6; }
@@ -4184,6 +4188,148 @@ button.memory-origin:hover { color: var(--text); text-decoration: underline; tex
 .agency-template-head .agency-option-check { position: static; }
 .agency-template-purpose { font-size: 12.5px; line-height: 1.5; color: var(--text-muted); }
 .agency-template-roles { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* «Arma tu equipo con Rinari»: describir, la propuesta en revisión y «Para empezar». */
+.team-builder-intro { display: flex; align-items: center; gap: 18px; padding: 4px 2px 2px; animation: rinari-rise var(--dur-slow) var(--ease-out) both; }
+.team-builder-intro .rinari-avatar { flex-shrink: 0; }
+.team-builder-title { margin: 2px 0 0; font-family: var(--font-display); font-size: 26px; font-weight: 700; line-height: 1.2; color: var(--text); }
+.team-builder-copy { margin: 6px 0 0; max-width: 620px; font-size: 13.5px; line-height: 1.6; color: var(--text-muted); }
+.team-builder-prompt { position: relative; display: flex; flex-direction: column; border: 1px solid var(--line-2); border-radius: var(--r-lg); background: linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 86%, transparent), color-mix(in srgb, var(--bg-subtle) 86%, transparent)); box-shadow: var(--inset-hi), var(--sh-1); transition: border-color var(--dur-base), box-shadow var(--dur-base); animation: rinari-rise var(--dur-slow) var(--ease-out) 60ms both; }
+.team-builder-prompt:focus-within { border-color: color-mix(in srgb, var(--accent-2) 60%, transparent); box-shadow: var(--inset-hi), 0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent), var(--glow-1); }
+.team-builder-prompt-input { min-height: 168px; resize: vertical; padding: 18px 20px 10px; border: 0; background: transparent; font-size: 14.5px; line-height: 1.65; color: var(--text); outline: none; }
+.team-builder-prompt-input::placeholder { color: var(--text-subtle); }
+.team-builder-prompt-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px 12px; border-top: 1px solid var(--line-1); }
+.team-builder-model { flex: 0 1 280px; min-width: 180px; }
+.team-builder-model > button { min-height: 34px; font-size: 12.5px; }
+.team-builder-tips { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.team-builder-tips li { display: flex; min-width: 0; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: color-mix(in srgb, var(--bg-subtle) 70%, transparent); animation: rinari-rise var(--dur-slow) var(--ease-out) both; }
+.team-builder-tips li:nth-child(1) { animation-delay: 120ms; }
+.team-builder-tips li:nth-child(2) { animation-delay: 160ms; }
+.team-builder-tips li:nth-child(3) { animation-delay: 200ms; }
+.team-builder-tips li:nth-child(4) { animation-delay: 240ms; }
+.team-builder-tips b { display: block; font-size: 12.5px; font-weight: 600; color: var(--text); }
+.team-builder-tips small { display: block; margin-top: 2px; font-size: 11.5px; line-height: 1.45; color: var(--text-muted); }
+
+/* Mientras Rinari piensa: su cara, lo que se le pidió y una barra que dice que sigue. */
+.team-builder-working { display: flex; min-height: 100%; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 48px 32px; text-align: center; animation: rinari-fade-in var(--dur-slow) var(--ease-out) both; }
+.team-builder-working-title { margin: 6px 0 0; font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--text); }
+.team-builder-working-quote { display: -webkit-box; max-width: 560px; margin: 0; overflow: hidden; font-size: 13px; line-height: 1.6; color: var(--text-muted); -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+.team-builder-working-bar { width: min(320px, 70%); }
+
+/* Preguntas de Rinari. */
+.team-builder-questions { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.team-builder-question { padding: 14px 16px; border: 1px solid var(--line-1); border-radius: var(--r-lg); background: linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 80%, transparent), color-mix(in srgb, var(--bg-subtle) 80%, transparent)); box-shadow: var(--inset-hi); animation: rinari-rise var(--dur-slow) var(--ease-out) both; }
+.team-builder-question:nth-child(2) { animation-delay: 60ms; }
+.team-builder-question:nth-child(3) { animation-delay: 120ms; }
+.team-builder-question label { display: grid; gap: 10px; }
+.team-builder-question-text { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; font-weight: 600; line-height: 1.45; color: var(--text); }
+.team-builder-question-text svg { flex-shrink: 0; margin-top: 2px; color: var(--accent-2); }
+
+/* La revisión. */
+.team-builder-feedback { animation: rinari-rise var(--dur-slow) var(--ease-out) both; }
+.team-builder-pending { padding: 14px 18px; border: 1px solid color-mix(in srgb, var(--warning) 35%, transparent); border-radius: var(--r-lg); background: color-mix(in srgb, var(--warning) 6%, var(--bg-subtle)); }
+.team-builder-pending-head { display: flex; align-items: center; gap: 8px; color: var(--warning); }
+.team-builder-pending-head h2 { margin: 0; font-family: var(--font-display); font-size: 14.5px; font-weight: 700; color: var(--text); }
+.team-builder-pending ul { display: grid; gap: 6px; margin: 10px 0; padding: 0; list-style: none; }
+.team-builder-pending li { display: flex; min-width: 0; align-items: center; gap: 10px; font-size: 13px; color: var(--text); }
+.team-builder-agents { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.team-builder-agent { position: relative; display: grid; align-content: start; gap: 10px; padding: 14px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--bg-subtle); transition: border-color var(--dur-fast), box-shadow var(--dur-base); animation: rinari-rise var(--dur-base) var(--ease-out) both; }
+.team-builder-agent:hover { border-color: var(--line-3); }
+.team-builder-agent.is-chief { border-color: color-mix(in srgb, var(--warning) 45%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warning) 8%, transparent); }
+.team-builder-agent.is-deciding { border-color: color-mix(in srgb, var(--accent-2) 55%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent); }
+.team-builder-agent-head { display: flex; min-width: 0; align-items: flex-start; gap: 10px; }
+.team-builder-agent-head .agency-chief-toggle { margin: 4px 0 0; }
+.team-builder-agent-name, .team-builder-agent-role, .team-builder-step-name { display: block; width: 100%; padding: 1px 6px; margin-left: -6px; border: 1px solid transparent; border-radius: var(--r-xs); background: transparent; color: var(--text); outline: none; text-overflow: ellipsis; transition: border-color var(--dur-fast), background-color var(--dur-fast); }
+.team-builder-agent-name { font-family: var(--font-display); font-size: 15.5px; font-weight: 700; }
+.team-builder-agent-role { margin-top: 1px; font-size: 12.5px; color: var(--text-muted); }
+.team-builder-step-name { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 600; }
+.team-builder-agent-name:hover:not(:disabled), .team-builder-agent-role:hover:not(:disabled), .team-builder-step-name:hover { border-color: var(--line-1); }
+.team-builder-agent-name:focus, .team-builder-agent-role:focus, .team-builder-step-name:focus { border-color: color-mix(in srgb, var(--accent-2) 55%, transparent); background: var(--bg-inset); }
+.team-builder-agent-name::placeholder, .team-builder-agent-role::placeholder, .team-builder-step-name::placeholder { color: var(--text-subtle); }
+.team-builder-agent-name:disabled, .team-builder-agent-role:disabled { cursor: default; }
+.team-builder-reuse { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 8px 10px; padding: 10px 12px; border-radius: var(--r-sm); background: color-mix(in srgb, var(--accent) 8%, var(--bg-inset)); box-shadow: inset 0 0 0 1px var(--line-1); font-size: 12.5px; line-height: 1.45; color: var(--text-muted); }
+.team-builder-reuse > svg { margin-top: 2px; color: var(--accent-2); }
+.team-builder-reuse > .seg-tabs { grid-column: 2; max-width: 100%; }
+.team-builder-reuse p { margin: 0; }
+.team-builder-reuse.is-open { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-2) 45%, transparent); color: var(--text); }
+.team-builder-uses { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.team-builder-use { height: 24px; gap: 6px; padding: 0 4px 0 8px; font-weight: 500; }
+.team-builder-use .connector-logo { border-radius: 5px; }
+.team-builder-use-note { font-size: 10.5px; font-weight: 600; text-transform: lowercase; opacity: 0.85; }
+.team-builder-use-x { display: grid; width: 16px; height: 16px; place-items: center; border-radius: 999px; color: inherit; opacity: 0.6; transition: opacity var(--dur-fast), background-color var(--dur-fast); }
+.team-builder-use-x:hover { background: color-mix(in srgb, var(--tone) 20%, transparent); opacity: 1; }
+.team-builder-use-add { display: inline-flex; height: 24px; align-items: center; gap: 4px; padding: 0 8px; border: 1px dashed var(--line-2); border-radius: 999px; font-size: 11.5px; font-weight: 600; color: var(--text-muted); transition: border-color var(--dur-fast), color var(--dur-fast), background-color var(--dur-fast); }
+.team-builder-use-add:hover { border-color: color-mix(in srgb, var(--accent-2) 55%, transparent); background: var(--bg-hover); color: var(--text); }
+.team-builder-use-menu { max-height: 320px; overflow-y: auto; }
+.team-builder-more { display: inline-flex; width: fit-content; align-items: center; gap: 6px; padding: 2px 0; font-size: 12px; font-weight: 600; color: var(--text-muted); transition: color var(--dur-fast); }
+.team-builder-more:hover { color: var(--text); }
+.team-builder-more-hint { font-weight: 500; color: var(--text-subtle); }
+.team-builder-more-hint::before { content: '·'; margin-right: 6px; }
+.team-builder-agent-details { display: grid; gap: 10px; animation: rinari-pop-in var(--dur-base) var(--ease-out) both; }
+.team-builder-detail-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.team-builder-mini-label { display: inline-flex; align-items: center; gap: 5px; margin: 0; font-size: 11.5px; font-weight: 600; color: var(--text-muted); }
+.team-builder-icon-row { display: flex; flex-shrink: 0; gap: 2px; }
+.team-builder-warn { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12px; color: var(--warning); }
+.team-builder-empty { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border: 1px dashed var(--line-2); border-radius: var(--r-md); font-size: 13px; color: var(--text-muted); }
+.team-builder-empty p { margin: 0; }
+
+/* El flujo como una línea de pasos numerados. */
+.team-builder-flow-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.team-builder-flow-head .field-input { flex: 1; min-width: 200px; }
+.team-builder-steps { position: relative; display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.team-builder-step { position: relative; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; animation: rinari-rise var(--dur-base) var(--ease-out) both; }
+.team-builder-step:not(:last-child)::before { content: ''; position: absolute; top: 34px; bottom: -12px; left: 14px; width: 2px; border-radius: 2px; background: linear-gradient(180deg, color-mix(in srgb, var(--accent-2) 45%, transparent), var(--line-1)); }
+.team-builder-step-num { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 999px; background: var(--grad-brand); font-family: var(--font-display); font-size: 13px; font-weight: 700; color: #fff; box-shadow: var(--glow-1); }
+.team-builder-step-card, .team-builder-routine { display: grid; min-width: 0; gap: 10px; padding: 12px 14px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: var(--bg-subtle); }
+.team-builder-routine { animation: rinari-rise var(--dur-base) var(--ease-out) both; }
+.team-builder-step-top { display: flex; min-width: 0; align-items: center; gap: 8px; }
+.team-builder-step-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.team-builder-who { display: flex; flex-wrap: wrap; gap: 6px; }
+.team-builder-who-chip { display: inline-flex; max-width: 200px; height: 28px; align-items: center; gap: 6px; padding: 0 10px 0 5px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--bg-inset); font-size: 12px; color: var(--text-muted); transition: border-color var(--dur-fast), background-color var(--dur-fast), color var(--dur-fast); }
+.team-builder-who-chip:hover { border-color: var(--line-3); color: var(--text); }
+.team-builder-who-chip[aria-pressed='true'] { border-color: color-mix(in srgb, var(--accent-2) 60%, transparent); background: color-mix(in srgb, var(--accent) 16%, var(--bg-inset)); color: var(--text); }
+
+/* «Cuándo» de una rutina. */
+.team-builder-when { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.team-builder-when-fields { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.team-builder-time, .team-builder-every { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-muted); }
+.team-builder-time .field-input { width: 112px; height: 32px; font-variant-numeric: tabular-nums; }
+.team-builder-every > .field-input { width: 72px; height: 32px; }
+.team-builder-cron { width: 160px; height: 32px; font-family: var(--font-mono); font-size: 12px; }
+.team-builder-days { display: flex; gap: 4px; }
+.team-builder-day { display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid var(--line-2); border-radius: 999px; background: var(--bg-inset); font-size: 11.5px; font-weight: 600; text-transform: capitalize; color: var(--text-muted); transition: border-color var(--dur-fast), background-color var(--dur-fast), color var(--dur-fast); }
+.team-builder-day:hover { border-color: var(--line-3); color: var(--text); }
+.team-builder-day[aria-pressed='true'] { border-color: transparent; background: var(--grad-brand); color: #fff; }
+
+/* Carpetas y supuestos. */
+.team-builder-folder { display: flex; min-width: 0; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: var(--bg-subtle); }
+.team-builder-folder-icon { display: grid; width: 30px; height: 30px; flex-shrink: 0; place-items: center; border-radius: 9px; background: var(--bg-hover); color: var(--accent-2); }
+.team-builder-folder-title { margin: 0; font-size: 12.5px; font-weight: 600; color: var(--text); }
+.team-builder-path { margin: 1px 0 0; overflow: hidden; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted); text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+.team-builder-assumptions { padding-top: 12px; border-top: 1px solid var(--line-1); }
+.team-builder-assumptions ul { display: grid; gap: 4px; margin: 8px 0 0; padding: 0; list-style: none; }
+.team-builder-assumptions li { display: flex; align-items: center; gap: 8px; padding: 6px 4px 6px 10px; border-radius: var(--r-sm); background: var(--bg-inset); font-size: 12.5px; line-height: 1.45; color: var(--text-muted); }
+.team-builder-assumptions .team-builder-mini-label svg { color: var(--warning); }
+.team-builder-blocker { min-width: 0; overflow: hidden; font-size: 12px; color: var(--warning); text-overflow: ellipsis; white-space: nowrap; }
+
+/* «Para empezar» en el panel del equipo. */
+.team-setup { border-color: color-mix(in srgb, var(--warning) 30%, transparent); }
+.team-setup[data-done] { border-color: color-mix(in srgb, var(--success) 30%, transparent); }
+.team-setup .agency-work-head { gap: 8px; }
+.team-setup-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.team-setup-item { display: grid; gap: 10px; padding: 10px 12px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: var(--bg-subtle); animation: rinari-rise var(--dur-base) var(--ease-out) both; }
+.team-setup-item.is-done { display: flex; align-items: center; gap: 8px; padding: 7px 12px; font-size: 12.5px; color: var(--text-muted); animation: none; }
+.team-setup-check { flex-shrink: 0; color: var(--success); }
+.team-setup-how { flex-shrink: 0; font-size: 11.5px; color: var(--text-subtle); }
+.team-setup-row { display: flex; min-width: 0; align-items: center; gap: 10px; }
+.team-setup-need { display: grid; width: 26px; height: 26px; flex-shrink: 0; place-items: center; border-radius: 8px; background: color-mix(in srgb, var(--warning) 16%, transparent); color: var(--warning); }
+.team-setup-title { margin: 0; font-size: 13px; font-weight: 600; line-height: 1.35; color: var(--text); }
+.team-setup-for { display: flex; align-items: center; gap: 4px; margin: 2px 0 0; font-size: 11.5px; color: var(--text-subtle); }
+.team-setup-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+@media (max-width: 720px) {
+  .team-builder-intro { align-items: flex-start; }
+  .team-builder-agents { grid-template-columns: minmax(0, 1fr); }
+}
 
 /* La portada: «Te espera», equipos y agentes, cada sección con su título. */
 .agency-home-section { max-width: 1100px; margin-top: 26px; }

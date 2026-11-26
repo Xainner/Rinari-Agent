@@ -7778,6 +7778,251 @@
       "host_effects": []
     },
     {
+      "command": "agency_team_draft",
+      "module": "agency",
+      "args": [
+        {
+          "name": "description",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "language",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "model",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "answers",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        },
+        {
+          "name": "previous",
+          "type": "Option<serde_json::Value>",
+          "optional": true
+        },
+        {
+          "name": "feedback",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "rinari_profile_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.draft",
+      "engine_params": [
+        {
+          "key": "description",
+          "from": "description",
+          "optional": false
+        },
+        {
+          "key": "language",
+          "from": "language",
+          "optional": true
+        },
+        {
+          "key": "model",
+          "from": "model",
+          "optional": true
+        },
+        {
+          "key": "answers",
+          "from": "answers",
+          "optional": true
+        },
+        {
+          "key": "previous",
+          "from": "previous",
+          "optional": true
+        },
+        {
+          "key": "feedback",
+          "from": "feedback",
+          "optional": true
+        },
+        {
+          "key": "rinari_profile_id",
+          "from": "rinari_profile_id",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_check",
+      "module": "agency",
+      "args": [
+        {
+          "name": "plan",
+          "type": "serde_json::Value",
+          "optional": false
+        },
+        {
+          "name": "language",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "rinari_profile_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.check",
+      "engine_params": [
+        {
+          "key": "plan",
+          "from": "plan",
+          "optional": false
+        },
+        {
+          "key": "language",
+          "from": "language",
+          "optional": true
+        },
+        {
+          "key": "rinari_profile_id",
+          "from": "rinari_profile_id",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_apply",
+      "module": "agency",
+      "args": [
+        {
+          "name": "plan",
+          "type": "serde_json::Value",
+          "optional": false
+        },
+        {
+          "name": "model",
+          "type": "Option<String>",
+          "optional": true
+        },
+        {
+          "name": "rinari_profile_id",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.apply",
+      "engine_params": [
+        {
+          "key": "plan",
+          "from": "plan",
+          "optional": false
+        },
+        {
+          "key": "model",
+          "from": "model",
+          "optional": true
+        },
+        {
+          "key": "rinari_profile_id",
+          "from": "rinari_profile_id",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_setup_get",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.setup.get",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
+      "command": "agency_team_setup_resolve",
+      "module": "agency",
+      "args": [
+        {
+          "name": "team_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "item_id",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "action",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "connector",
+          "type": "Option<String>",
+          "optional": true
+        }
+      ],
+      "returns": "Result<serde_json::Value, CommandError>",
+      "manual": false,
+      "engine_method": "agency.team.setup.resolve",
+      "engine_params": [
+        {
+          "key": "team_id",
+          "from": "team_id",
+          "optional": false
+        },
+        {
+          "key": "item_id",
+          "from": "item_id",
+          "optional": false
+        },
+        {
+          "key": "action",
+          "from": "action",
+          "optional": false
+        },
+        {
+          "key": "connector",
+          "from": "connector",
+          "optional": true
+        }
+      ],
+      "passthrough": null,
+      "host_effects": []
+    },
+    {
       "command": "agency_stop_all",
       "module": "agency",
       "args": [

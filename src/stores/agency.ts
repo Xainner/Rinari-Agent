@@ -23,6 +23,8 @@ export type AgencyPage =
   | { kind: 'post'; teamId: string; agentId: string }
   | { kind: 'new-team' }
   | { kind: 'edit-team'; teamId: string }
+  /** «Arma tu equipo con Rinari»: describir, revisar la propuesta y crearla; con `templateId`, una plantilla para revisar. */
+  | { kind: 'build-team'; templateId?: string }
 
 interface AgencyState {
   space: AgencySpace
@@ -45,6 +47,7 @@ interface AgencyState {
   openPost: (teamId: string, agentId: string) => void
   newTeam: () => void
   editTeam: (teamId: string) => void
+  buildTeam: (templateId?: string) => void
   goHome: () => void
   /** Cómo se llama cada agente (id → nombre), para los avisos que llegan con su id. */
   agentNames: Record<string, string>
@@ -92,6 +95,7 @@ export const useAgencyStore = create<AgencyState>((set) => ({
   openPost: (teamId, agentId) => set({ space: 'agency', page: { kind: 'post', teamId, agentId } }),
   newTeam: () => set({ space: 'agency', page: { kind: 'new-team' } }),
   editTeam: (teamId) => set({ space: 'agency', page: { kind: 'edit-team', teamId } }),
+  buildTeam: (templateId) => set({ space: 'agency', page: { kind: 'build-team', ...(templateId ? { templateId } : {}) } }),
   goHome: () => set({ page: { kind: 'home' } }),
   agentSessions: {},
   agentNames: {},

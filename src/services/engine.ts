@@ -33,6 +33,9 @@ import type {
   TeamTemplate,
   AgencyFlow,
   FlowInput,
+  PlanCheck,
+  TeamPlan,
+  TeamSetupItem,
   FlowRun,
   TeamOverview,
   TeamRoutine,
@@ -1773,7 +1776,7 @@ export const engineApi = {
   /** Las plantillas de equipo del Engine, en el idioma de la app (el Engine cae al inglés). */
   agencyTemplates: (language?: string) =>
     platform()
-      .command<{ templates: Array<{ id: string; team?: { name?: string; purpose?: string }; agents?: { name: string; role?: string }[] }> }>(
+      .command<{ templates: Array<{ id: string; team?: { name?: string; purpose?: string }; agents?: { name: string; role?: string }[]; plan?: TeamPlan }> }>(
         'agency_templates_list',
         language ? { language } : {},
       )
@@ -1783,6 +1786,7 @@ export const engineApi = {
           name: template.team?.name ?? template.id,
           purpose: template.team?.purpose ?? '',
           agents: (template.agents ?? []).map((agent) => ({ name: agent.name, role: agent.role ?? '' })),
+          ...(template.plan ? { plan: template.plan } : {}),
         })),
       })),
   /** Crea el equipo de una plantilla con agentes nuevos; `model`: el de todos ellos (null: el de siempre). */
@@ -1802,6 +1806,52 @@ export const engineApi = {
   /** «Créalo con Rinari»: responde con un job; el borrador llega como `agency.draft.ready`. */
   agencyDraft: (description: string) =>
     platform().command<{ status: 'started'; job_id: string }>('agency_agent_draft', { description }),
+  // «Arma tu equipo con Rinari» (agency_team_builder_v1).
+  /** Responde con un job; la propuesta (o hasta tres preguntas) llega como `agency.team_draft.ready`. */
+  agencyTeamDraft: (input: {
+    description: string
+    language?: string
+    model?: string | null
+    answers?: Array<{ question: string; answer: string }>
+    previous?: TeamPlan | null
+    feedback?: string | null
+  }) =>
+    platform().command<{ status: 'started'; job_id: string }>('agency_team_draft', {
+      description: input.description,
+      ...(input.language ? { language: input.language } : {}),
+      ...(input.model ? { model: input.model } : {}),
+      ...(input.answers?.length ? { answers: input.answers as unknown as Record<string, unknown>[] } : {}),
+      ...(input.previous ? { previous: input.previous as unknown as Record<string, unknown> } : {}),
+      ...(input.feedback ? { feedback: input.feedback } : {}),
+      rinari_profile_id: null,
+    }),
+  /** La propuesta editada, normalizada otra vez contra lo que tiene el dueño ahora. */
+  agencyTeamCheck: (plan: TeamPlan, language?: string) =>
+    platform().command<PlanCheck>('agency_team_check', {
+      plan: plan as unknown as Record<string, unknown>,
+      ...(language ? { language } : {}),
+      rinari_profile_id: null,
+    }),
+  /** Crea todo de una vez; si algo falla no queda nada a medias. */
+  agencyTeamApply: (plan: TeamPlan) =>
+    platform().command<{
+      team: AgencyTeam
+      agents: string[]
+      created_agents: string[]
+      flow_id: string | null
+      routine_ids: string[]
+      setup: TeamSetupItem[]
+    }>('agency_team_apply', { plan: plan as unknown as Record<string, unknown>, rinari_profile_id: null }),
+  agencyTeamSetup: (teamId: string) =>
+    platform().command<{ team_id: string; setup: TeamSetupItem[] }>('agency_team_setup_get', { team_id: teamId }),
+  /** `assign`: uno de sus conectores cubre la pieza; `manual`: esa parte la hace el dueño. */
+  agencyTeamSetupResolve: (teamId: string, itemId: string, action: 'assign' | 'manual', connector?: string) =>
+    platform().command<{ team_id: string; setup: TeamSetupItem[] }>('agency_team_setup_resolve', {
+      team_id: teamId,
+      item_id: itemId,
+      action,
+      ...(connector ? { connector } : {}),
+    }),
   // Rinari Agency A2 (agency_teams_v1): equipos, oficina, pizarra y ajustes.
   agencyTeams: () =>
     platform().command<{ teams: AgencyTeam[] }>('agency_team_list', { rinari_profile_id: 'active' }),

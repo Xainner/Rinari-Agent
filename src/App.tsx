@@ -81,6 +81,7 @@ import AgentForm from './features/agency/AgentForm'
 import AgencyTutorial from './features/agency/AgencyTutorial'
 import AgencySettings from './features/agency/AgencySettings'
 import TeamForm from './features/agency/TeamForm'
+import TeamBuilder from './features/agency/builder/TeamBuilder'
 import OfficeView from './features/agency/OfficeView'
 import type { AgencyAgent, AgencyTeam } from './features/agency/types'
 import { enterAgencySession } from './features/agency/openAgencySession'
@@ -548,6 +549,12 @@ function App() {
   // agency_audit_v1: templates, Souls for agents, archived agents, rule destinations.
   const agencyAuditEnabled = agencyEnabled && session.status?.capabilities.agency_audit_v1 === true
   const [templatesOpen, setTemplatesOpen] = useState(false)
+  // «Arma tu equipo con Rinari» (agency_team_builder_v1): describir, revisar y crear un equipo entero.
+  const builderEnabled = teamsEnabled && session.status?.capabilities.agency_team_builder_v1 === true
+  const buildTeam = (templateId?: string) => {
+    useAgencyStore.getState().buildTeam(templateId)
+    goChat()
+  }
   const inAgency = agencyEnabled && agencySpace === 'agency'
   const enterAgency = () => {
     // La conversación de Rinari que estaba abierta al entrar: se recupera al salir.
@@ -964,6 +971,7 @@ function App() {
             onOpenPost={openPost}
             onNewTeam={teamsEnabled ? () => { useAgencyStore.getState().newTeam(); goChat() } : undefined}
             onUseTemplate={teamsEnabled && agencyAuditEnabled ? () => setTemplatesOpen(true) : undefined}
+            onBuildTeam={builderEnabled ? () => buildTeam() : undefined}
             onAgentCard={(agentId) => { useAgencyStore.getState().editAgent(agentId); goChat() }}
             onOpenSettings={(agentId, teamId) => { useAgencyStore.getState().openSettings(agentId, teamId); goChat() }}
             onTeamCard={(team) => {
@@ -1160,6 +1168,7 @@ function App() {
             onEditTeam={teamsEnabled ? (team) => useAgencyStore.getState().editTeam(team.id) : undefined}
             onNewTeam={teamsEnabled ? () => useAgencyStore.getState().newTeam() : undefined}
             onUseTemplate={teamsEnabled && agencyAuditEnabled ? () => setTemplatesOpen(true) : undefined}
+            onBuildTeam={builderEnabled ? () => buildTeam() : undefined}
           />
         )}
         {agencyMain && agencyPage.kind === 'settings' && (
@@ -1180,6 +1189,19 @@ function App() {
           <SessionWorkspace key={activeTeam.id} sessionId={officeDockKey(activeTeam.id)} record={null} density="normal" focused browserEnabled={false}>
             <OfficeView team={activeTeam} agents={agency.agents} />
           </SessionWorkspace>
+        )}
+        {agencyMain && agencyPage.kind === 'build-team' && (
+          <TeamBuilder
+            key={agencyPage.templateId ?? 'describe'}
+            templateId={agencyPage.templateId}
+            onCreated={(team) => {
+              void agency.reload()
+              useAgencyStore.getState().openOffice(team.id)
+              // What was just built (flow, routines, «Para empezar») lives in «Trabajo».
+              useSessionDockStore.getState().openView(officeDockKey(team.id), 'work')
+            }}
+            onCancel={() => useAgencyStore.getState().goHome()}
+          />
         )}
         {agencyMain && (agencyPage.kind === 'new-team' || agencyPage.kind === 'edit-team') && (
           <TeamForm
@@ -1294,6 +1316,7 @@ function App() {
         open={agencyTutorialOpen}
         draftAvailable={session.status?.capabilities.agency_draft_v1 === true}
         templatesAvailable={teamsEnabled && agencyAuditEnabled}
+        builderAvailable={builderEnabled}
         onClose={(next) => {
           // Visto o saltado, no vuelve solo en este perfil (D-20).
           markAgencyTutorialSeen(activeProfileId)
@@ -1305,6 +1328,7 @@ function App() {
             requestAnimationFrame(() => requestAnimationFrame(() => document.querySelector<HTMLInputElement>('[data-testid="agency-draft-input"]')?.focus()))
           }
           if (next === 'template') setTemplatesOpen(true)
+          if (next === 'build') buildTeam()
         }}
       />
 
@@ -1312,6 +1336,7 @@ function App() {
         <TemplatePicker
           open={templatesOpen}
           onClose={() => setTemplatesOpen(false)}
+          onReview={builderEnabled ? (templateId) => buildTeam(templateId) : undefined}
           onCreated={(team) => {
             void agency.reload()
             useAgencyStore.getState().openOffice(team.id)

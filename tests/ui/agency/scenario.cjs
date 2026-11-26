@@ -52,8 +52,9 @@ scenario(async () => {
     await screenshot(`tutorial-${step}`)
   }
   const choices = await evaluate(`[...document.querySelectorAll('${TUTORIAL} .agency-tour-choice')].map((b) => ({ text: b.innerText, disabled: b.disabled }))`)
-  assert.equal(choices.length, 3, 'create, template or later')
-  assert(!choices[1].disabled && choices[1].text.includes('plantilla'), `the Engine ships templates: the choice is open (${JSON.stringify(choices[1])})`)
+  assert.equal(choices.length, 4, 'build a team, create, template or later')
+  assert(choices[0].text.includes('Arma tu equipo'), `«Arma tu equipo con Rinari» comes first (${JSON.stringify(choices[0])})`)
+  assert(!choices[2].disabled && choices[2].text.includes('plantilla'), `the Engine ships templates: the choice is open (${JSON.stringify(choices[2])})`)
   await click('[data-testid="agency-tutorial-create"]')
   await wait(`!document.querySelector('${TUTORIAL}')`)
 

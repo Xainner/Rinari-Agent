@@ -115,6 +115,25 @@ export interface AgencyTeam {
   manual?: string
   /** La carpeta de proyecto donde trabajan sus puestos; sin ella, cada puesto tiene la suya. */
   project_id?: string | null
+  /** Carpetas de trabajo de confianza: sus puestos escriben ahí sin preguntar (`agency_team_builder_v1`). */
+  folders?: string[]
+  /** «Para empezar»: lo que le falta al equipo para trabajar como se armó. */
+  setup?: TeamSetupItem[]
+}
+
+/** Una pieza que le falta a un equipo armado con Rinari: un conector del catálogo o una necesidad sin conector. */
+export interface TeamSetupItem {
+  id: string
+  agent_id: string
+  /** Nombre del agente que la necesita. */
+  agent?: string
+  kind: 'catalog' | 'missing'
+  catalog_id?: string
+  name?: string
+  need?: string
+  status: 'pending' | 'done'
+  /** Cómo se resolvió: `connected:<nombre>`, `assigned:<nombre>` o `manual`. */
+  resolution?: string
 }
 
 export interface AgencyTeamInput {
@@ -222,7 +241,91 @@ export interface AgencyTemplateSummary {
   name: string
   purpose: string
   agents: { name: string; role: string }[]
+  /** La plantilla como propuesta, para revisarla antes de crearla (`agency_team_builder_v1`). */
+  plan?: TeamPlan
 }
+
+// -- «Arma tu equipo con Rinari» (`agency_team_builder_v1`) --
+
+/** Lo que usa un agente de la propuesta, ya comparado con lo que tiene el dueño. */
+export type PlanUse =
+  | { kind: 'connector'; name: string }
+  | { kind: 'catalog'; id: string; name: string }
+  | { kind: 'tools'; group: string }
+  | { kind: 'missing'; need: string }
+
+export interface PlanAgent {
+  key: string
+  name: string
+  role: string
+  instructions: string
+  permission_profile: AgentPermissionProfile
+  uses: PlanUse[]
+  /** Un agente que el dueño ya tiene: nombrado por él (reuse true) o sugerido (reuse null: elige el dueño). */
+  reuse_agent_id?: string | null
+  reuse_name?: string | null
+  reuse_named?: boolean
+  reuse?: boolean | null
+  model?: string | null
+}
+
+export interface PlanStep {
+  name: string
+  /** Claves de agentes de la propuesta. */
+  agents: string[]
+  instructions: string
+  approval: FlowApproval
+}
+
+export interface PlanRoutine {
+  name: string
+  schedule: ScheduleSpec
+  /** Arranca el flujo con `input`, sin modelo; si no, es una tarea de `agent` con `prompt`. */
+  starts_flow: boolean
+  input: string
+  agent: string | null
+  prompt: string
+}
+
+export interface TeamPlan {
+  version?: number
+  team: {
+    name: string
+    purpose: string
+    manual: string
+    /** Clave del agente jefe. */
+    chief: string
+    project_folder: string | null
+    work_folders: string[]
+  }
+  agents: PlanAgent[]
+  flow: { name: string; description: string; steps: PlanStep[] } | null
+  routines: PlanRoutine[]
+  assumptions: string[]
+}
+
+/** Lo que faltará al crear el equipo, por agente (clave). */
+export interface PlanPending {
+  agent: string
+  kind: 'catalog' | 'missing'
+  catalog_id?: string
+  name?: string
+  need?: string
+}
+
+export interface PlanCheck {
+  plan: TeamPlan
+  notes: string[]
+  pending: PlanPending[]
+  /** Estado de cada conector del dueño ahora. */
+  connectors: Record<string, string>
+}
+
+/** Lo que devuelve `agency.team.draft` al terminar: una propuesta o preguntas. */
+export type TeamDraftOutcome =
+  | { kind: 'plan'; plan: TeamPlan; notes: string[]; pending: PlanPending[] }
+  | { kind: 'questions'; questions: string[] }
+  | { kind: 'failed'; message: string }
 
 /** Una conversación de un agente según `agency.agent.get`: su chat, un puesto o una ejecución de una regla. */
 export interface AgencyAgentSession {
@@ -247,6 +350,9 @@ export interface TeamRoutine {
   enabled: boolean
   paused_by: string | null
   next_run_at: number | null
+  /** `flow`: arranca un flujo del equipo sin modelo (`agency_team_builder_v1`). */
+  kind?: string
+  flow?: { id: string; name: string | null; input: string } | null
   last: { status: ScheduledRunStatus; finished_at: number | null; summary: string; session_id: string | null } | null
 }
 

@@ -13,12 +13,15 @@ import type { AgencyTeam, AgencyTemplateSummary } from './types'
  * «Usar una plantilla» (10.4, `agency_audit_v1`): los equipos listos para
  * empezar que trae Rinari, cada uno con sus oficios. Se elige uno y el
  * modelo con que trabajarán sus agentes, y se crea el equipo con agentes
- * nuevos. Nunca copia cuentas ni claves.
+ * nuevos. Nunca copia cuentas ni claves. Con «Arma tu equipo con Rinari»
+ * (`onReview`), la plantilla elegida se abre en la misma revisión que una
+ * propuesta de Rinari: el modelo y todo lo demás se ajustan ahí.
  */
-export default function TemplatePicker({ open, onClose, onCreated }: {
+export default function TemplatePicker({ open, onClose, onCreated, onReview }: {
   open: boolean
   onClose: () => void
   onCreated: (team: AgencyTeam) => void
+  onReview?: (templateId: string) => void
 }) {
   const { t, lang } = useI18n()
   const [templates, setTemplates] = useState<AgencyTemplateSummary[] | null>(null)
@@ -118,7 +121,7 @@ export default function TemplatePicker({ open, onClose, onCreated }: {
             </div>
           )}
         </div>
-        {templates && templates.length > 0 && (
+        {templates && templates.length > 0 && !onReview && (
           <div className="mt-4 grid gap-1.5">
             <span className="field-label mt-0">{t('agency.templates.model')}</span>
             <div className="agency-model-row">
@@ -145,9 +148,21 @@ export default function TemplatePicker({ open, onClose, onCreated }: {
         )}
         <div className="mt-5 flex justify-end gap-2">
           <button type="button" onClick={onClose} className="btn btn-ghost">{t('common.cancel')}</button>
-          <button type="button" onClick={() => void create()} disabled={!chosen || creating} className="btn btn-primary" data-testid="agency-template-create">
-            {creating ? t('agency.templates.creating') : t('agency.team.create')}
-          </button>
+          {onReview ? (
+            <button
+              type="button"
+              onClick={() => { if (chosen) { onReview(chosen); onClose() } }}
+              disabled={!chosen}
+              className="btn btn-primary"
+              data-testid="agency-template-review"
+            >
+              {t('agency.templates.review')}
+            </button>
+          ) : (
+            <button type="button" onClick={() => void create()} disabled={!chosen || creating} className="btn btn-primary" data-testid="agency-template-create">
+              {creating ? t('agency.templates.creating') : t('agency.team.create')}
+            </button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

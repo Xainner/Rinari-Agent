@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ClipboardCheck, Hand, LayoutTemplate, MessageSquare, OctagonPause, SlidersHorizontal, UserPlus, UsersRound } from 'lucide-react'
+import {
+  ClipboardCheck, Hand, LayoutTemplate, MessageSquare, OctagonPause, SlidersHorizontal, Sparkles, UserPlus, UsersRound,
+} from 'lucide-react'
 import { useI18n } from '../../i18n'
 import { engineApi } from '../../services/engine'
 import { art } from '../rinari/art'
@@ -23,6 +25,8 @@ interface AgencyHomeProps {
   onNewTeam?: () => void
   /** «Usar una plantilla» (`agency_audit_v1`); sin él no se ofrece. */
   onUseTemplate?: () => void
+  /** «Arma tu equipo con Rinari» (`agency_team_builder_v1`). */
+  onBuildTeam?: () => void
 }
 
 /** El gasto de hoy tal como lo sabe el Engine: un coste desconocido se dice, no es cero. */
@@ -112,6 +116,7 @@ export default function AgencyHome({
   onEditTeam,
   onNewTeam,
   onUseTemplate,
+  onBuildTeam,
 }: AgencyHomeProps) {
   const { t, lang } = useI18n()
   const locale = lang === 'es' ? 'es' : 'en'
@@ -141,7 +146,12 @@ export default function AgencyHome({
         <h1 className="font-display text-[24px] font-semibold text-[var(--text)]">{t('agency.home.emptyTitle')}</h1>
         <p className="max-w-[440px] text-center text-[13.5px] leading-relaxed text-[var(--text-muted)]">{t('agency.home.emptyCopy')}</p>
         <div className="flex flex-wrap justify-center gap-2">
-          <button type="button" className="btn btn-primary" onClick={onNewAgent} data-testid="agency-home-create">
+          {onBuildTeam && (
+            <button type="button" className="btn btn-primary" onClick={onBuildTeam} data-testid="agency-home-build">
+              <Sparkles size={15} aria-hidden="true" /> {t('agency.builder.menu')}
+            </button>
+          )}
+          <button type="button" className={onBuildTeam ? 'btn btn-secondary' : 'btn btn-primary'} onClick={onNewAgent} data-testid="agency-home-create">
             <UserPlus size={15} aria-hidden="true" /> {t('agency.sidebar.newAgent')}
           </button>
           {onUseTemplate && (
@@ -229,6 +239,11 @@ export default function AgencyHome({
           <div className="agency-home-section-head">
             <h2 id="agency-home-teams" className="agency-home-heading">{t('agency.sidebar.teams')}</h2>
             <span className="flex-1" />
+            {onBuildTeam && (
+              <button type="button" className="btn btn-secondary btn-sm" onClick={onBuildTeam} data-testid="agency-home-build-team">
+                <Sparkles size={13} aria-hidden="true" /> {t('agency.builder.menu')}
+              </button>
+            )}
             {onUseTemplate && (
               <button type="button" className="btn btn-ghost btn-sm" onClick={onUseTemplate} data-testid="agency-home-template">
                 <LayoutTemplate size={13} aria-hidden="true" /> {t('agency.tutorial.template')}

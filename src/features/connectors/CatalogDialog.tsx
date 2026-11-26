@@ -28,7 +28,7 @@ const CATEGORIES: readonly Category[] = ['all', 'google', 'work', 'dev', 'design
  * cliente propio o los datos de un servidor local. Lo que no está en la
  * lista entra por «Agregar servidor MCP».
  */
-export function CatalogDialog({ open, onClose, onManual, onAdded, owner }: {
+export function CatalogDialog({ open, onClose, onManual, onAdded, owner, entryId }: {
   open: boolean
   onClose: () => void
   /** «Agregar servidor MCP»; sin él no se ofrece (la Agency conecta desde el catálogo). */
@@ -36,6 +36,8 @@ export function CatalogDialog({ open, onClose, onManual, onAdded, owner }: {
   /** Rinari Agency (C8): la cuenta será solo de este agente (`agent:ID`). */
   owner?: string
   onAdded: (server: McpServer, next: 'sign_in' | 'connect', label: string) => void
+  /** Abre directo en esta entrada (la pieza que le falta a un equipo); «Atrás» lleva al catálogo. */
+  entryId?: string
 }) {
   const { t, lang } = useI18n()
   const [entries, setEntries] = useState<McpCatalogEntry[] | null>(null)
@@ -51,9 +53,13 @@ export function CatalogDialog({ open, onClose, onManual, onAdded, owner }: {
     setCategory('all')
     setError(null)
     let alive = true
-    engineApi.mcpCatalogList().then((result) => { if (alive) setEntries(result.entries) }).catch((err) => { if (alive) setError(commandMessage(err)) })
+    engineApi.mcpCatalogList().then((result) => {
+      if (!alive) return
+      setEntries(result.entries)
+      if (entryId) setChosen(result.entries.find((entry) => entry.id === entryId) ?? null)
+    }).catch((err) => { if (alive) setError(commandMessage(err)) })
     return () => { alive = false }
-  }, [open])
+  }, [open, entryId])
 
   const matching = useMemo(() => {
     const q = query.trim().toLowerCase()

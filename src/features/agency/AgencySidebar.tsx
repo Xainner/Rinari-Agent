@@ -1,4 +1,6 @@
-import { Archive, CircleHelp, Copy, IdCard, LayoutTemplate, MessageSquare, Building2, MoreHorizontal, OctagonX, PauseCircle, Pencil, Play, Plus, Settings, Settings2, UserPlus, UsersRound } from 'lucide-react'
+import {
+  Archive, Building2, CircleHelp, Copy, IdCard, LayoutTemplate, MessageSquare, MoreHorizontal, OctagonX, PauseCircle, Pencil, Play, Plus, Settings, Settings2, Sparkles, UserPlus, UsersRound,
+} from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { useUIStore } from '../../stores/ui'
@@ -42,6 +44,8 @@ interface AgencySidebarProps {
   onNewTeam?: () => void
   /** «Usar una plantilla» (`agency_audit_v1`): el «+» de Equipos ofrece las dos cosas. */
   onUseTemplate?: () => void
+  /** «Arma tu equipo con Rinari» (`agency_team_builder_v1`): la primera forma de crear un equipo. */
+  onBuildTeam?: () => void
   /** La barra colapsada: un riel de iconos, como el de Rinari. */
   collapsed?: boolean
   /** Menú contextual: la ficha de un agente, los ajustes y la ficha de un equipo. */
@@ -163,6 +167,7 @@ export default function AgencySidebar({
   onTeamCard,
   onEditTeam,
   onUseTemplate,
+  onBuildTeam,
   onChanged,
   onArchived,
 }: AgencySidebarProps) {
@@ -268,7 +273,7 @@ export default function AgencySidebar({
             )
           })}
           {onNewTeam && (
-            <RailButton label={t('agency.sidebar.newTeam')} onClick={onNewTeam} testId="agency-new-team">
+            <RailButton label={onBuildTeam ? t('agency.builder.menu') : t('agency.sidebar.newTeam')} onClick={onBuildTeam ?? onNewTeam} testId="agency-new-team">
               <Plus size={16} aria-hidden="true" />
             </RailButton>
           )}
@@ -370,7 +375,7 @@ export default function AgencySidebar({
 
         <div className="mb-1 mt-5 flex items-center justify-between gap-2 px-2">
           <p className="sidebar-heading">{t('agency.sidebar.teams')}</p>
-          {onNewTeam && onUseTemplate ? (
+          {onNewTeam && (onUseTemplate || onBuildTeam) ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button type="button" className="icon-btn agency-new-team" aria-label={t('agency.sidebar.newTeam')} title={t('agency.sidebar.newTeam')} data-testid="agency-new-team">
@@ -378,8 +383,9 @@ export default function AgencySidebar({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-max">
+                {onBuildTeam && <DropdownMenuItem onSelect={onBuildTeam} data-testid="agency-new-team-build"><Sparkles size={13} /> {t('agency.builder.menu')}</DropdownMenuItem>}
+                {onUseTemplate && <DropdownMenuItem onSelect={onUseTemplate} data-testid="agency-new-team-template"><LayoutTemplate size={13} /> {t('agency.tutorial.template')}</DropdownMenuItem>}
                 <DropdownMenuItem onSelect={onNewTeam} data-testid="agency-new-team-blank"><UsersRound size={13} /> {t('agency.sidebar.newTeamBlank')}</DropdownMenuItem>
-                <DropdownMenuItem onSelect={onUseTemplate} data-testid="agency-new-team-template"><LayoutTemplate size={13} /> {t('agency.tutorial.template')}</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : onNewTeam && (

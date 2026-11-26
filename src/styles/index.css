@@ -3188,6 +3188,13 @@ li[data-state='active'] .startup-step-mark { border: 2px solid rgb(167 139 250 /
 .question-option { border-radius: var(--r-md); border: 1px solid transparent; transition: background-color var(--dur-fast), border-color var(--dur-fast); }
 .question-option:hover { background: var(--bg-hover); }
 .question-option.is-on { background: rgb(147 88 255 / 0.14); border-color: rgb(196 181 253 / 0.55); }
+.question-hint { margin-top: 2px; font-size: 12px; color: var(--text-muted); }
+/* The tick of a multi-select option: drawn like .r-checkbox (the option itself is the button). */
+.question-check { position: relative; display: inline-grid; place-items: center; width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; border-radius: 5px; background: var(--bg-inset); box-shadow: inset 0 0 0 1px var(--line-2); transition: background-color var(--dur-fast), box-shadow var(--dur-fast); }
+.question-option:hover .question-check { box-shadow: inset 0 0 0 1px var(--line-3); }
+.question-check::after { content: ''; width: 12px; height: 12px; background: white; -webkit-mask: var(--r-checkbox-mark) center / contain no-repeat; mask: var(--r-checkbox-mark) center / contain no-repeat; clip-path: inset(0 100% 0 0); transition: clip-path var(--dur-base) var(--ease-out); }
+.question-check[data-on] { background: var(--accent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, white), 0 0 12px -4px var(--accent); }
+.question-check[data-on]::after { clip-path: inset(0); }
 /* #63: la pregunta entra desde el lado hacia el que se avanzó; con movimiento reducido, sin desplazarse. */
 .question-step[data-direction='forward'] { animation: question-in-forward var(--dur-base) var(--ease-out) both; }
 .question-step[data-direction='back'] { animation: question-in-back var(--dur-base) var(--ease-out) both; }

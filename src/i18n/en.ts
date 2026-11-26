@@ -7,6 +7,7 @@ export const en: Record<I18nKey, string> = {
   'questions.restore': 'Show questions',
   'questions.minimize': 'Minimize questions',
   'questions.other': 'Other',
+  'questions.multiHint': 'You can pick more than one',
   'questions.recommended': 'Recommended',
   'questions.custom': 'Your response',
   'questions.placeholder': 'Write your custom response…',

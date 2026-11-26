@@ -73,7 +73,7 @@ export const desktopApi = {
     platform().command<{ questions: QuestionRequest[] }>('question_list', { session_id }),
   answer: (
     request: QuestionRequest,
-    answers: Record<string, string>,
+    answers: Record<string, string | string[]>,
     skip = false,
   ) =>
     platform().command<QuestionRequest>('question_resolve', {

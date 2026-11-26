@@ -226,3 +226,56 @@ it('going back comes in from the other side (#63)', async () => {
   expect(document.querySelector('.question-step')?.getAttribute('data-direction')).toBe('back')
   expect(screen.getByRole('heading', { name: /¿Dónde\?/ })).toBeTruthy()
 })
+
+const several: QuestionRequest = {
+  ...request,
+  questions: [
+    {
+      id: 'ugly',
+      title: '¿Qué te parece peor?',
+      multi_select: true,
+      options: [{ label: 'La cara' }, { label: 'Los colores, el fondo' }, { label: 'Vacío' }],
+    },
+    { id: 'next', title: '¿Y después?', options: [{ label: 'Rehacerlo' }] },
+  ],
+}
+
+it('lets a multi-select question tick several options and sends them as a list', async () => {
+  const user = userEvent.setup()
+  render(<QuestionCard request={several} onResolved={vi.fn()} />)
+  expect(screen.getByText('Puedes elegir varias')).toBeTruthy()
+  expect(screen.queryByRole('radio')).toBeNull()
+  const continueButton = screen.getByRole('button', { name: 'Continuar' }) as HTMLButtonElement
+  expect(continueButton.disabled).toBe(true)
+  // Ticked out of order: the answer keeps the options' own order.
+  await user.click(screen.getByRole('checkbox', { name: /Vacío/ }))
+  await user.click(screen.getByRole('checkbox', { name: /La cara/ }))
+  await user.click(screen.getByRole('checkbox', { name: /Los colores/ }))
+  await user.click(screen.getByRole('checkbox', { name: /Los colores/ }))
+  // Ticking never moves on by itself.
+  expect(screen.getByRole('checkbox', { name: /La cara/ }).getAttribute('aria-checked')).toBe('true')
+  expect(screen.getByRole('checkbox', { name: /Los colores/ }).getAttribute('aria-checked')).toBe('false')
+  await user.click(continueButton)
+  await user.click(screen.getByRole('radio', { name: /Rehacerlo/ }))
+  await user.click(screen.getByText('Enviar respuestas'))
+  expect(desktopApi.answer).toHaveBeenCalledWith(several, { ugly: ['La cara', 'Vacío'], next: 'Rehacerlo' }, false)
+})
+
+it('adds Other to the picks once its text is written, and keeps the picks going back', async () => {
+  const user = userEvent.setup()
+  render(<QuestionCard request={several} onResolved={vi.fn()} />)
+  await user.click(screen.getByRole('checkbox', { name: /La cara/ }))
+  await user.click(screen.getByRole('checkbox', { name: 'Otra' }))
+  const continueButton = screen.getByRole('button', { name: 'Continuar' }) as HTMLButtonElement
+  expect(continueButton.disabled).toBe(true)
+  await user.type(screen.getByLabelText('Tu respuesta'), 'El pelo')
+  expect(continueButton.disabled).toBe(false)
+  await user.click(continueButton)
+  await user.click(screen.getByLabelText('Pregunta anterior'))
+  expect(screen.getByRole('checkbox', { name: /La cara/ }).getAttribute('aria-checked')).toBe('true')
+  expect(screen.getByRole('checkbox', { name: 'Otra' }).getAttribute('aria-checked')).toBe('true')
+  await user.click(screen.getByLabelText('Pregunta siguiente'))
+  await user.click(screen.getByRole('radio', { name: /Rehacerlo/ }))
+  await user.click(screen.getByText('Enviar respuestas'))
+  expect(desktopApi.answer).toHaveBeenCalledWith(several, { ugly: ['La cara', 'El pelo'], next: 'Rehacerlo' }, false)
+})

@@ -53,6 +53,11 @@ describe('turn token aggregates', () => {
       view.unmount()
     })
   })
+  it('says «1 token», not «1 tokens»', () => {
+    render(<I18nProvider lang="es"><TokenUsage usage={{ ...usage(1, 20), output_tokens: 1, source: 'reported' }} /></I18nProvider>)
+    expect(screen.getByTestId('token-usage').textContent).toBe('↓ 1 token')
+    expect(screen.getByTestId('token-usage').parentElement?.getAttribute('title')).toContain('Salida: 1 token · ')
+  })
   it('shows what the model produced and keeps the input, the cost and the context in the details', () => {
     render(<I18nProvider lang="es"><TokenUsage usage={{ ...usage(1, 31000), input_tokens: 29800, output_tokens: 1200, source: 'reported', context_tokens: 10600 }} /></I18nProvider>)
     expect(screen.getByTestId('token-usage').textContent).toBe(`↓ ${formatTokens(1200, 'es')} tokens`)

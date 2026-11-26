@@ -62,6 +62,7 @@ function nullableBranch(node) {
 function tsType(node) {
   const optional = nullableBranch(node)
   if (optional) return `${tsType(optional)} | null`
+  if (Array.isArray(node.anyOf)) return node.anyOf.map(tsType).join(' | ')
   if (node.$ref) return pascal(node.$ref.split('/').at(-1))
   if ('const' in node) return JSON.stringify(node.const)
   if (node.enum) return node.enum.map((item) => JSON.stringify(item)).join(' | ')

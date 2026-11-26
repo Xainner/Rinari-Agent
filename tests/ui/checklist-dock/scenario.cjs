@@ -52,6 +52,10 @@ scenario(async () => {
   await wait(text('PRIMERA PARTE'))
   await wait(`document.querySelector(${JSON.stringify(DOCK)})?.dataset.state === 'open'`)
   const dock = (expr) => `(() => { const d = document.querySelector(${JSON.stringify(DOCK)}); return ${expr} })()`
+  // While the turn still works the bar is the live line («2/3 Escribiendo…»);
+  // the list's own headline comes once the turn ends. A busy runner can still
+  // be closing the turn after the last text arrived.
+  await wait(dock("d?.dataset.mode === 'list'"))
   assert(await evaluate(dock("d.textContent.includes('Quedan 2 pasos') && d.textContent.includes('1/3')")), 'open list with its progress')
   // The top of the composer (plan C): inside it, above what you write, never over it.
   await settleAnimations()
@@ -115,6 +119,7 @@ scenario(async () => {
   await send('Sigue con lo que falta')
   await wait(text('TODO LISTO'))
   await wait(`document.querySelector(${JSON.stringify(DOCK)})?.dataset.state === 'completed'`)
+  await wait(dock("d?.dataset.mode === 'list'")) // the turn has closed: the list's headline, not the live line
   assert(await evaluate(dock("d.textContent.includes('Todo hecho') && d.textContent.includes('3/3')")))
   await screenshot('completed')
   await send('Gracias')

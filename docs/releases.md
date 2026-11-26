@@ -35,8 +35,9 @@ dueño, o alguien con su autorización expresa.
 
 ## Qué hace `release.yml`
 
-Solo acepta tags `v0.2.*` y `v0.3.*` (no los de la línea Tauri 0.1.x; una
-línea nueva, como `v0.4.*` o `v1.*`, exige añadir su patrón al workflow).
+Solo acepta tags `v0.2.*`, `v0.3.*` y `v0.4.*` (no los de la línea Tauri
+0.1.x; una línea nueva, como `v0.5.*` o `v1.*`, exige añadir su patrón al
+workflow).
 Corre en `windows-latest` y:
 
 - falla si el tag no coincide con la versión de `package.json`;
@@ -129,6 +130,7 @@ anunciar soporte.
 
 | Versión | Fecha | Commit | Engine | Notas |
 |---|---|---|---|---|
+| v0.4.4 | 2026-11-25 | (tag v0.4.4) | 9c2d617 | [v0.4.4.md](releases/v0.4.4.md) |
 | v0.4.3 | 2026-11-05 | (tag v0.4.3) | 98496c5 | [v0.4.3.md](releases/v0.4.3.md) |
 | v0.4.2 | 2026-11-03 | 1965829 | f082751 | [v0.4.2.md](releases/v0.4.2.md) |
 | v0.4.1 | 2026-11-02 | 5a49a49 | f082751 | [v0.4.1.md](releases/v0.4.1.md) — instalador sin el motor; usar 0.4.2 |

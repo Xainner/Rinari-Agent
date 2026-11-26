@@ -263,6 +263,21 @@ export const scenarios = {
       ],
     }, laneOf, { held: ['main'] }),
   },
+  'question-multi': {
+    title: 'Pregunta de selección múltiple: casillas que no avanzan solas, «Otra» con su texto y la respuesta guardada como lista',
+    phases: ['exercise'],
+    model: () => startRoutedModel({
+      title: Array.from({ length: 4 }, () => ({ text: 'Diseño' })),
+      main: [
+        { tool: 'user.ask', args: { questions: [
+          { id: 'worst', title: '¿Qué te parece peor?', multi_select: true, options: [{ label: 'No se parece a ella' }, { label: 'Los colores y el fondo' }, { label: 'Muy vacío' }] },
+          { id: 'redo', title: '¿Lo rehacemos?', options: [{ label: 'Sí, de nuevo' }, { label: 'Solo retoques' }] },
+        ] }, say: 'Dime qué falla.' },
+        { text: 'LO REHAGO' },
+        { text: 'EXTRA' },
+      ],
+    }, laneOf, { held: ['main'] }),
+  },
   'child-sessions': {
     title: 'Sesiones hijas: abrir una a pedido, su informe en la madre con un turno corto, una oferta con «Hazlo aquí» y el encargo en la hija',
     phases: ['exercise'],

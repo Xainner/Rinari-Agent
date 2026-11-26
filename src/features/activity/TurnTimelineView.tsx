@@ -133,6 +133,9 @@ const FALLBACK_REASONS: Record<string, I18nKey> = {
   empty_response: 'activity.fallback.empty',
 }
 
+/** A question's answer as read back: one text, or the picks of a multi-select one line each. */
+const answerText = (answer: string | string[] | undefined) => Array.isArray(answer) ? answer.join('\n') : answer
+
 /** «Seguí con X porque …» when the turn switched to the fallback model (#80). */
 function FallbackNotice({ item }: { item: Extract<TimelineItem, { type: 'system' }> }) {
   const { t } = useI18n()
@@ -396,7 +399,7 @@ function ActivityRow({ item, onResolveApproval }: { item: Exclude<TimelineItem, 
   }
   if (item.type === 'agent') return <AgentCard item={item} onResolveApproval={onResolveApproval} />
   if (item.type === 'changeset') return null
-  if (item.type === 'question') return <InspectionDetails inspectionId="question" className="rounded-xl border border-[var(--border)] p-3 text-xs" open={item.request.status === 'pending'}><summary className="cursor-pointer">{t(item.request.status === 'pending' ? 'questions.waiting' : item.request.status === 'answered' ? 'questions.answered' : item.request.status === 'skipped' ? 'questions.skipped' : 'questions.expired')}</summary><div className="mt-2 space-y-2">{item.request.questions?.map(q => <div key={q.id}><strong>{q.title}</strong>{item.request.answers?.[q.id] && <p className="mt-1 whitespace-pre-wrap">{item.request.answers[q.id]}</p>}</div>)}</div></InspectionDetails>
+  if (item.type === 'question') return <InspectionDetails inspectionId="question" className="rounded-xl border border-[var(--border)] p-3 text-xs" open={item.request.status === 'pending'}><summary className="cursor-pointer">{t(item.request.status === 'pending' ? 'questions.waiting' : item.request.status === 'answered' ? 'questions.answered' : item.request.status === 'skipped' ? 'questions.skipped' : 'questions.expired')}</summary><div className="mt-2 space-y-2">{item.request.questions?.map(q => <div key={q.id}><strong>{q.title}</strong>{answerText(item.request.answers?.[q.id]) && <p className="mt-1 whitespace-pre-wrap">{answerText(item.request.answers?.[q.id])}</p>}</div>)}</div></InspectionDetails>
   if (item.type === 'system' && item.kind === 'model_fallback') return <FallbackNotice item={item} />
   if (item.type === 'system' && item.kind === 'protocol_learned') {
     const protocol = t(`activity.protocol.${item.status ?? 'chat'}` as I18nKey)

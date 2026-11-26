@@ -5,7 +5,7 @@ import { desktopApi, type QuestionRequest } from '../../services/desktop'
 import { commandMessage } from '../../services/engine'
 import { useI18n } from '../../i18n'
 import { refreshPendingQuestions, usePendingQuestions } from './usePendingQuestions'
-import { answerFor, answersFor, fixedOptions, isOther, selectionFor, type Question, type QuestionDrafts, type QuestionSelection } from './questionDrafts'
+import { answersFor, emptyDrafts, fixedOptions, hasAnswer, isMulti, isOther, otherOn, picksFor, selectionFor, togglePick, touched, type Question, type QuestionDrafts, type QuestionSelection } from './questionDrafts'
 import { useCalmMotion } from '../../lib/motion'
 import { OfferCard, offerOf } from '../children/OfferCard'
 
@@ -27,7 +27,7 @@ function QuestionFlow({ request, onResolved }: { request: QuestionRequest; onRes
   // La pregunta llega tras elegir una opción: espera un instante a que se vea marcada.
   const [chosenStep, setChosenStep] = useState(false)
   const [minimized, setMinimized] = useState(false)
-  const [drafts, setDrafts] = useState<QuestionDrafts>({ selections: {}, customText: {} })
+  const [drafts, setDrafts] = useState<QuestionDrafts>(emptyDrafts)
   const [sending, setSending] = useState(false)
   const sendingRef = useRef(false)
   const indexRef = useRef(0)
@@ -35,7 +35,7 @@ function QuestionFlow({ request, onResolved }: { request: QuestionRequest; onRes
   // La pregunta que se va (#63): queda encima, con la opción elegida marcada,
   // y sale hacia su lado mientras entra la nueva. Solo con movimiento.
   const calm = useCalmMotion()
-  const [leaving, setLeaving] = useState<{ key: number; question: Question; selection?: QuestionSelection; direction: 'forward' | 'back'; chosen: boolean } | null>(null)
+  const [leaving, setLeaving] = useState<{ key: number; question: Question; drafts: QuestionDrafts; selection?: QuestionSelection; direction: 'forward' | 'back'; chosen: boolean } | null>(null)
   const leaveTimer = useRef<number | undefined>(undefined)
   useEffect(() => () => window.clearTimeout(leaveTimer.current), [])
   // La altura sigue a la pregunta: con más o menos opciones, la tarjeta crece o
@@ -49,10 +49,12 @@ function QuestionFlow({ request, onResolved }: { request: QuestionRequest; onRes
   // from another Boards pane, would send the next keystrokes into this card.
   const focusRequested = useRef(!document.activeElement || document.activeElement === document.body)
   const question = request.questions[index]
+  const multi = question ? isMulti(question) : false
   const selected = question ? selectionFor(question, drafts) : undefined
-  const other = selected?.kind === 'other'
+  const picks = question && multi ? picksFor(question, drafts) : null
+  const other = question ? otherOn(question, drafts) : false
   const answers = answersFor(request, drafts)
-  const valid = question ? Boolean(answerFor(question, drafts).trim()) : false
+  const valid = question ? hasAnswer(question, drafts) : false
   const last = index === request.questions.length - 1
   const position = t('questions.progress', { n: index + 1, total: request.questions.length })
   useLayoutEffect(() => {
@@ -81,7 +83,7 @@ function QuestionFlow({ request, onResolved }: { request: QuestionRequest; onRes
     const from = request.questions[indexRef.current]
     if (!calm && from) {
       window.clearTimeout(leaveTimer.current)
-      setLeaving({ key: Date.now(), question: from, selection: chosen ?? selectionFor(from, drafts), direction: way, chosen: Boolean(chosen) })
+      setLeaving({ key: Date.now(), question: from, drafts, selection: chosen ?? selectionFor(from, drafts), direction: way, chosen: Boolean(chosen) })
       leaveTimer.current = window.setTimeout(() => setLeaving(null), LEAVE_MS)
     }
     setDirection(way)
@@ -101,6 +103,13 @@ function QuestionFlow({ request, onResolved }: { request: QuestionRequest; onRes
       go(index + 1, selection)
     }
     else if (selection.kind === 'other') input.current?.focus()
+  }
+  // A multi-select question never moves on by itself: each click ticks or
+  // unticks, and «Continuar» or «Enviar» goes on.
+  function toggle(optionIndex: number | null) {
+    if (!question || sendingRef.current || indexRef.current !== index) return
+    focusRequested.current = optionIndex === null && !picksFor(question, drafts).other
+    setDrafts(current => togglePick(question, current, optionIndex))
   }
   async function submit(skip: boolean) {
     if (sendingRef.current || (!skip && !answers)) return
@@ -123,36 +132,46 @@ function QuestionFlow({ request, onResolved }: { request: QuestionRequest; onRes
   const syntheticMetadata = question.options?.find(option => isOther(option.label))
   return <section aria-label={t('questions.region')} className="question-card mb-3 p-4 text-sm">
     <div className="mb-3 flex items-start justify-between gap-3">
-      <h3 ref={heading} tabIndex={-1} aria-label={`${position}: ${question.title}`} className="font-semibold">{question.title}</h3>
+      <div>
+        <h3 ref={heading} tabIndex={-1} aria-label={`${position}: ${question.title}${multi ? ` (${t('questions.multiHint')})` : ''}`} className="font-semibold">{question.title}</h3>
+        {multi && <p className="question-hint">{t('questions.multiHint')}</p>}
+      </div>
       <button disabled={sending} aria-label={t('questions.minimize')} title={t('questions.minimize')} className="btn btn-quiet btn-icon btn-xs -mt-1 -mr-1" onClick={() => setMinimized(true)}><X size={15} /></button>
     </div>
     <div ref={stage} className="question-stage" style={stageHeight === null ? undefined : { height: stageHeight }}>
     {leaving && (
       <div key={leaving.key} className="question-ghost space-y-1" data-direction={leaving.direction} data-chosen={leaving.chosen || undefined} aria-hidden="true" inert>
-        {fixedOptions(leaving.question).map(({ option, index: optionIndex }) => (
-          <div key={optionIndex} className={`question-option flex w-full gap-3 p-3 text-left${leaving.selection?.kind === 'option' && leaving.selection.optionIndex === optionIndex ? ' is-on' : ''}`}>
+        {fixedOptions(leaving.question).map(({ option, index: optionIndex }) => {
+          const on = isMulti(leaving.question) ? picksFor(leaving.question, leaving.drafts).options.includes(optionIndex) : leaving.selection?.kind === 'option' && leaving.selection.optionIndex === optionIndex
+          return <div key={optionIndex} className={`question-option flex w-full gap-3 p-3 text-left${on ? ' is-on' : ''}`}>
+            {isMulti(leaving.question) && <QuestionCheck on={on} />}
             <span><strong>{option.label}{option.recommended ? ` (${t('questions.recommended')})` : ''}</strong>
               {option.description && <span className="mt-1 block text-xs text-[var(--text-muted)]">{option.description}</span>}</span>
           </div>
-        ))}
-        <div className={`question-option w-full p-3 text-left${leaving.selection?.kind === 'other' ? ' is-on' : ''}`}><strong>{t('questions.other')}</strong></div>
+        })}
+        <div className={`question-option flex w-full gap-3 p-3 text-left${otherOn(leaving.question, leaving.drafts) ? ' is-on' : ''}`}>
+          {isMulti(leaving.question) && <QuestionCheck on={otherOn(leaving.question, leaving.drafts)} />}
+          <strong>{t('questions.other')}</strong>
+        </div>
       </div>
     )}
-    <div key={question.id} role="radiogroup" aria-label={question.title} data-direction={direction ?? undefined} data-chosen={chosenStep || undefined} className="question-step space-y-1">
+    <div key={question.id} role={multi ? 'group' : 'radiogroup'} aria-label={question.title} data-direction={direction ?? undefined} data-chosen={chosenStep || undefined} data-multi={multi || undefined} className="question-step space-y-1">
       {fixedOptions(question).map(({ option, index: optionIndex }) => {
-        const checked = selected?.kind === 'option' && selected.optionIndex === optionIndex
-        return <button key={optionIndex} role="radio" aria-checked={checked} disabled={sending}
+        const checked = picks ? picks.options.includes(optionIndex) : selected?.kind === 'option' && selected.optionIndex === optionIndex
+        return <button key={optionIndex} role={multi ? 'checkbox' : 'radio'} aria-checked={checked} disabled={sending}
           onKeyDown={event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault() }}
-          onClick={event => choose({ kind: 'option', optionIndex, value: option.label }, event.detail)}
+          onClick={event => multi ? toggle(optionIndex) : choose({ kind: 'option', optionIndex, value: option.label }, event.detail)}
           className={`question-option flex w-full gap-3 p-3 text-left${checked ? ' is-on' : ''}`}>
+          {multi && <QuestionCheck on={checked} />}
           <span><strong>{option.label}{option.recommended ? ` (${t('questions.recommended')})` : ''}</strong>
             {option.description && <span className="mt-1 block text-xs text-[var(--text-muted)]">{option.description}</span>}</span>
         </button>
       })}
-      <button role="radio" aria-checked={Boolean(other)} disabled={sending} onClick={event => choose({ kind: 'other' }, event.detail)}
-        className={`question-option w-full p-3 text-left${other ? ' is-on' : ''}`}>
-        <strong>{t('questions.other')}{syntheticMetadata?.recommended ? ` (${t('questions.recommended')})` : ''}</strong>
-        {syntheticMetadata?.description && <span className="mt-1 block text-xs text-[var(--text-muted)]">{syntheticMetadata.description}</span>}
+      <button role={multi ? 'checkbox' : 'radio'} aria-checked={other} disabled={sending} onClick={event => multi ? toggle(null) : choose({ kind: 'other' }, event.detail)}
+        className={`question-option flex w-full gap-3 p-3 text-left${other ? ' is-on' : ''}`}>
+        {multi && <QuestionCheck on={other} />}
+        <span><strong>{t('questions.other')}{syntheticMetadata?.recommended ? ` (${t('questions.recommended')})` : ''}</strong>
+          {syntheticMetadata?.description && <span className="mt-1 block text-xs text-[var(--text-muted)]">{syntheticMetadata.description}</span>}</span>
       </button>
     </div>
     </div>
@@ -166,7 +185,7 @@ function QuestionFlow({ request, onResolved }: { request: QuestionRequest; onRes
       {request.questions.length > 1 && (
         <span className="question-dots" aria-hidden="true">
           {request.questions.map((item, at) => (
-            <span key={item.id} className="question-dot" data-state={at === index ? 'current' : selectionFor(item, drafts) ? 'answered' : 'pending'} />
+            <span key={item.id} className="question-dot" data-state={at === index ? 'current' : touched(item, drafts) ? 'answered' : 'pending'} />
           ))}
         </span>
       )}
@@ -185,6 +204,11 @@ function QuestionFlow({ request, onResolved }: { request: QuestionRequest; onRes
       )}
     </div>
   </section>
+}
+
+/** The tick box of a multi-select option: it fills when the option is chosen. */
+function QuestionCheck({ on }: { on: boolean }) {
+  return <span className="question-check" data-on={on || undefined} aria-hidden="true" />
 }
 
 export default function Questions({ sessionId }: { sessionId: string }) {

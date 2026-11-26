@@ -5,6 +5,7 @@ export const es = {
   'questions.restore': 'Mostrar preguntas',
   'questions.minimize': 'Minimizar preguntas',
   'questions.other': 'Otra',
+  'questions.multiHint': 'Puedes elegir varias',
   'questions.recommended': 'Recomendado',
   'questions.custom': 'Tu respuesta',
   'questions.placeholder': 'Escribe tu respuesta personalizada…',
